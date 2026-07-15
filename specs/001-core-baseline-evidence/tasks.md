@@ -113,7 +113,7 @@ not change.
   `Sources/BeebKit/BeebVersion.swift`; if no defect exists, record that the
   expanded tests passed without production changes
   - Outcome: C++ 27/27 and Swift 7/7 pass; no production fix was required.
-- [ ] T014 [US1] Add Linux and macOS execution of
+- [x] T014 [US1] Add Linux and macOS execution of
   `Tests/C0/test-baseline-verifier.sh` to `.github/workflows/ci.yml`, proving the
   orchestration contract without enabling the full aggregate job before later
   stories provide their required evidence groups

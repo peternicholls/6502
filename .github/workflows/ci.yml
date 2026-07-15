@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test C0 verifier orchestration
+        run: Tests/C0/test-baseline-verifier.sh
       - name: Build and test the C++ core
         run: make test all demo-rom
       - name: Run native sanitizers
@@ -21,6 +23,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test C0 verifier orchestration
+        run: Tests/C0/test-baseline-verifier.sh
       - name: Test the Swift package
         run: swift test
       - name: Build the SwiftUI demo
