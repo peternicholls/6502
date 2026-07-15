@@ -95,3 +95,10 @@ c0_capture invalid-profile "${verifier}" --profile other --groups "${all_pass}" 
 c0_expect_failure invalid-profile
 c0_assert_contains "${C0_TEST_TMP}/invalid-profile.stderr" "unsupported profile: other"
 c0_pass "unsupported profile is rejected before group execution"
+
+c0_capture focused-suite make --no-print-directory test-c0 \
+    C0_TEST_SCRIPTS="${commands}/fail-b ${commands}/pass-c"
+c0_expect_failure focused-suite
+c0_assert_contains "${C0_TEST_TMP}/focused-suite.stdout" "bravo failed"
+c0_assert_contains "${C0_TEST_TMP}/focused-suite.stdout" "charlie detail"
+c0_pass "focused C0 suite retains failure after running later scripts"

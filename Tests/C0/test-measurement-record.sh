@@ -44,8 +44,11 @@ c0_assert_contains "${valid_record}" "median_cycles_per_second=300000"
 c0_assert_contains "${valid_record}" "min_cycles_per_second=100000"
 c0_assert_contains "${valid_record}" "max_cycles_per_second=500000"
 c0_assert_contains "${valid_record}" "valid=true"
-c0_assert_contains "${valid_record}" "source_revision="
-c0_assert_contains "${valid_record}" "-dirty"
+expected_revision="$(git rev-parse HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then
+    expected_revision="${expected_revision}-dirty"
+fi
+c0_assert_contains "${valid_record}" "source_revision=${expected_revision}"
 computed="$(sed -n 's/^sample\.[0-9][0-9]*\.cycles_per_second=//p' "${valid_record}" | sort -n)"
 test "$(printf '%s\n' "${computed}" | sed -n '3p')" = "300000"
 test "$(printf '%s\n' "${computed}" | sed -n '1p')" = "100000"

@@ -2,6 +2,7 @@ CXX ?= g++
 CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
+C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
 BUILD_DIR = .build/cpp
 C0_PROFILE ?=
 DOCS_PROFILE ?= auto
@@ -55,10 +56,12 @@ sanitize: | $(BUILD_DIR)
 	$(BUILD_DIR)/beeb-tests-sanitize --quick
 
 test-c0:
-	@for test_script in Tests/C0/test-*.sh; do \
+	@status=0; \
+	for test_script in $(C0_TEST_SCRIPTS); do \
 		echo "$$test_script"; \
-		"$$test_script"; \
-	done
+		"$$test_script" || status=$$?; \
+	done; \
+	exit $$status
 
 verify-c0:
 	scripts/verify-c0.sh $(if $(C0_PROFILE),--profile "$(C0_PROFILE)")
