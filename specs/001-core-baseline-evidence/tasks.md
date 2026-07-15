@@ -84,10 +84,11 @@ not change.
 
 ### Tests for User Story 1 (write and observe failing first)
 
-- [ ] T008 [US1] Add `Tests/C0/test-baseline-verifier.sh` cases for all-pass,
+- [x] T008 [US1] Add `Tests/C0/test-baseline-verifier.sh` cases for all-pass,
   one failure followed by later execution, multiple failures, unexpected skip,
   declared profile N/A, interrupted command, stable summary ordering, and
   immutable `Tests/Fixtures/C0/`; record the expected missing-verifier failures
+  - Red evidence: exits `1` with `missing C0 baseline verifier` before T011.
 - [ ] T009 [P] [US1] Extend C-boundary negative tests in `Tests/test_main.cpp`
   to cover every fallible function in `Sources/BeebCore/include/beeb_c.h`,
   including nullability, invalid lengths/indices, stable error reset, and no C++
