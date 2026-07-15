@@ -185,11 +185,12 @@ interruption produce an invalid result.
 
 ### Tests for User Story 3 (write and observe failing first)
 
-- [ ] T024 [US3] Add `Tests/C0/test-measurement-record.sh` cases for five-sample
+- [x] T024 [US3] Add `Tests/C0/test-measurement-record.sh` cases for five-sample
   validity, recomputed median/min/max, four samples, zero/negative duration,
   incomplete workload, missing environment/toolchain data, interruption, dirty
   revision marking, and mandatory non-guarantee label; observe the missing
   measurement flow
+  - Red evidence: exits `1` with `missing C0 measurement script` before T025.
 
 ### Implementation for User Story 3
 
