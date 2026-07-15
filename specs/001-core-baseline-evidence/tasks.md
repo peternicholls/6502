@@ -238,7 +238,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
 - [x] T030 [P] [US4] Configure strict C/C++/C ABI generation in `Doxyfile` with
   `EXTRACT_ALL=NO`, public-surface and parameter/incomplete warnings, source
   links, Markdown guides, and warnings promoted to failure
-- [ ] T031 [US4] Implement host-profile detection, Doxygen/DocC static generation,
+- [x] T031 [US4] Implement host-profile detection, Doxygen/DocC static generation,
   unified `.build/docs/index.html`, link checking, and debt-ratchet validation in
   `scripts/build-docs.sh`; make the infrastructure portions of T028 pass
 - [ ] T032 [P] [US4] Document every supported public C ABI declaration in
