@@ -141,10 +141,11 @@ normal verification reports but never replaces it.
   mismatch, requested-versus-actual cycle, and approved-path immutability cases;
   observe failures while approved references are absent
   - Red evidence: exits `1` with `missing approved fixture directory` before T018/T019.
-- [ ] T017 [P] [US2] Add `Tests/C0/test-reference-update.sh` cases for missing
+- [x] T017 [P] [US2] Add `Tests/C0/test-reference-update.sh` cases for missing
   reason, unknown reference, non-identical candidates, accidental CI use,
   single-reference scope, manifest refresh, and diff presentation; observe the
   missing explicit update flow
+  - Red evidence: exits `1` with `missing explicit reference updater` before T020.
 
 ### Implementation for User Story 2
 
