@@ -296,7 +296,7 @@ evidence without claiming undelivered fidelity.
 - [x] T044 Validate every command and expected failure in
   `specs/001-core-baseline-evidence/quickstart.md`; correct the guide or
   implementation wherever actual behavior differs
-- [ ] T045 Run `make test`, `make sanitize`, `swift test`, `swift build`,
+- [x] T045 Run `make test`, `make sanitize`, `swift test`, `swift build`,
   `make verify-c0`, `make docs-check`, all `Tests/C0/test-*.sh`, and
   `git diff --check`; preserve concise logs and exact exit status as C0 evidence
 - [ ] T046 Add Linux portable-profile and macOS complete-profile

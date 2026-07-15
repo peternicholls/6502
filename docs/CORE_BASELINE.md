@@ -223,6 +223,29 @@ Generator environment:
 The tracked documentation-debt baseline is zero. Generated HTML remains ignored
 and reproducible; source comments and `docs/code/` guides are authoritative.
 
+## C0 exit gate evidence
+
+The complete local macOS gate ran against clean revision
+`d42a34b79d8d24165c411742d57b61858d8d6639` on 2026-07-15. Each command ran
+independently, wrote a concise log under `.build/c0/exit/`, and recorded its
+exact exit status before the overall result was derived.
+
+| Gate | Exit | Concise result |
+| --- | ---: | --- |
+| `make test` | 0 | 27/27 C++ and C boundary tests passed |
+| `make sanitize` | 0 | 24/24 quick-profile tests passed under UBSan |
+| `swift test` | 0 | 7/7 XCTest cases passed |
+| `swift build` | 0 | Debug package build passed |
+| `make verify-c0` | 0 | All 11 macOS evidence groups passed |
+| `make docs-check` | 0 | Complete Doxygen and DocC profile passed |
+| all `Tests/C0/test-*.sh` via `make test-c0` | 0 | All six contract scripts passed, including deliberate failures |
+| `git diff --check` | 0 | No whitespace errors |
+
+The aggregate record at `.build/c0/run/run.txt` reported schema
+`beeb-c0-baseline-v1`, `profile=macos`, the same source revision, and
+`overall=pass`. These logs are ignored reproducible evidence; the tracked
+commands, approved references, and this concise result are authoritative.
+
 ## Interpretation
 
 This record distinguishes the known starting behavior from C0 exit evidence.
