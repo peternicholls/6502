@@ -1,5 +1,6 @@
 CXX ?= g++
 CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
+THREAD_FLAGS ?= -pthread
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
 C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
@@ -24,13 +25,13 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/beeb-tests: $(CORE_SOURCES) Tests/test_main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD_DIR)/beeb-headless: $(CORE_SOURCES) Tools/beeb-headless/main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD_DIR)/beeb-evidence: $(CORE_SOURCES) Tools/beeb-evidence/main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD_DIR)/make-demo-rom: Tools/make-demo-rom/main.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
@@ -52,7 +53,7 @@ test: check-version $(BUILD_DIR)/beeb-tests
 
 sanitize: | $(BUILD_DIR)
 	$(CXX) -std=c++20 -O1 -g -Wall -Wextra -Wpedantic -Werror \
-		-fsanitize=$(SANITIZERS) -fno-omit-frame-pointer $(INCLUDES) \
+		$(THREAD_FLAGS) -fsanitize=$(SANITIZERS) -fno-omit-frame-pointer $(INCLUDES) \
 		$(CORE_SOURCES) Tests/test_main.cpp -o $(BUILD_DIR)/beeb-tests-sanitize
 	$(BUILD_DIR)/beeb-tests-sanitize --quick
 
