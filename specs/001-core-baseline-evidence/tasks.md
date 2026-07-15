@@ -29,7 +29,7 @@ do not create an empty duplicate commit.
 **Purpose**: Record the foundation before C0 tooling changes and prepare only
 shared paths that do not implement story behavior.
 
-- [ ] T001 Record the current command counts, version values, supported CI
+- [x] T001 Record the current command counts, version values, supported CI
   profiles, known limitations, source revision, and exact research-only
   clean-room signatures in `docs/CORE_BASELINE.md`; label them pre-C0 evidence,
   not approved references
