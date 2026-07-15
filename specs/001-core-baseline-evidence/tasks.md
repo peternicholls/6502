@@ -251,7 +251,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
 - [x] T034 [P] [US4] Document the public Swift wrapper in
   `Sources/BeebKit/BeebMachine.swift` and `Sources/BeebKit/BeebVersion.swift`,
   including ownership, actor/thread expectations, errors, and C-buffer copying
-- [ ] T035 [P] [US4] Add the DocC module landing page to
+- [x] T035 [P] [US4] Add the DocC module landing page to
   `Sources/BeebKit/Documentation.docc/BeebKit.md` and focused conceptual guides
   to `docs/code/architecture.md`, `docs/code/timing-model.md`,
   `docs/code/host-boundary.md`, and `docs/code/evidence-and-testing.md`

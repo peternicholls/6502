@@ -232,7 +232,12 @@ if [[ -z "${changed_files:-}" || "${changed_files}" != "${TMPDIR:-/tmp}"/beeb-do
 fi
 
 inputs=("${source_root}/include" "${source_root}/Sources/BeebCore/include" \
-    "${source_root}/src" "${source_root}/Sources/BeebCore/src" "${source_root}/docs")
+    "${source_root}/src" "${source_root}/Sources/BeebCore/src")
+if [[ -d "${source_root}/docs/code" ]]; then
+    inputs+=("${source_root}/docs/code")
+else
+    inputs+=("${source_root}/docs")
+fi
 input_value=""
 for input in "${inputs[@]}"; do
     if [[ -d "${input}" ]]; then
@@ -248,6 +253,10 @@ done
     printf 'HTML_OUTPUT = cpp\n'
     printf 'STRIP_FROM_PATH = "%s"\n' "${source_root}"
     printf 'INPUT =%s\n' "${input_value}"
+    if [[ -f "${source_root}/docs/code/architecture.md" ]]; then
+        printf 'USE_MDFILE_AS_MAINPAGE = "%s"\n' \
+            "${source_root}/docs/code/architecture.md"
+    fi
 } >"${doxygen_config}"
 
 doxygen "${doxygen_config}"
