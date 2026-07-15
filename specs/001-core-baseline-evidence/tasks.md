@@ -149,7 +149,7 @@ normal verification reports but never replaces it.
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Add lawful origin, redistribution basis, workload generation,
+- [x] T018 [US2] Add lawful origin, redistribution basis, workload generation,
   coverage limits, and reference-review instructions to
   `Tests/Fixtures/C0/README.md`
 - [ ] T019 [US2] Generate ten identical candidates for each named workload into
