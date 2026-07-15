@@ -241,7 +241,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
 - [x] T031 [US4] Implement host-profile detection, Doxygen/DocC static generation,
   unified `.build/docs/index.html`, link checking, and debt-ratchet validation in
   `scripts/build-docs.sh`; make the infrastructure portions of T028 pass
-- [ ] T032 [P] [US4] Document every supported public C ABI declaration in
+- [x] T032 [P] [US4] Document every supported public C ABI declaration in
   `Sources/BeebCore/include/beeb_c.h`, covering applicable ownership, lifetime,
   nullability, errors, threading, side effects, and frame-buffer validity
 - [ ] T033 [P] [US4] Document supported public C++ declarations in
