@@ -63,7 +63,7 @@ identity before story implementations. These tasks block all user stories.
   `Tools/beeb-evidence/main.cpp`, reusing public CPU-state and frame access only,
   and add its build rule to `Makefile`; make T004 pass without changing
   `Sources/BeebCore/`
-- [ ] T007 Extend `Tools/make-demo-rom/main.cpp` with the named redistributable
+- [x] T007 Extend `Tools/make-demo-rom/main.cpp` with the named redistributable
   bitmap and Mode 7 workloads defined by T005; make T005 pass and preserve the
   existing default demo-ROM behavior
 
