@@ -52,6 +52,9 @@ VERBATIM_HEADERS       = YES
 GENERATE_HTML          = YES
 HTML_OUTPUT            = cpp
 GENERATE_TREEVIEW      = YES
+# Keep the documentation build portable and deterministic. Relationship
+# diagrams can be enabled later with an explicit Graphviz toolchain contract.
+HAVE_DOT               = NO
 DISABLE_INDEX          = NO
 GENERATE_LATEX         = NO
 GENERATE_XML           = NO
