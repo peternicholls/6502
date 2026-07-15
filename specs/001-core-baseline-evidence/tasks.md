@@ -47,7 +47,7 @@ been implemented.
 **Purpose**: Establish shared contract-test helpers and canonical workload
 identity before story implementations. These tasks block all user stories.
 
-- [ ] T003 Add strict temporary-directory, command-capture, expected-failure,
+- [x] T003 Add strict temporary-directory, command-capture, expected-failure,
   and no-mutation helpers to `Tests/C0/testlib.sh`; keep diagnostics plain-text
   and verify the helper cleans only its own temporary directory
 - [ ] T004 [P] Add `beeb-c0-evidence-v1` CLI usage/error contract tests to
