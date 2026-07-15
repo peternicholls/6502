@@ -340,6 +340,78 @@ void testCAPIContainsIllegalOpcodeErrors() {
     beeb_destroy(machine);
 }
 
+void testCAPIBoundaryFailuresAreRecoverable() {
+    CHECK(std::string(beeb_version_string()) == "0.1.0");
+    CHECK(beeb_last_error(nullptr) == nullptr);
+    beeb_destroy(nullptr);
+    beeb_reset(nullptr);
+    CHECK_EQ(beeb_run_cycles(nullptr, 1), 0);
+    CHECK_EQ(beeb_run_until_frame(nullptr, 1), -1);
+    const auto nullState = beeb_get_cpu_state(nullptr);
+    CHECK_EQ(nullState.pc, 0);
+    CHECK_EQ(nullState.cycles, 0);
+    CHECK(beeb_get_frame_rgba(nullptr, nullptr, nullptr, nullptr) == nullptr);
+    beeb_render_audio(nullptr, nullptr, 1, 44'100.0);
+    beeb_set_key(nullptr, 0, 0, 1);
+    beeb_set_break(nullptr, 1);
+
+    beeb_machine* machine = beeb_create();
+    CHECK(machine != nullptr);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+
+    CHECK_EQ(beeb_load_os_rom(machine, nullptr, 0), 0);
+    CHECK(std::string(beeb_last_error(machine)) == "OS ROM data is null");
+
+    std::array<std::uint8_t, 0x4000> os{};
+    os.fill(0xEA);
+    os[0x3FFC] = 0x00;
+    os[0x3FFD] = 0xC0;
+    CHECK_EQ(beeb_load_os_rom(machine, os.data(), os.size() - 1), 0);
+    CHECK(std::string(beeb_last_error(machine)) == "OS ROM must be exactly 16384 bytes");
+    CHECK_EQ(beeb_load_os_rom(machine, os.data(), os.size()), 1);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+
+    CHECK_EQ(beeb_load_sideways_rom(machine, 0, nullptr, 0), 0);
+    CHECK(std::string(beeb_last_error(machine)) == "sideways ROM data is null");
+    CHECK_EQ(beeb_load_sideways_rom(machine, 16, os.data(), os.size()), 0);
+    CHECK(std::string(beeb_last_error(machine)) == "invalid sideways ROM bank or size");
+    CHECK_EQ(beeb_load_sideways_rom(machine, 0, os.data(), os.size()), 1);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+
+    CHECK_EQ(beeb_mount_disc(machine, 0, nullptr, 0, 0, 0), 0);
+    CHECK(std::string(beeb_last_error(machine)) == "disc image data is null");
+    const std::array<std::uint8_t, 1> invalidDisc{0};
+    CHECK_EQ(beeb_mount_disc(machine, 2, invalidDisc.data(), invalidDisc.size(), 0, 0), 0);
+    CHECK(std::string(beeb_last_error(machine)) == "invalid drive or disc image");
+
+    beeb_reset(machine);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+    const auto state = beeb_get_cpu_state(machine);
+    CHECK_EQ(state.pc, 0xC000);
+    std::uint32_t width = 99;
+    std::uint32_t height = 99;
+    std::uint64_t number = 99;
+    CHECK(beeb_get_frame_rgba(machine, &width, &height, &number) == nullptr);
+    CHECK_EQ(width, 0);
+    CHECK_EQ(height, 0);
+    CHECK_EQ(number, 0);
+
+    beeb_render_audio(machine, nullptr, 1, 44'100.0);
+    CHECK(std::string(beeb_last_error(machine)) == "audio output buffer is null");
+    float sample = 0.0f;
+    beeb_render_audio(machine, &sample, 1, 0.0);
+    CHECK(std::string(beeb_last_error(machine)) == "audio sample rate must be finite and positive");
+    beeb_render_audio(machine, &sample, 1, 44'100.0);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+
+    beeb_set_key(machine, 255, 255, 1);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+    beeb_set_break(machine, 1);
+    beeb_set_break(machine, 0);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+    beeb_destroy(machine);
+}
+
 void testVIATimerAndInterruptEnable() {
     beeb::VIA6522 via;
     via.reset();
@@ -607,6 +679,7 @@ int main(int argc, char** argv) {
         {"all 151 official opcodes decode", testAllOfficialOpcodesDecode},
         {"illegal opcode trap", testIllegalOpcodeTraps},
         {"C API contains illegal opcode errors", testCAPIContainsIllegalOpcodeErrors},
+        {"C API boundary failures are recoverable", testCAPIBoundaryFailuresAreRecoverable},
         {"VIA timer and interrupt enable", testVIATimerAndInterruptEnable},
         {"VIA data direction and CA1 edge", testVIADataDirectionsAndEdges},
         {"CRTC frame timing", testCRTCFrameTiming},

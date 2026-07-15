@@ -89,10 +89,11 @@ not change.
   declared profile N/A, interrupted command, stable summary ordering, and
   immutable `Tests/Fixtures/C0/`; record the expected missing-verifier failures
   - Red evidence: exits `1` with `missing C0 baseline verifier` before T011.
-- [ ] T009 [P] [US1] Extend C-boundary negative tests in `Tests/test_main.cpp`
+- [x] T009 [P] [US1] Extend C-boundary negative tests in `Tests/test_main.cpp`
   to cover every fallible function in `Sources/BeebCore/include/beeb_c.h`,
   including nullability, invalid lengths/indices, stable error reset, and no C++
   exception escape; observe any new failing contract before code changes
+  - Characterization evidence: all new cases pass without a production change.
 - [ ] T010 [P] [US1] Extend `Tests/BeebKitTests/BeebKitTests.swift` with matching
   Swift version/error translation and recovery cases; observe any new failing
   contract before code changes
