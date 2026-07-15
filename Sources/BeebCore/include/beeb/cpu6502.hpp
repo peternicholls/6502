@@ -18,6 +18,9 @@ struct CPUState {
     std::uint16_t pc = 0;     ///< Program counter.
     std::uint64_t cycles = 0; ///< Total completed CPU cycles.
 
+    /// Compares every programmer-visible register and the completed-cycle count.
+    /// Documentation rationale: runtime replay compares owned CPU values without
+    /// introducing access to the runtime-owned processor.
     friend bool operator==(const CPUState&, const CPUState&) = default;
 };
 

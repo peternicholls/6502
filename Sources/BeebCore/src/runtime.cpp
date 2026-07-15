@@ -18,6 +18,9 @@
 namespace beeb {
 namespace {
 
+// Documentation rationale: docs/code/runtime-ownership.md owns the queue,
+// acceptance/completion, safe-point, execution-arbitration, and shutdown invariants.
+
 RuntimeStatus status(RuntimeStatusCode code, std::string message = {},
                      std::uint64_t acceptanceSequence = 0) {
     return {code, std::move(message), acceptanceSequence};
@@ -37,11 +40,13 @@ std::uint64_t mix(std::uint64_t hash, std::uint64_t value) noexcept {
     return hash;
 }
 
+/// Copied sideways-ROM transaction retained until its owner command completes.
 struct SidewaysPayload {
     std::uint8_t bank = 0;
     std::vector<std::uint8_t> bytes;
 };
 
+/// Copied disc transaction whose bytes cannot alias caller-owned storage.
 struct DiscPayload {
     unsigned drive = 0;
     std::vector<std::uint8_t> bytes;
@@ -49,17 +54,20 @@ struct DiscPayload {
     bool writable = false;
 };
 
+/// Value-only keyboard mutation applied atomically by the owner.
 struct KeyPayload {
     std::uint8_t column = 0;
     std::uint8_t row = 0;
     bool pressed = false;
 };
 
+/// Audio request metadata; the owner allocates and returns the sample storage.
 struct AudioPayload {
     std::size_t frames = 0;
     double sampleRate = 0;
 };
 
+/// Closed payload vocabulary kept in the same queue node as its completion.
 using CommandPayload = std::variant<
     std::monostate,
     std::uint64_t,
@@ -70,6 +78,7 @@ using CommandPayload = std::variant<
     bool,
     AudioPayload>;
 
+/// Closed owned-result vocabulary returned through one caller-specific promise.
 using CompletionValue = std::variant<
     std::monostate,
     RuntimeState,
@@ -129,11 +138,13 @@ std::uint64_t completionDigest(const CompletionValue& value) noexcept {
     }, value);
 }
 
+/// One operation-scoped status and optional value, never shared between callers.
 struct Completion {
     RuntimeStatus status;
     CompletionValue value;
 };
 
+/// One accepted FIFO unit; payload, identity, digest, and promise move together.
 struct Request {
     RuntimeCommandKind kind = RuntimeCommandKind::runtimeState;
     CommandPayload payload;
@@ -160,8 +171,16 @@ RuntimeResult<T> resultFromCompletion(Completion completion) {
 
 } // namespace
 
+/// Private runtime owner and the only collaborator permitted to dereference BBCMicro.
+///
+/// `mutex_` protects acceptance, capacity, queue, startup, and shutdown state.
+/// Runtime lifecycle and `machine_` are otherwise owner-thread-only. The
+/// diagnostic ledger has a separate lock so tests can copy it without entering
+/// the command FIFO or granting access to machine state.
 class MachineRuntime::Impl final {
 public:
+    /// Starts the owner and blocks until BBCMicro construction succeeds or fails.
+    /// @param options Controls opt-in in-memory ledger retention.
     explicit Impl(MachineRuntimeOptions options)
         : ledgerEnabled_(options.enableLedger), owner_([this] { ownerLoop(); }) {
         std::unique_lock lock(mutex_);
@@ -171,6 +190,11 @@ public:
 
     ~Impl() = default;
 
+    /// Applies capacity back-pressure, atomically accepts one node, and waits for it.
+    /// @param kind Command identity interpreted only by the owner.
+    /// @param payload Copied/value payload moved into the queue node.
+    /// @param payloadDigest Deterministic signature of the copied input.
+    /// @return Caller-specific status and optional owned result.
     Completion submit(RuntimeCommandKind kind, CommandPayload payload = {},
                       std::uint64_t payloadDigest = 0) {
         {
@@ -225,6 +249,8 @@ public:
         }
     }
 
+    /// Coordinates one drain marker and one join across concurrent shutdown callers.
+    /// @return Success after owner exit, or re-entrant/internal failure.
     RuntimeStatus shutdown() noexcept {
         std::uint64_t acceptanceSequence = 0;
         try {
@@ -269,12 +295,16 @@ public:
         }
     }
 
+    /// Copies the opt-in ledger without accessing BBCMicro.
+    /// @return Owned entries, or an empty vector when capture is disabled.
     std::vector<LedgerEntry> ledger() const {
         if (!ledgerEnabled_) return {};
         std::lock_guard lock(ledgerMutex_);
         return ledger_;
     }
 
+    /// Reads acceptance progress under the queue mutex for latency tests.
+    /// @return Count of commands that received an acceptance identity.
     std::uint64_t acceptedCommandCount() const noexcept {
         try {
             std::lock_guard lock(mutex_);
