@@ -13,6 +13,11 @@ description: "Task list template for feature implementation"
 implementation. Documentation-only or process-only changes REQUIRE appropriate
 link, formatting, schema, or tooling validation instead of synthetic unit tests.
 
+**Code Documentation**: Every coding story MUST include tasks for affected
+public contracts, non-obvious behavior, and conceptual guides, or record a
+concrete `N/A`. Documentation source changes belong with the code they explain;
+the final phase MUST generate and validate the browsable documentation.
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -97,6 +102,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T016 [US1] Add validation and error handling
 - [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] TXXX [US1] Update affected API comments and conceptual guides, or record
+      the reviewed documentation N/A rationale
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -161,6 +168,9 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Run quickstart.md validation
 - [ ] TXXX Update docs/STATUS.md, roadmaps, architecture, and CHANGELOG.md as applicable
 - [ ] TXXX Run applicable repository gates: make test, make sanitize, swift test, swift build
+- [ ] TXXX Generate browsable code documentation and fail on invalid markup,
+      broken internal links, missing required changed-surface documentation, or
+      increased documentation debt
 - [ ] TXXX Run git diff --check and documentation link validation
 
 ---
@@ -186,6 +196,8 @@ Examples of foundational tasks (adjust based on your project):
 
 - Tests for behavior changes MUST be written and FAIL for the expected reason before implementation
 - Documentation/process validation MUST be identified before editing begins
+- Public-contract and non-obvious-behavior documentation MUST change with the
+  code it explains; do not defer it to generic polish
 - Models before services
 - Services before endpoints
 - Core implementation before integration
@@ -256,6 +268,8 @@ With multiple developers:
 - Preserve the declared product/core strand boundary
 - Cite evidence for fidelity, compatibility, and performance claims
 - Cover ownership, errors, threading, versioning, user content, recovery, and accessibility where applicable
+- Document affected public contracts and complex invariants at the useful level;
+  avoid comments that restate self-evident code
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

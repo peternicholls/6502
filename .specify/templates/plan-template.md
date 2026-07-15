@@ -30,6 +30,9 @@
 
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
 
+**Code Documentation**: [language-appropriate browsable generators, source
+comments/guides affected, documentation debt impact, and validation command]
+
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
 **Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
@@ -56,12 +59,17 @@
       measurement, or primary reference, and known limits remain explicit.
 - [ ] Ownership, lifetime, errors, threading, ABI compatibility, and persisted
       format versioning are defined for every affected boundary.
+- [ ] Public contracts, non-obvious implementation behavior, conceptual-guide
+      impact, and browsable-documentation validation are defined, or a concrete
+      documentation `N/A` rationale is recorded.
 - [ ] User-content provenance, import/export behavior, and legal constraints are
       addressed where relevant.
 - [ ] Accessibility and failure recovery are specified for user-facing work, or
       a concrete `N/A` rationale is recorded.
 - [ ] Every new dependency, abstraction, or constitution exception is justified
       below with the simpler alternative that was rejected.
+- [ ] New or changed code does not increase recorded documentation debt, and
+      generated documentation remains a reproducible build artifact.
 
 ## Project Structure
 

@@ -19,6 +19,9 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 - Reworked the emulator roadmap into dependency-aware delivery phases with
   explicit product traceability, Spec Kit feature slices, parallelism rules and
   measurable entry and exit evidence.
+- Added a governed code-documentation strategy to C0 and every later coding
+  phase: language-native browsable output, useful contract and invariant
+  guidance, generated-doc validation, and a non-increasing debt rule.
 
 ## [0.1.0] - 2026-07-15
 

@@ -91,12 +91,20 @@ runtime.
 - Current emulation throughput is measured reproducibly and recorded as a
   comparison baseline, not presented as a product guarantee.
 - The C and Swift version/error boundary remains covered by automated tests.
+- A single documented flow generates browsable C/C++, C boundary, Swift, and
+  conceptual documentation; supported public surfaces are covered and the
+  initial internal documentation-debt inventory is recorded.
+- Documentation validation rejects invalid markup, broken internal links, and
+  undocumented new or changed public contracts without requiring low-value
+  commentary on self-evident code.
 
 ### Non-goals
 
 - Increasing hardware fidelity or restructuring the CPU.
 - Adding a new benchmark dependency when the existing harness can record the
   required measurements.
+- Attempting to annotate every unchanged private helper or tracking generated
+  documentation output as an authoritative source.
 
 ## Phase C1 — runtime ownership and recoverable boundaries
 
@@ -415,6 +423,8 @@ A candidate slice is **sprint-ready** only when:
 - the first failing regression or evidence task is identified;
 - ownership, lifetime, threading, compatibility and fixture provenance are
   explicit where applicable;
+- public-contract, non-obvious-behavior and conceptual documentation impact is
+  explicit, with a generated-documentation validation task or a concrete N/A;
 - the plan passes every Constitution Check; and
 - `tasks.md` is dependency-ordered and contains no unresolved critical
   analysis finding.
@@ -422,7 +432,9 @@ A candidate slice is **sprint-ready** only when:
 A phase may move to **Complete** only when every exit-evidence item is linked to
 passing tests, traces or measurements, affected C and Swift boundary tests pass,
 sanitizers are green, and `STATUS.md`, architecture and changelog documentation
-reflect the delivered boundary.
+reflect the delivered boundary. Coding phases must also generate browsable code
+documentation without invalid markup, broken internal links, or increased
+documentation debt.
 
 ## Core non-goals
 
