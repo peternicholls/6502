@@ -38,6 +38,8 @@ bool CRTC6845::displayEnabled() const noexcept {
 }
 
 void CRTC6845::endScanline() {
+    // C0-DOC-RATIONALE: docs/code/timing-model.md describes the programmed
+    // scanline, vertical-adjust, frame transition, and notification states.
     if (inVerticalAdjust_) {
         if (++verticalAdjust_ >= registers_[5]) {
             inVerticalAdjust_ = false;

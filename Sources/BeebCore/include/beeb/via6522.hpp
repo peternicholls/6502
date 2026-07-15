@@ -5,27 +5,61 @@
 
 namespace beeb {
 
+/// Register, timer, edge, and interrupt model of the MOS 6522 VIA.
 class VIA6522 {
 public:
+    /// Provider for the external logic level on an eight-bit port.
     using Input = std::function<std::uint8_t()>;
+    /// Observer receiving the output register and data-direction mask.
     using Output = std::function<void(std::uint8_t, std::uint8_t)>;
 
+    /// Restores registers, timers, interrupt flags, and control-line levels.
     void reset();
+    /// Reads one of the 16 VIA registers and applies read side effects.
+    /// @param reg Register selector; only the low four bits are used.
+    /// @return Host-visible register value.
     std::uint8_t read(std::uint8_t reg);
+    /// Writes one of the 16 VIA registers and applies write side effects.
+    /// @param reg Register selector; only the low four bits are used.
+    /// @param value Value written by the host.
     void write(std::uint8_t reg, std::uint8_t value);
+    /// Advances timer state on the VIA clock timebase.
+    /// @param viaCycles Elapsed VIA cycles.
     void tick(std::uint32_t viaCycles);
 
+    /// Installs the borrowed-behavior provider for port A input pins.
+    /// @param input Callback owned by this VIA, or empty for pulled-high input.
     void setPortAInput(Input input) { inputA_ = std::move(input); }
+    /// Installs the provider for port B input pins.
+    /// @param input Callback owned by this VIA, or empty for pulled-high input.
     void setPortBInput(Input input) { inputB_ = std::move(input); }
+    /// Installs the observer for port A output changes.
+    /// @param output Callback owned by this VIA, or empty for no observer.
     void setPortAOutput(Output output) { outputA_ = std::move(output); }
+    /// Installs the observer for port B output changes.
+    /// @param output Callback owned by this VIA, or empty for no observer.
     void setPortBOutput(Output output) { outputB_ = std::move(output); }
+    /// Updates CA1 and latches a configured active edge.
+    /// @param level New external logic level.
     void setCA1(bool level);
+    /// Updates CB1 and latches a configured active edge.
+    /// @param level New external logic level.
     void setCB1(bool level);
 
+    /// Reports the aggregate enabled-interrupt output level.
+    /// @return `true` when any enabled interrupt flag is set.
     [[nodiscard]] bool irq() const noexcept;
+    /// Returns the port A output register without input merging.
+    /// @return Port A output latch.
     [[nodiscard]] std::uint8_t outputA() const noexcept { return ora_; }
+    /// Returns the port B output register without input merging.
+    /// @return Port B output latch.
     [[nodiscard]] std::uint8_t outputB() const noexcept { return orb_; }
+    /// Returns the port A data-direction register.
+    /// @return Port A direction mask.
     [[nodiscard]] std::uint8_t ddra() const noexcept { return ddra_; }
+    /// Returns the port B data-direction register.
+    /// @return Port B direction mask.
     [[nodiscard]] std::uint8_t ddrb() const noexcept { return ddrb_; }
 
 private:

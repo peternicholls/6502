@@ -126,6 +126,8 @@ void BBCMicro::writeIO(std::uint16_t address, std::uint8_t value) {
 }
 
 void BBCMicro::tick(std::uint32_t cpuCycles) {
+    // C0-DOC-RATIONALE: docs/code/timing-model.md owns the CPU/VIA/CRTC rate
+    // conversion and remainder invariants represented by this aggregation.
     const auto viaTotal = viaRemainder_ + cpuCycles;
     systemVIA_.tick(viaTotal / 2);
     userVIA_.tick(viaTotal / 2);
@@ -173,6 +175,8 @@ std::array<std::uint8_t, 4> BBCMicro::rgbaForColour(std::uint8_t colour) {
 }
 
 void BBCMicro::renderFrame() {
+    // C0-DOC-RATIONALE: docs/code/evidence-and-testing.md explains why the
+    // complete RGBA buffer is the exact frame-evidence boundary.
     if (videoULA_.teletext()) {
         auto teletext = teletextRenderer_.render(ram_, crtc_, crtc_.frameNumber());
         frame_.width = teletext.width;

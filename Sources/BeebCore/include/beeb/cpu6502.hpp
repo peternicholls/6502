@@ -8,42 +8,77 @@
 
 namespace beeb {
 
+/// Serializable programmer-visible state for an NMOS 6502.
 struct CPUState {
-    std::uint8_t a = 0;
-    std::uint8_t x = 0;
-    std::uint8_t y = 0;
-    std::uint8_t sp = 0;
-    std::uint8_t p = 0x24;
-    std::uint16_t pc = 0;
-    std::uint64_t cycles = 0;
+    std::uint8_t a = 0;       ///< Accumulator register.
+    std::uint8_t x = 0;       ///< X index register.
+    std::uint8_t y = 0;       ///< Y index register.
+    std::uint8_t sp = 0;      ///< Stack pointer register.
+    std::uint8_t p = 0x24;    ///< Processor status flags.
+    std::uint16_t pc = 0;     ///< Program counter.
+    std::uint64_t cycles = 0; ///< Total completed CPU cycles.
 };
 
+/// Deterministic instruction-level NMOS 6502 processor.
+///
+/// The processor borrows its Bus for its entire lifetime. The class is not
+/// internally synchronized; one caller must serialize stepping and mutation.
 class CPU6502 {
 public:
+    /// Bit masks for the processor status register.
     enum Flag : std::uint8_t {
-        Carry = 0x01,
-        Zero = 0x02,
-        InterruptDisable = 0x04,
-        Decimal = 0x08,
-        Break = 0x10,
-        Unused = 0x20,
-        Overflow = 0x40,
-        Negative = 0x80,
+        Carry = 0x01,           ///< Carry or borrow state.
+        Zero = 0x02,            ///< Result was zero.
+        InterruptDisable = 0x04,///< Maskable interrupt disable.
+        Decimal = 0x08,         ///< Binary-coded decimal arithmetic mode.
+        Break = 0x10,           ///< Break marker used in stacked status.
+        Unused = 0x20,          ///< Status bit held high by the processor.
+        Overflow = 0x40,        ///< Signed arithmetic overflow.
+        Negative = 0x80,        ///< Result sign bit.
     };
 
+    /// Observer called before execution with the current state and opcode.
     using TraceCallback = std::function<void(const CPUState&, std::uint8_t)>;
 
+    /// Creates a processor borrowing `bus` for all memory and timing access.
+    /// @param bus Bus whose lifetime must exceed this processor's lifetime.
     explicit CPU6502(Bus& bus);
 
+    /// Loads the reset vector and establishes the NMOS reset register state.
     void reset();
+
+    /// Executes one instruction or pending interrupt as one atomic transition.
+    /// @return CPU cycles consumed; the same count has been sent to Bus::tick().
+    /// @throws std::runtime_error for an unsupported/illegal opcode.
     std::uint32_t step();
+
+    /// Sets the level-sensitive maskable interrupt input.
+    /// @param asserted `true` while the IRQ line is asserted.
     void setIRQ(bool asserted) noexcept { irqLine_ = asserted; }
+
+    /// Latches a non-maskable interrupt for the next step.
     void requestNMI() noexcept { nmiPending_ = true; }
 
+    /// Returns a value snapshot of all programmer-visible state.
+    /// @return Independent register and cycle-counter snapshot.
     [[nodiscard]] CPUState state() const noexcept;
+
+    /// Replaces programmer-visible state without touching bus or line state.
+    /// @param state State and cycle counter to install.
     void setState(const CPUState& state) noexcept;
+
+    /// Tests one status-register flag.
+    /// @param f Flag to inspect.
+    /// @return Whether the flag is set.
     [[nodiscard]] bool flag(Flag f) const noexcept;
+
+    /// Changes one status-register flag while preserving the unused bit rule.
+    /// @param f Flag to change.
+    /// @param value Whether the flag is set.
     void setFlag(Flag f, bool value) noexcept;
+
+    /// Replaces the optional pre-instruction trace observer.
+    /// @param callback Observer to own, or an empty function to disable tracing.
     void setTraceCallback(TraceCallback callback) { trace_ = std::move(callback); }
 
 private:

@@ -244,7 +244,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
 - [x] T032 [P] [US4] Document every supported public C ABI declaration in
   `Sources/BeebCore/include/beeb_c.h`, covering applicable ownership, lifetime,
   nullability, errors, threading, side effects, and frame-buffer validity
-- [ ] T033 [P] [US4] Document supported public C++ declarations in
+- [x] T033 [P] [US4] Document supported public C++ declarations in
   `Sources/BeebCore/include/beeb/*.hpp`, and add concise rationale links beside
   representative CPU, machine/device timing, state-transition, and buffer code
   in `Sources/BeebCore/src/*.cpp`; do not annotate self-evident helpers
