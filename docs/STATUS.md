@@ -17,6 +17,7 @@ is governed separately by the [product strand](product/README.md).
 | Basic BBC boot | OS 1.20 + BASIC II smoke test reaches the BASIC idle loop and renders startup | Green smoke test |
 | Core build | GCC 13, C++20, warnings promoted to errors | Green |
 | Swift package | BeebKit tests and full package build on Apple Swift 6.2 | Green |
+| C1 runtime ownership | One owner, capacity-64 FIFO, safe-point lifecycle, exact replay, structured C/Swift recovery | Green; local TSan N/A |
 | C0 aggregate evidence | `make verify-c0`: all 11 macOS groups; explicit portable profile passes with Swift groups N/A | Green |
 | Lawful exact references | Ten identical clean-room runs; exact CPU state plus 320×200 bitmap and 480×500 Mode 7 PPMs | Green |
 | Code documentation | Strict Doxygen + DocC site, link/markup/public-surface checks, zero debt | Green |
@@ -66,6 +67,25 @@ ThreadSanitizer is not counted as a pass. The normal mixed-command and bounded
 shutdown races ran in both `make test` and `make test-c1`; supported CI must
 still execute the real ThreadSanitizer binary.
 
+## C1 verified outcome
+
+C1 is complete at the architectural and public-boundary level:
+
+- `MachineRuntime` is the only supported owner of aggregate BBC machine state;
+- start, pause, reset, media, input, observation, fault, and shutdown commands
+  share one bounded FIFO and complete at documented safe points;
+- sustained work uses deterministic 2,048-cycle minimum slices with no host
+  wall-clock input, and captured concurrent interleavings replay exactly;
+- C 0.2 returns operation-owned structured statuses and caller-owned frames;
+- Swift preserves typed categories and diagnostics without a redundant lock;
+- accepted-before-shutdown work drains, new entries reject, and destruction
+  waits calls already inside the C boundary.
+
+This evidence unlocks C2 bounded-output specification as the default next core
+work and C3 session-continuity specification as an allowed parallel path. It
+does not claim bounded frame/audio production, snapshot persistence, or
+bus-cycle fidelity.
+
 Approved evidence is clean-room and byte exact:
 
 | Observation | SHA-256 | Verified scope |
@@ -103,13 +123,12 @@ latency, release, or product-performance guarantee.
 
 ## Current core focus
 
-C0 baseline evidence is complete. C1 runtime ownership is the next default
-feature source; it must define the single execution owner, recoverable command
-boundaries, and completed-instruction safe point before bounded output or
-snapshot work depends on them. Bounded output contracts and session continuity
-then unlock the active Machine horizon. Bus-cycle implementation follows the
-runtime safe-point and snapshot-invariant decisions so it cannot accidentally
-invalidate public session state.
+C0 baseline evidence and C1 runtime ownership are complete. C2 bounded frame,
+audio, and diagnostic contracts are the default next Spec Kit source. C3
+session continuity may be specified and implemented in parallel because the C1
+completed-instruction safe point is fixed. Bus-cycle implementation remains
+queued until C3 fixes the version-1 snapshot invariant, so it cannot
+accidentally invalidate public session state.
 
 The [core roadmap](CORE_ROADMAP.md) owns technical sequence; the tables above
 own verified hardware-fidelity status. The C0 evidence does not close any gap in

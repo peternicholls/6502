@@ -41,6 +41,21 @@ flowchart TD
     Devices --> Buffers["RGBA + float audio buffers"]
 ```
 
+## Runtime ownership closure
+
+Phase C1 makes this owner path mandatory for supported BBC hosts. The owner
+arbitrates a capacity-64 FIFO with sustained execution, completes commands at
+the quiescent instruction/device boundary, drains accepted work before joining,
+and contains failures as structured C++/C/Swift values. Exact replay records
+accepted host interleaving and emulated slices without turning the ledger into
+a persistence format.
+
+This boundary is now stable input to C2 and C3. C2 may add bounded completed
+frame/audio production behind the owner, and C3 may serialize architectural
+state only at the same quiescent safe point. Neither phase may reintroduce
+direct host access to `BBCMicro`. C1 does not itself define output overflow
+policy or snapshot compatibility.
+
 ## Evidence-tool boundary
 
 `Tools/beeb-evidence` is a headless host of the same supported C ABI used by

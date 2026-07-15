@@ -36,7 +36,8 @@ rules below.
 
 The core already provides a tested NMOS 6502, BBC memory map, partial VIAs,
 CRTC/Video ULA rendering, clean-room Mode 7, SN76489 sample generation,
-logical 8271 disk operations, a C ABI and a synchronized Swift wrapper.
+logical 8271 disk operations, a single-owner machine runtime, and structured C
+and Swift host boundaries.
 
 Exact verified coverage and hardware gaps are recorded in
 [STATUS.md](STATUS.md). Architecture changes must preserve the deterministic,
@@ -47,15 +48,15 @@ host-agnostic boundary in [ARCHITECTURE.md](ARCHITECTURE.md).
 | Phase | Status | Product trace | Depends on | May overlap |
 | --- | --- | --- | --- | --- |
 | C0 — Baseline evidence | Complete | Machine foundation | Current verified core | Compatibility fixture research |
-| C1 — Runtime ownership | Ready | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
-| C2 — Bounded output contracts | Queued | Horizon 1: continuous video and audio | C1 | C3 implementation |
-| C3 — Session continuity | Queued | Horizon 1: background and restore | C1 safe-point contract | C2 implementation |
+| C1 — Runtime ownership | Complete | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
+| C2 — Bounded output contracts | Ready | Horizon 1: continuous video and audio | C1 | C3 implementation |
+| C3 — Session continuity | Ready | Horizon 1: background and restore | C1 safe-point contract | C2 implementation |
 | C4 — Bus-cycle timing | Queued | Compatibility and timing fidelity | C1; C3 snapshot invariant | Pull-based compatibility fixtures |
 | C5 — Dependable media core | Later | Horizon 2: Media | C1; slice-specific timing prerequisites | Curated device fixtures |
 | C6 — Inspection and editor bridge | Later | Horizon 3: Editor | C1 and C3 | Read-only inspector research |
 
-The default sequence is C0 → C1 → C2, with C3 allowed to proceed beside C2
-once C1 defines a quiescent safe point. C4 implementation begins only after the
+The default next phase is C2. C3 may proceed beside C2 because C1 now defines
+and verifies the quiescent safe point. C4 implementation begins only after the
 snapshot invariant described in C3 is fixed. C5 and C6 do not enter the active
 Machine critical path.
 
@@ -118,7 +119,7 @@ hardware-fidelity status; it makes that status reproducible and safe to evolve.
 
 ## Phase C1 — runtime ownership and recoverable boundaries
 
-**Status:** Ready
+**Status:** Complete
 
 **Outcome:** Make machine execution a single owned state machine with explicit
 commands and recoverable public failures.
@@ -159,6 +160,16 @@ bus-cycle sequencer MUST preserve the ability to reach this boundary.
 - Repeating the same command sequence from the same state produces the same
   result and quiescent boundary.
 
+The C1 implementation is the completed `002-runtime-ownership` Spec Kit slice.
+Its clean pre-release candidate passed 42 C++ tests, 37 sanitizer tests, seven
+Swift tests, all 11 C0 groups, all six C1 aggregate groups, and strict generated
+documentation ([exact gate record](STATUS.md#c1-pre-release-candidate-evidence)).
+The local ThreadSanitizer probe is not executable and is recorded as N/A rather
+than a pass; supported CI remains required to execute that instrumentation.
+
+C1 establishes the dependency contract only. It does not supply C2's bounded
+producer queues or C3's versioned snapshot format.
+
 ### Non-goals
 
 - Arbitrary editor memory mutation, watchpoints or source-level debugging.
@@ -166,7 +177,7 @@ bus-cycle sequencer MUST preserve the ability to reach this boundary.
 
 ## Phase C2 — bounded frame, audio and diagnostic contracts
 
-**Status:** Queued
+**Status:** Ready
 
 **Outcome:** Give decoupled host consumers stable, bounded output without
 making host timing authoritative.
@@ -214,7 +225,7 @@ accepted.
 
 ## Phase C3 — versioned session continuity
 
-**Status:** Queued
+**Status:** Ready
 
 **Outcome:** Save and restore architectural machine state deterministically and
 reject incompatible or damaged state safely.
