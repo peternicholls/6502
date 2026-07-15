@@ -13,7 +13,7 @@
 
 ## Phase 2: Foundational Owner and Results
 
-- [ ] T005 Define `RuntimeState`, `RuntimeStatus`, safe-point, command/result values, and contracts in `Sources/BeebCore/include/beeb/runtime.hpp`. Verify declaration tests compile.
+- [x] T005 Define `RuntimeState`, `RuntimeStatus`, safe-point, command/result values, and contracts in `Sources/BeebCore/include/beeb/runtime.hpp`. Verify declaration tests compile.
 - [ ] T006 Implement owner-thread skeleton, capacity-64 FIFO, sequencing, completion, re-entrancy rejection, and join in `Sources/BeebCore/src/runtime.cpp`. Verify queue lifecycle tests under normal/sanitizer builds.
 - [ ] T007 Move one `BBCMicro` behind `MachineRuntime`, retaining direct low-level construction only for unit tests, in `Sources/BeebCore/include/beeb/machine.hpp` and `Sources/BeebCore/src/runtime.cpp`. Verify ownership and existing core tests.
 - [ ] T008 Implement completed-instruction/device-tick `SafePoint` identity and fixed 2,048-cycle execution-slice ledger in `Sources/BeebCore/src/runtime.cpp`. Verify safe-point/ledger tests; commit the complete verified Phase 2 once.

@@ -19,8 +19,8 @@ Transitions: `create -> paused`; `paused + start -> running`; `running + pause
 
 Kinds: `start`, `pause`, `reset`, `run_cycles`, `run_until_frame`,
 `load_os_rom`, `load_sideways_rom`, `mount_disc`, `set_key`, `set_break`,
-`runtime_state`, `cpu_state`, `frame`, `render_audio`, and `shutdown`. Each has
-an acceptance sequence, copied payload, completion, and result. Mutable
+`runtime_state`, `safe_point`, `fault`, `cpu_state`, `frame`, `render_audio`, and
+`shutdown`. Each has an acceptance sequence, copied payload, completion, and result. Mutable
 transactions are atomic at one safe point. Observations return owned values.
 Bounded execution is an explicit owner command rather than an approximation
 using sustained start/pause transitions.
@@ -59,6 +59,6 @@ No borrowed shared diagnostic exists.
 - Input buffers are copied before submission returns control to mutable caller
   storage; outputs are values or owned buffers.
 - Reset/load validation failure leaves state unchanged. Execution failure is
-  recorded at the last complete safe point.
+  recorded at the last complete safe point and remains queryable until reset.
 - Destroy is safe against calls already inside the API, but the handle is
   invalid after destroy returns.

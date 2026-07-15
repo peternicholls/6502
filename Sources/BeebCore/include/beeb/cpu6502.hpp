@@ -17,6 +17,8 @@ struct CPUState {
     std::uint8_t p = 0x24;    ///< Processor status flags.
     std::uint16_t pc = 0;     ///< Program counter.
     std::uint64_t cycles = 0; ///< Total completed CPU cycles.
+
+    friend bool operator==(const CPUState&, const CPUState&) = default;
 };
 
 /// Deterministic instruction-level NMOS 6502 processor.

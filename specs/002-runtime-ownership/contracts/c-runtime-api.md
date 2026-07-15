@@ -9,7 +9,7 @@ map one-to-one to the eight `RuntimeStatusCode` categories.
 
 `beeb_create(beeb_machine** out_machine)` returns status and writes the owned
 opaque handle only on success; `beeb_destroy` performs blocking shutdown and
-release. Runtime-state, start, pause, reset, bounded run, run-to-frame,
+release. Runtime-state, fault-detail, start, pause, reset, bounded run, run-to-frame,
 media/input, CPU/frame/audio functions all return `beeb_status`; values use
 validated out-parameters. Bounded execution is accepted only while paused.
 
