@@ -77,6 +77,10 @@ default_groups() {
     printf 'version-sync\tall\t@internal\n'
     printf 'c-boundary\tall\t@internal\n'
     printf 'swift-boundary\tmacos\t@internal\n'
+    printf 'fixture-provenance\tall\t@internal\n'
+    printf 'cleanroom-boot\tall\t@internal\n'
+    printf 'bitmap-reference\tall\t@internal\n'
+    printf 'mode7-reference\tall\t@internal\n'
 }
 
 applicable() {
@@ -101,6 +105,22 @@ run_internal() {
             ;;
         swift-boundary)
             (cd "${root}" && swift test && swift build)
+            ;;
+        fixture-provenance)
+            "${root}/scripts/verify-c0-references.sh" --check fixture-provenance \
+                --output-dir "${output_dir}/reference-provenance"
+            ;;
+        cleanroom-boot)
+            "${root}/scripts/verify-c0-references.sh" --check mode7-state \
+                --output-dir "${output_dir}/reference-state"
+            ;;
+        bitmap-reference)
+            "${root}/scripts/verify-c0-references.sh" --check bitmap-reference \
+                --output-dir "${output_dir}/reference-bitmap"
+            ;;
+        mode7-reference)
+            "${root}/scripts/verify-c0-references.sh" --check mode7-reference \
+                --output-dir "${output_dir}/reference-mode7"
             ;;
         *) printf 'unknown internal group: %s\n' "${id}" >&2; return 127 ;;
     esac

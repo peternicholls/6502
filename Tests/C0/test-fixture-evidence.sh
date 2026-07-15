@@ -99,8 +99,13 @@ c0_pass "one-byte visual mismatch reports both identities"
 
 wrong_cycles="${C0_TEST_TMP}/wrong-cycles"
 cp -R "${fixture_root}" "${wrong_cycles}"
-sed '0,/^actual_cycles=/s//actual_cycles=1/' \
-    "${wrong_cycles}/manifest.txt" >"${wrong_cycles}/manifest.new"
+awk '
+    BEGIN { RS=""; ORS="" }
+    {
+        if ($0 ~ /(^|\n)id=mode7-state(\n|$)/) sub(/actual_cycles=[0-9]+/, "actual_cycles=1")
+        printf "%s\n\n", $0
+    }
+    ' "${wrong_cycles}/manifest.txt" >"${wrong_cycles}/manifest.new"
 mv "${wrong_cycles}/manifest.new" "${wrong_cycles}/manifest.txt"
 c0_capture wrong-cycles "${reference_verifier}" --runs 1 \
     --fixture-root "${wrong_cycles}" --output-dir "${C0_TEST_TMP}/run-wrong-cycles"

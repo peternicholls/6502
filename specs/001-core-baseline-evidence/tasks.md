@@ -163,7 +163,7 @@ normal verification reports but never replaces it.
 - [x] T021 [US2] Add `verify-c0-references` and explicitly named
   `update-c0-reference` targets to `Makefile`; require the reference ID and
   rationale at the update boundary
-- [ ] T022 [US2] Wire fixture provenance, boot state, bitmap, and Mode 7 groups
+- [x] T022 [US2] Wire fixture provenance, boot state, bitmap, and Mode 7 groups
   into `scripts/verify-c0.sh`; make all T016 cases pass and preserve later-group
   execution after a reference mismatch
 - [ ] T023 [US2] Record the approved identities, exact coverage, known visual
