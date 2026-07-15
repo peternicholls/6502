@@ -3,6 +3,10 @@ import XCTest
 @testable import BeebKit
 
 final class BeebMachineTests: XCTestCase {
+    func testPublicVersionMatchesReleaseVersion() {
+        XCTAssertEqual(BeebVersion.current, "0.1.0")
+    }
+
     func testUnsupportedOpcodeIsReportedAsSwiftError() throws {
         let machine = try BeebMachine()
 

@@ -31,7 +31,7 @@ public enum BeebError: LocalizedError {
         case .coreCreationFailed: return "The emulator core could not be created."
         case let .coreFailure(message): return "The emulator core failed: \(message)"
         case .invalidOSROM: return "A BBC Model B OS ROM must be exactly 16 KiB."
-        case .invalidSidewaysROM: return "A sideways ROM must be no larger than 16 KiB."
+        case .invalidSidewaysROM: return "Use bank 0–15 and a sideways ROM between 1 byte and 16 KiB."
         case .invalidDiscImage: return "The disc is not a valid 40/80-track SSD or DSD image."
         case .invalidDrive: return "The drive number must be 0 or 1."
         }
@@ -50,6 +50,7 @@ public final class BeebMachine: @unchecked Sendable {
     deinit { beeb_destroy(handle) }
 
     public func loadOSROM(_ data: Data) throws {
+        guard data.count == 16 * 1024 else { throw BeebError.invalidOSROM }
         let (loaded, coreError) = lock.withLock {
             let loaded = data.withUnsafeBytes { bytes in
                 beeb_load_os_rom(handle, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
@@ -61,6 +62,9 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     public func loadSidewaysROM(_ data: Data, bank: UInt8) throws {
+        guard bank < 16, !data.isEmpty, data.count <= 16 * 1024 else {
+            throw BeebError.invalidSidewaysROM
+        }
         let (loaded, coreError) = lock.withLock {
             let loaded = data.withUnsafeBytes { bytes in
                 beeb_load_sideways_rom(handle, bank, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
@@ -73,6 +77,11 @@ public final class BeebMachine: @unchecked Sendable {
 
     public func mountDisc(_ data: Data, drive: Int = 0, doubleSided: Bool, writable: Bool = false) throws {
         guard (0...1).contains(drive) else { throw BeebError.invalidDrive }
+        let bytesPerTrack = 10 * 256 * (doubleSided ? 2 : 1)
+        let tracks = data.count / bytesPerTrack
+        guard data.count.isMultiple(of: bytesPerTrack), (1...80).contains(tracks) else {
+            throw BeebError.invalidDiscImage
+        }
         let (loaded, coreError) = lock.withLock {
             let loaded = data.withUnsafeBytes { bytes in
                 beeb_mount_disc(handle, UInt32(drive), bytes.bindMemory(to: UInt8.self).baseAddress,
@@ -132,7 +141,7 @@ public final class BeebMachine: @unchecked Sendable {
 
     public func renderAudio(frames: Int, sampleRate: Double) -> [Float] {
         guard frames > 0, sampleRate.isFinite, sampleRate > 0 else { return [] }
-        lock.withLock {
+        return lock.withLock {
             var output = Array(repeating: Float.zero, count: frames)
             output.withUnsafeMutableBufferPointer {
                 beeb_render_audio(handle, $0.baseAddress, $0.count, sampleRate)

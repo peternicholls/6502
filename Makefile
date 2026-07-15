@@ -2,10 +2,15 @@ CXX ?= g++
 CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
-BUILD_DIR = .build
+BUILD_DIR = .build/cpp
 VERSION := $(strip $(shell sed -n '1p' VERSION))
+ifeq ($(shell uname -s),Darwin)
+SANITIZERS ?= undefined
+else
+SANITIZERS ?= address,undefined
+endif
 
-.PHONY: all test check-version demo-rom clean
+.PHONY: all test sanitize check-version demo-rom clean
 
 all: $(BUILD_DIR)/beeb-headless
 
@@ -35,6 +40,12 @@ check-version: $(BUILD_DIR)/beeb-headless
 
 test: check-version $(BUILD_DIR)/beeb-tests
 	$(BUILD_DIR)/beeb-tests
+
+sanitize: | $(BUILD_DIR)
+	$(CXX) -std=c++20 -O1 -g -Wall -Wextra -Wpedantic -Werror \
+		-fsanitize=$(SANITIZERS) -fno-omit-frame-pointer $(INCLUDES) \
+		$(CORE_SOURCES) Tests/test_main.cpp -o $(BUILD_DIR)/beeb-tests-sanitize
+	$(BUILD_DIR)/beeb-tests-sanitize --quick
 
 clean:
 	rm -rf $(BUILD_DIR)

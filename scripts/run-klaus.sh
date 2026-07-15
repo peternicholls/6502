@@ -7,4 +7,4 @@ url="https://raw.githubusercontent.com/Klaus2m5/6502_65C02_functional_tests/mast
 
 curl -fsSL "$url" -o "$image"
 make -C "$root" all
-"$root/.build/beeb-headless" --functional "$image" --success 0x3469 --max-instructions 100000000
+"$root/.build/cpp/beeb-headless" --functional "$image" --success 0x3469 --max-instructions 100000000

@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build and test the C++ core
         run: make test all demo-rom
+      - name: Run native sanitizers
+        run: make sanitize
 
   apple-package:
     runs-on: macos-latest

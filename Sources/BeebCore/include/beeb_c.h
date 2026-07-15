@@ -1,5 +1,7 @@
 #pragma once
 
+#include "beeb/version.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -14,6 +16,8 @@ typedef struct beeb_cpu_state {
     uint16_t pc;
     uint64_t cycles;
 } beeb_cpu_state;
+
+const char* beeb_version_string(void);
 
 beeb_machine* beeb_create(void);
 void beeb_destroy(beeb_machine* machine);

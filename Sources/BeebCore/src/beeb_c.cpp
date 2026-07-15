@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstring>
 #include <exception>
 #include <new>
@@ -59,6 +60,8 @@ void operation(beeb_machine* machine, Callable&& callable) noexcept {
 } // namespace
 
 extern "C" {
+
+const char* beeb_version_string(void) { return BEEB_VERSION_STRING; }
 
 beeb_machine* beeb_create(void) {
     try { return new beeb_machine; } catch (...) { return nullptr; }
@@ -147,8 +150,8 @@ void beeb_render_audio(beeb_machine* machine, float* mono, size_t frames, double
             setError(machine, "audio output buffer is null");
             return;
         }
-        if (sample_rate <= 0) {
-            setError(machine, "audio sample rate must be positive");
+        if (!std::isfinite(sample_rate) || sample_rate <= 0) {
+            setError(machine, "audio sample rate must be finite and positive");
             return;
         }
         machine->value.sound().render(mono, frames, sample_rate);

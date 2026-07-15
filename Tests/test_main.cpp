@@ -587,7 +587,12 @@ void testTeletextControlCellsUseActiveBackground() {
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc > 2 || (argc == 2 && std::string(argv[1]) != "--quick")) {
+        std::cerr << "usage: beeb-tests [--quick]\n";
+        return 2;
+    }
+    const bool quick = argc == 2;
     const std::vector<Test> tests{
         {"reset and simple program", testResetAndSimpleProgram},
         {"address wrapping and page cycles", testAddressingWrapAndPageCycles},
@@ -618,7 +623,10 @@ int main() {
     };
 
     unsigned failed = 0;
+    std::size_t executed = 0;
     for (const auto& [name, test] : tests) {
+        if (quick && name.ends_with("exhaustive")) continue;
+        ++executed;
         try {
             test();
             std::cout << "PASS  " << name << '\n';
@@ -627,6 +635,6 @@ int main() {
             std::cerr << "FAIL  " << name << "\n      " << error.what() << '\n';
         }
     }
-    std::cout << "\n" << (tests.size() - failed) << '/' << tests.size() << " tests passed\n";
+    std::cout << "\n" << (executed - failed) << '/' << executed << " tests passed\n";
     return failed == 0 ? 0 : 1;
 }
