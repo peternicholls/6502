@@ -287,7 +287,7 @@ evidence without claiming undelivered fidelity.
 - [x] T041 [P] Update `docs/STATUS.md` with only verified C0 commands, exact
   approved fixture/reference coverage, documentation coverage/debt, measurement
   context, and remaining hardware limitations
-- [ ] T042 [P] Move C0 to Complete and C1 to Ready in `docs/CORE_ROADMAP.md` only
+- [x] T042 [P] Move C0 to Complete and C1 to Ready in `docs/CORE_ROADMAP.md` only
   after every C0 exit item has a passing evidence link; otherwise leave status
   unchanged and record the missing item
 - [x] T043 [P] Add the delivered aggregate verifier, lawful references,
