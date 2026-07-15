@@ -290,7 +290,7 @@ evidence without claiming undelivered fidelity.
 - [ ] T042 [P] Move C0 to Complete and C1 to Ready in `docs/CORE_ROADMAP.md` only
   after every C0 exit item has a passing evidence link; otherwise leave status
   unchanged and record the missing item
-- [ ] T043 [P] Add the delivered aggregate verifier, lawful references,
+- [x] T043 [P] Add the delivered aggregate verifier, lawful references,
   comparison baseline, and browsable documentation system to `CHANGELOG.md`
   without changing the release version
 - [ ] T044 Validate every command and expected failure in
