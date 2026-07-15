@@ -43,11 +43,14 @@ checklists. Keep decisions in the feature artifacts; update the project-level
 status, architecture, roadmaps, and changelog when delivery changes them.
 
 Every coding feature must treat code documentation as part of the changed
-contract. Its specification states the affected public surfaces, non-obvious
-behavior and conceptual guides (or a concrete `N/A`); its plan selects the
+contract. Its specification states the affected public surfaces,
+private/internal named types and interfaces, non-obvious behavior and
+conceptual guides (or a concrete `N/A`); its plan selects the
 language-appropriate browsable output and debt impact; and its tasks update the
-documentation with the code and validate the generated result. Do not add
-comments that only repeat what the code already says.
+documentation with the code and validate the generated result. Internal
+documentation should explain responsibility, invariants, ownership, lifetime,
+threading, and collaboration boundaries where applicable. Do not add comments
+that only repeat what the code already says.
 
 Implementation uses committed checkpoints as part of task completion. Verify
 and commit each task before beginning another task, and commit phase-completion

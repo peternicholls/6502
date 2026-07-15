@@ -33,9 +33,10 @@ no persisted format. Test ledgers are generated under `.build/c1/`.
 **Testing**: Existing C++ harness, focused `Tests/C1/` shell contracts, Swift
 XCTest, a dedicated ThreadSanitizer build, existing sanitizer/C0 gates.
 
-**Code Documentation**: Existing Doxygen + DocC pipeline; declaration contracts
-and `docs/code/runtime-ownership.md`, plus architecture, host-boundary, and
-timing-guide updates; `make docs-check` retains zero debt.
+**Code Documentation**: Existing Doxygen + DocC pipeline; public declaration
+contracts and developer documentation for every changed private/internal named
+type or interface; `docs/code/runtime-ownership.md`, architecture,
+host-boundary, and timing-guide updates; `make docs-check` retains zero debt.
 
 **Git Checkpoints**: Each task begins with its named failing test where behavior
 changes and passes focused verification before it is marked complete. Routine
@@ -69,7 +70,8 @@ kinds, one status taxonomy, C++/C/Swift contracts, race/replay evidence.
 - [x] C++, C, Swift, stress, and documentation tests precede behavior changes.
 - [x] Claims are limited to named contract, replay, and race evidence.
 - [x] Ownership, lifetime, errors, threading, ABI revision, and no persisted format are explicit.
-- [x] Public and conceptual documentation plus zero-debt validation are planned.
+- [x] Public, private/internal named-abstraction, and conceptual documentation
+      plus zero-debt validation are planned.
 - [x] Content provenance is unchanged; accessibility is N/A for core-only work.
 - [x] The owner/queue is justified; no dependency or general scheduler is added.
 - [x] Every task has focused verification and every phase has one Lore commit checkpoint.

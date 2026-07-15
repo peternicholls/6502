@@ -27,9 +27,9 @@ roadmap/architecture/status documents that govern this feature]
   relevant needs, or a concrete N/A rationale]
 - **Dependencies and Complexity**: [Existing patterns reused; any necessary new
   dependency or abstraction and why a smaller alternative is insufficient]
-- **Code Documentation**: [Public contracts, non-obvious behavior, and
-  conceptual guides affected; required generated-doc validation; or a concrete
-  N/A rationale]
+- **Code Documentation**: [Public contracts, private/internal named types and
+  interfaces, non-obvious behavior, and conceptual guides affected; required
+  generated-doc validation; or a concrete N/A rationale]
 
 ## User Scenarios & Testing *(mandatory)*
 

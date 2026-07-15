@@ -43,7 +43,8 @@
   system; the smallest sufficient abstraction is one machine-scoped command
   queue and owner.
 - **Code Documentation**: Update public C++ runtime types, every affected C ABI
-  contract, Swift lifecycle/error APIs, `docs/ARCHITECTURE.md`,
+  contract, Swift lifecycle/error APIs, and all new or changed private/internal
+  named types and interfaces, plus `docs/ARCHITECTURE.md`,
   `docs/code/host-boundary.md`, and `docs/code/timing-model.md`. Document the
   state graph, command matrix, ownership/lifetime, safe point, failure recovery,
   and future bus-cycle constraint; `make docs-check` must reproduce browsable
@@ -224,8 +225,11 @@ and documented reset/destruction recovery.
 - **FR-019**: Existing C0 deterministic fixtures, version/error boundary tests,
   generated documentation, and supported aggregate verification MUST remain green.
 - **FR-020**: Public documentation MUST define the lifecycle graph, command
-  matrix, threading, ownership, lifetimes, safe point, errors, and recovery, and
-  generated documentation validation MUST show zero debt growth.
+  matrix, threading, ownership, lifetimes, safe point, errors, and recovery.
+  Every new or changed private/internal named type and interface MUST document
+  its purpose, responsibility boundary, and important invariants, with relevant
+  ownership, lifetime, threading, and collaboration constraints. Generated
+  documentation validation MUST show zero debt growth.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -258,8 +262,9 @@ and documented reset/destruction recovery.
 - **SC-005**: `make test`, the supported sanitizer gates, `swift test`,
   `swift build`, `make verify-c0`, and `make docs-check` pass after C1 delivery.
 - **SC-006**: Generated C/C++ and Swift documentation covers every changed
-  public surface, contains working links to the state/command/safe-point guides,
-  and leaves the documentation-debt baseline at zero.
+  public surface and private/internal named abstraction, contains working links
+  to the state/command/safe-point guides, and leaves the documentation-debt
+  baseline at zero.
 
 ## Assumptions
 

@@ -35,7 +35,7 @@
 
 ## Code Documentation *(for coding features)*
 
-- [x] CHK019 Public-contract and non-obvious-behavior documentation impact is specified for C++, C, Swift, architecture, host-boundary, and timing guides.
+- [x] CHK019 Public-contract, private/internal named-abstraction, and non-obvious-behavior documentation impact is specified for C++, C, Swift, architecture, host-boundary, and timing guides.
 - [x] CHK020 Browsable generation, link/markup validation, and zero documentation-debt growth have measurable acceptance criteria.
 
 ## Git Execution

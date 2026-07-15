@@ -127,4 +127,8 @@ rg -q '\*\*Code Documentation\*\*' .specify/templates/spec-template.md
 rg -q '\*\*Code Documentation\*\*' .specify/templates/plan-template.md
 rg -q 'Generate browsable code documentation' .specify/templates/tasks-template.md
 rg -q 'Code Documentation' .specify/templates/checklist-template.md
+rg -q 'private/internal named types' .specify/templates/spec-template.md
+rg -q 'private/internal named types or interfaces' .specify/templates/plan-template.md
+rg -q 'private/internal named types and interfaces' .specify/templates/tasks-template.md
+rg -q 'private/internal named-abstraction' .specify/templates/checklist-template.md
 c0_pass "Spec Kit templates enforce documentation impact and validation"

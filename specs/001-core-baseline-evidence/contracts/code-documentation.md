@@ -11,6 +11,10 @@
 3. **Conceptual guides** explain relationships spanning symbols or languages:
    architecture, emulated-time/device advancement, public host boundary,
    evidence and testing, and how to navigate the generated reference.
+4. **Private/internal named abstractions** explain a class, struct, protocol,
+   interface, enum, or important type alias to future maintainers: its purpose,
+   responsibility boundary, important invariants, and applicable ownership,
+   lifetime, threading, collaboration, or extension constraints.
 
 ## Source conventions
 
@@ -22,8 +26,9 @@
   explanation.
 - Include primary hardware/source references when behavior depends on one.
 - Remove or rewrite stale comments in the same change as the behavior.
-- Do not document private getters, trivial delegators, obvious loops, or types
-  merely to increase a coverage number.
+- Document private/internal named types and interfaces, but do not document
+  private getters, trivial delegators, obvious loops, or members merely to
+  increase a coverage number.
 
 ## Generation
 
@@ -56,6 +61,8 @@ The gate fails on:
 - unresolved internal symbol/topic links;
 - a missing landing-page destination for an output claimed as built;
 - a new or changed required public surface without contract documentation;
+- a new or changed private/internal named abstraction without useful developer
+  documentation;
 - a changed complex surface with neither useful rationale nor a reviewed N/A;
 - any addition or scope expansion in the debt baseline; or
 - generated documentation checked into an authoritative source location.
@@ -70,5 +77,6 @@ Every later coding feature must carry the following trace:
 `spec documentation impact -> plan generator/source/debt decision -> story task
 beside code -> make docs-check -> generated-page review`
 
-A documentation N/A is valid only when no public contract, non-obvious behavior,
-or conceptual relationship changes, and the feature artifact states why.
+A documentation N/A is valid only when no public contract, private/internal
+named abstraction, non-obvious behavior, or conceptual relationship changes,
+and the feature artifact states why.

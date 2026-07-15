@@ -2,7 +2,7 @@
 
 **Input**: Design documents from `/specs/002-runtime-ownership/`
 
-**Evidence**: Every behavior task starts with a test observed failing for the expected reason. Each task is verified before it is marked complete, but routine task-level commits are not created. The complete verified phase is committed once in Lore format before the next phase begins.
+**Evidence**: Every behavior task starts with a test observed failing for the expected reason. Each task is verified and committed in Lore format before the next task begins. The final task commit in each phase also records phase completion; no empty duplicate checkpoint is created.
 
 ## Phase 1: Contract Scaffolding
 
@@ -25,7 +25,7 @@
 - [ ] T009 [US1] Add/confirm failing create-paused, start, pause, idempotence, invalid-transition, and latency tests in `Tests/test_main.cpp`.
 - [ ] T010 [US1] Implement paused/running transitions and execution-loop arbitration in `Sources/BeebCore/src/runtime.cpp`. Verify US1 tests and `make sanitize`.
 - [ ] T011 [US1] Implement exact accepted-command/execution-slice replay test hooks in `Tests/test_main.cpp` and `.build/c1/`, with no production persisted format. Verify `Tests/C1/test-runtime-replay.sh`.
-- [ ] T012 [US1] Document C++ lifecycle/safe-point contracts and state graph in `Sources/BeebCore/include/beeb/runtime.hpp` and `docs/code/runtime-ownership.md`. Verify `make docs-check`; commit the complete verified Phase 3 once.
+- [ ] T012 [US1] Document public and private/internal C++ runtime types, lifecycle/safe-point contracts, responsibility boundaries, invariants, and state graph in `Sources/BeebCore/include/beeb/runtime.hpp`, `Sources/BeebCore/src/runtime.cpp`, and `docs/code/runtime-ownership.md`. Verify representative internal and public pages in `make docs-check`; commit the complete verified Phase 3 once.
 
 ## Phase 4: User Story 2 — Serialize Runtime Transactions (P2)
 
@@ -48,7 +48,7 @@
 - [ ] T022 [US3] Migrate `Tools/beeb-headless/main.cpp`, `Tools/beeb-evidence/main.cpp`, and examples to 0.2. Verify builds, C0 evidence, and no old API usage via `rg`.
 - [ ] T023 [US3] Add failing Swift state/start/pause/status-category/concurrency/recovery tests in `Tests/BeebKitTests/BeebMachineTests.swift`. Verify focused red failure.
 - [ ] T024 [US3] Migrate `BeebMachine` ownership and operations to structured results in `Sources/BeebKit/BeebMachine.swift`, removing redundant direct-state `NSLock` serialization. Verify Swift tests/build.
-- [ ] T025 [US3] Document typed errors, concurrency, lifecycle, ownership, and recovery in Swift/C declarations, `Sources/BeebKit/Documentation.docc/BeebKit.md`, and `docs/code/host-boundary.md`. Verify `make docs-check`; commit the complete verified Phase 5 once.
+- [ ] T025 [US3] Document typed errors, concurrency, lifecycle, ownership, recovery, and every changed private/internal Swift or C-boundary named abstraction in declarations, `Sources/BeebKit/Documentation.docc/BeebKit.md`, and `docs/code/host-boundary.md`. Verify representative internal and public pages in `make docs-check`; commit the complete verified Phase 5 once.
 
 ## Phase 6: C1 Exit and Governance
 
@@ -60,7 +60,7 @@
 
 ## Dependencies and Coverage
 
-`T001 -> (T002, T003, T004) -> T005 -> T006 -> T007 -> T008 -> US1 -> US2 -> US3 -> exit`. T003/T004 may run in parallel after T001; governance is sequential. `[P]` tasks may be implemented independently, but their phase is committed only after every phase task is verified.
+`T001 -> (T002, T003, T004) -> T005 -> T006 -> T007 -> T008 -> US1 -> US2 -> US3 -> exit`. T003/T004 may run in parallel after T001; governance is sequential. Each `[P]` task still receives its own verified commit and stages no other task.
 
 - US1 / FR-001–010, FR-017: T002–T012.
 - US2 / FR-005–012, FR-016–019: T013–T018.
