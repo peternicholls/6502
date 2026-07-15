@@ -24,6 +24,15 @@ read immediately. `BeebKit` converts those diagnostics into `BeebError` values.
 The Swift wrapper serializes every read and mutation of core state with one
 lock, which is the basis for its `Sendable` conformance.
 
+Within C++, `MachineRuntime` is the supported synchronization boundary for a
+machine. It constructs one `BBCMicro` on one owner thread, accepts copied
+commands through a capacity-64 FIFO, and returns only operation-owned status or
+result values. Direct `BBCMicro` construction remains a low-level facility for
+single-threaded core tests while the C and Swift hosts complete their C1
+migration. The host-boundary migration replaces the sentinel/lock arrangement
+described above as one atomic 0.2 contract change; hosts must not combine the
+old boundary with direct runtime access.
+
 ```mermaid
 flowchart TD
     Host["SwiftUI · Files · Metal · AVAudioEngine"] --> Kit[BeebKit]
@@ -77,6 +86,12 @@ CRTC clock and 8271 from that count before the next instruction. This provides
 correct long-term rates and instruction cycle totals, but hardware events can
 be observed several cycles late.
 
+`MachineRuntime` treats the boundary after that complete instruction and all
+aggregate device ticks as its quiescent safe point. Sustained execution occurs
+in deterministic minimum 2,048-cycle slices, with the command FIFO checked
+between slices. This ownership policy prevents host races; it does not claim
+bus-cycle fidelity or make host wall time part of emulated time.
+
 The next timing architecture should express every CPU operation as bus-cycle
 micro-steps:
 
@@ -87,7 +102,10 @@ micro-steps:
 5. commit the micro-operation and advance.
 
 Keep the current instruction tests as a semantic layer while adding bus-trace
-tests for the new sequencer.
+tests for the new sequencer. The sequencer must remain behind the same owner:
+host commands cannot observe a half-completed bus operation, and a finer public
+safe point requires a separately versioned contract and evidence rather than
+an incidental consequence of the implementation rewrite.
 
 ## Memory
 

@@ -31,6 +31,32 @@ State-dependent validation occurs on the owner after FIFO acceptance. Checking
 state on a caller thread would let a concurrent reset/start pair be rejected
 from a stale observation instead of the accepted order.
 
+## Transaction matrix
+
+Every row below enters the same FIFO. "Preserve" means the command does not
+invent a lifecycle transition: if it is ordered while running, sustained
+execution continues only after the command completes; if it is ordered while
+paused, it remains paused.
+
+| Command family | Paused | Running | Faulted | Ownership and effect |
+| --- | --- | --- | --- | --- |
+| `start` / `pause` | Start runs; pause is idempotent | Start is idempotent; pause stops before another slice | Rejected | Empty payload; explicit lifecycle intent only |
+| `reset` | Reset and remain paused | Reset and become paused | Clear fault and become paused | Machine reset is atomic at the command safe point |
+| `runFor` / `runUntilFrame` | Execute the requested bounded work | Rejected | Rejected | Scalar budget; owned scalar result |
+| OS ROM, sideways ROM, disc | Install and preserve state | Install and preserve state | Rejected | Caller bytes are copied before acceptance; invalid media leaves the prior installation unchanged |
+| keyboard / BREAK | Mutate and preserve state | Mutate and preserve state | Rejected | Value payload; BREAK may reset `BBCMicro` without inventing a runtime pause/start |
+| runtime state / safe point / CPU / frame | Observe | Observe between slices | Observe | Owned values; frame storage never aliases the machine |
+| fault detail | Observe empty detail | Observe empty detail | Observe retained failure | Owned diagnostic and safe point |
+| audio render | Mutate sound phase and preserve state | Mutate sound phase between slices and preserve state | Rejected | Owned sample vector; finite positive sample rate |
+| shutdown | Stop acceptance and drain | Stop acceptance and drain | Stop acceptance and drain | One ordered marker, one owner join |
+
+Payload validation that depends on current machine state occurs on the owner.
+Copy allocation can fail before acceptance with `resourceExhausted`; once a
+command has an acceptance identity, it receives exactly one completion. A
+failed transaction does not restore an earlier running state or perform a
+hidden resume; only later accepted `start` or `pause` commands express that
+intent.
+
 ## Acceptance, completion, and back-pressure
 
 One queue node owns the command kind, copied payload, acceptance identity, and
@@ -88,6 +114,12 @@ complete. Once capacity permits, the shutdown marker receives the next
 acceptance identity. The owner processes it only after the queue drains, enters
 `shuttingDown`, records the final safe point, and exits. One caller joins while
 concurrent shutdown callers wait for that same completion.
+
+Capacity includes the command currently executing. A shutdown racing a full
+queue therefore wakes capacity waiters before it waits for one slot for its
+marker. Rejected waiters have no acceptance identity; every nonzero accepted
+identity precedes the marker and completes before owner exit. The machine is
+released only after the owner has stopped dereferencing it.
 
 The owner cannot invoke shutdown because it cannot join itself. Destruction
 calls the same idempotent drain-and-join path. The later C handle adds a separate
