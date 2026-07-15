@@ -136,10 +136,11 @@ normal verification reports but never replaces it.
 
 ### Tests for User Story 2 (write and observe failing first)
 
-- [ ] T016 [US2] Extend `Tests/C0/test-fixture-evidence.sh` with ten-run identity,
+- [x] T016 [US2] Extend `Tests/C0/test-fixture-evidence.sh` with ten-run identity,
   complete-manifest, orphan-reference, exact state/PPM comparison, one-byte
   mismatch, requested-versus-actual cycle, and approved-path immutability cases;
   observe failures while approved references are absent
+  - Red evidence: exits `1` with `missing approved fixture directory` before T018/T019.
 - [ ] T017 [P] [US2] Add `Tests/C0/test-reference-update.sh` cases for missing
   reason, unknown reference, non-identical candidates, accidental CI use,
   single-reference scope, manifest refresh, and diff presentation; observe the
