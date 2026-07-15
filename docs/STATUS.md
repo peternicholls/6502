@@ -67,6 +67,29 @@ ThreadSanitizer is not counted as a pass. The normal mixed-command and bounded
 shutdown races ran in both `make test` and `make test-c1`; supported CI must
 still execute the real ThreadSanitizer binary.
 
+## C1 completion candidate evidence
+
+After the 0.2.0 and roadmap changes, clean detached revision
+`5ed22995b0c79e708a02403bdb5799f623cf4cfd` reran every distinct command in the
+C1 quickstart on 2026-07-15:
+
+- `make test`: 42/42 passed;
+- `make sanitize`: 37/37 quick tests passed;
+- `swift test`: 7/7 passed, and `swift build` completed;
+- `make verify-c0`: all 11 macOS groups passed with exact references unchanged;
+- focused runtime contract, replay, and race scripts passed 10, 2, and 2 tests
+  respectively;
+- `make test-c1`: all six groups passed, including public-boundary,
+  documentation-negative, and aggregate-failure-propagation coverage;
+- `make docs-check` and `Tests/C1/test-documentation.sh` passed;
+- `make thread-sanitize` reported N/A after the unsupported local probe;
+- `git status --short`, `git diff --check`, and the tracked `.build` query
+  produced no output.
+
+The phase-closing commit changes only this evidence ledger and the completed
+task marker. Its committed revision is checked again for generated
+documentation and a clean tree; no empty checkpoint commit is created.
+
 ## C1 verified outcome
 
 C1 is complete at the architectural and public-boundary level:
