@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BBC Model B – Design Direction Showcase</title>
+  <style>
+    :root{
+      --bg:#0b0b0c; --fg:#f2f2f3; --muted:#9aa0a6; --border:#2a2d31; --card:#141416; --shadow:0 4px 16px rgba(0,0,0,0.35);
+      --primary:#00E676; --accent:#FFB300;
+    }
+    *{ box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif }
+    body{ margin:0; background:var(--bg); color:var(--fg) }
+    header{ position:sticky; top:0; background:rgba(11,11,12,0.8); backdrop-filter:saturate(140%) blur(8px); border-bottom:1px solid var(--border); padding:12px 16px; z-index:3 }
+    h1{ margin:0 0 4px; font-size:18px }
+    .muted{ color:var(--muted); font-size:12px }
+    .toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px }
+    .btn{ border-radius:10px; padding:10px 12px; font-weight:600; border:1px solid var(--border); background:var(--primary); color:#0b0b0c }
+    .btn.ghost{ background:transparent; color:var(--fg) }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; padding:16px }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); overflow:hidden }
+    .card header{ padding:12px 14px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(255,255,255,0.04), transparent) }
+    .meta{ display:flex; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--muted) }
+    .screen{ display:grid; grid-template-columns: 220px 1fr; gap:12px; padding:12px }
+    .nav{ border:1px solid var(--border); border-radius:12px; padding:8px; }
+    .pane{ border:1px solid var(--border); border-radius:12px; padding:8px; }
+    .hud{ position:relative; border:1px dashed var(--border); border-radius:10px; padding:8px; margin-top:8px; }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .tag{ border:1px solid var(--border); border-radius:999px; padding:4px 8px; font-size:11px; color:var(--muted) }
+  </style>
+  <script>
+    function show(id){
+      document.querySelectorAll('.card').forEach(c=>c.hidden = id !== 'all' && c.id !== id);
+      document.getElementById('current').textContent = id === 'all' ? 'All' : document.querySelector('#'+id+' strong').textContent;
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>BBC Model B – Design Direction Showcase</h1>
+    <div class="muted">Toggle between 6 complete design approaches. Current: <strong id="current">All</strong></div>
+    <div class="toolbar">
+      <button class="btn" onclick="show('all')">All</button>
+      <button class="btn ghost" onclick="show('dir1')">#1 Dense HUD</button>
+      <button class="btn ghost" onclick="show('dir2')">#2 Spacious Focus</button>
+      <button class="btn ghost" onclick="show('dir3')">#3 Card Workspace</button>
+      <button class="btn ghost" onclick="show('dir4')">#4 Sidebar Studio</button>
+      <button class="btn ghost" onclick="show('dir5')">#5 Minimal Canvas</button>
+      <button class="btn ghost" onclick="show('dir6')">#6 Classic Native</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- Direction 1 -->
+    <section class="card" id="dir1">
+      <header>
+        <strong>#1 Dense HUD</strong>
+        <div class="meta">
+          <span class="tag">Personality: Professional & Efficient</span>
+          <span class="tag">Layout: Overlaid HUD</span>
+          <span class="tag">Best for: Power users</span>
+        </div>
+      </header>
+      <div class="screen">
+        <aside class="nav">Transport · Devices · Shortcuts</aside>
+        <section class="pane">
+          <div class="row"><div class="tag">Metal Surface</div><div class="tag">Mode 7</div><div class="tag">50 Hz</div></div>
+          <div class="hud">HUD: FPS, Audio buffer, Device indicators, Tape block timeline</div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Direction 2 -->
+    <section class="card" id="dir2">
+      <header>
+        <strong>#2 Spacious Focus</strong>
+        <div class="meta">
+          <span class="tag">Personality: Calm & Focused</span>
+          <span class="tag">Layout: Clean toolbar</span>
+          <span class="tag">Best for: Long sessions</span>
+        </div>
+      </header>
+      <div class="screen">
+        <aside class="nav">Minimal toolbar with big targets</aside>
+        <section class="pane">
+          <div class="row"><div class="tag">Canvas-first</div><div class="tag">Subtle HUD</div></div>
+          <div class="hud">Distraction-free with contextual toasts only</div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Direction 3 -->
+    <section class="card" id="dir3">
+      <header>
+        <strong>#3 Card Workspace</strong>
+        <div class="meta">
+          <span class="tag">Personality: Modular & Flexible</span>
+          <span class="tag">Layout: Cards</span>
+          <span class="tag">Best for: Media-heavy</span>
+        </div>
+      </header>
+      <div class="screen">
+        <aside class="nav">Cards: Machine · Tape · Disk · Editor</aside>
+        <section class="pane">
+          <div class="row"><div class="tag">Dockable panels</div><div class="tag">Waveform card</div></div>
+          <div class="hud">Arrange panels to taste; save layouts</div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Direction 4 -->
+    <section class="card" id="dir4">
+      <header>
+        <strong>#4 Sidebar Studio</strong>
+        <div class="meta">
+          <span class="tag">Personality: Studio Console</span>
+          <span class="tag">Layout: Sidebar + Inspector</span>
+          <span class="tag">Best for: Desktop</span>
+        </div>
+      </header>
+      <div class="screen">
+        <aside class="nav">Sidebar: Library · Devices · Settings</aside>
+        <section class="pane">
+          <div class="row"><div class="tag">Main surface</div><div class="tag">Right Inspector</div></div>
+          <div class="hud">Inspector shows media metadata, logs, breakpoints</div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Direction 5 -->
+    <section class="card" id="dir5">
+      <header>
+        <strong>#5 Minimal Canvas</strong>
+        <div class="meta">
+          <span class="tag">Personality: Minimal & Native</span>
+          <span class="tag">Layout: Canvas-only</span>
+          <span class="tag">Best for: iPhone</span>
+        </div>
+      </header>
+      <div class="screen">
+        <aside class="nav">Bottom segmented control</aside>
+        <section class="pane">
+          <div class="row"><div class="tag">Edge gestures</div><div class="tag">Overlay controls</div></div>
+          <div class="hud">Thumb-reachable actions; reduce motion respected</div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Direction 6 -->
+    <section class="card" id="dir6">
+      <header>
+        <strong>#6 Classic Native</strong>
+        <div class="meta">
+          <span class="tag">Personality: Trustworthy & Familiar</span>
+          <span class="tag">Layout: Platform menus</span>
+          <span class="tag">Best for: macOS</span>
+        </div>
+      </header>
+      <div class="screen">
+        <aside class="nav">macOS toolbar & sidebar</aside>
+        <section class="pane">
+          <div class="row"><div class="tag">Menu commands</div><div class="tag">Keyboard shortcuts</div></div>
+          <div class="hud">Native patterns with retro accents</div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer style="padding:16px; text-align:center; color:var(--muted)">
+    Tip: Use the buttons above to focus on a single direction or compare all.
+  </footer>
+</body>
+</html>

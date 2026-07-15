@@ -23,3 +23,13 @@ Use the current sources of truth instead:
 Consult the decision register before carrying an idea from this directory into
 implementation. Do not edit these historical files to describe current state;
 record new decisions in the canonical documents.
+
+## UX reference set
+
+- [User UX ideas](UX_user_ideas.md) records the original brainstorming input.
+- [UX design specification](ux-design-specification.md) develops that input
+  into the abandoned project's design direction.
+- [Colour theme explorer](ux-color-themes.html) is the specification's
+  self-contained interactive palette reference.
+- [Design direction showcase](ux-design-directions.html) is the
+  specification's self-contained visual direction reference.

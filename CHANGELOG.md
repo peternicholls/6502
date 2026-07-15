@@ -14,6 +14,12 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 - Separate product and emulator documentation strands, with canonical vision,
   roadmaps, a legacy decision register and an explicit authority hierarchy.
 
+### Changed
+
+- Reworked the emulator roadmap into dependency-aware delivery phases with
+  explicit product traceability, Spec Kit feature slices, parallelism rules and
+  measurable entry and exit evidence.
+
 ## [0.1.0] - 2026-07-15
 
 ### Added

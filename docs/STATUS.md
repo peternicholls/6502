@@ -36,6 +36,10 @@ is governed separately by the [product strand](product/README.md).
 
 ## Current core focus
 
-The active core priorities are product-enabling runtime contracts and a
-bus-cycle timing foundation. The [core roadmap](CORE_ROADMAP.md) owns technical
-sequence; the tables above own verified hardware-fidelity status.
+The next delivery phase is C0 baseline evidence, followed by C1 runtime
+ownership. Bounded output contracts and session continuity then unlock the
+active Machine horizon. Bus-cycle implementation follows the runtime safe-point
+and snapshot-invariant decisions so it cannot accidentally invalidate public
+session state. The [core roadmap](CORE_ROADMAP.md) owns technical sequence; the
+tables above own verified hardware-fidelity status. A phase is not Active until
+an approved Spec Kit feature enters implementation.

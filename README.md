@@ -134,9 +134,10 @@ Changes are recorded in [CHANGELOG.md](CHANGELOG.md); the release procedure and
 compatibility policy are documented in [docs/RELEASING.md](docs/RELEASING.md).
 Run `make check-version` before tagging a release.
 
-Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Continuous
-integration builds the warning-clean C++ core on Linux and the complete Swift
-package on macOS.
+Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md), the
+[project constitution](.specify/memory/constitution.md), and the
+[Spec Kit feature workflow](specs/README.md). Continuous integration builds the
+warning-clean C++ core on Linux and the complete Swift package on macOS.
 
 ## Licence and references
 

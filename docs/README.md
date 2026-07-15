@@ -29,6 +29,10 @@ how that outcome is safely implemented. Neither roadmap can claim completion;
 
 ## Project operations
 
+- [Project constitution](../.specify/memory/constitution.md) defines the
+  non-negotiable architecture, evidence and delivery rules.
+- [Feature specifications](../specs/README.md) explains how product, core and
+  cross-strand slices move through Spec Kit.
 - [Releasing](RELEASING.md) defines versioning and release procedure.
 - [Changelog](../CHANGELOG.md) records user- and developer-visible changes.
 

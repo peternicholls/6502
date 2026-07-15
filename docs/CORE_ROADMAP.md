@@ -7,6 +7,31 @@ This roadmap governs the portable BBC Model B emulation foundation and its
 public host boundary. It does not define the wider application experience;
 those priorities live in the [product strand](product/README.md).
 
+## How to use this roadmap
+
+This document sequences outcomes and dependencies. It is not a sprint backlog
+and it does not promise dates. Each candidate slice enters delivery through the
+[Spec Kit workflow](../specs/README.md): specification, clarification where
+needed, plan, tasks, consistency analysis, then implementation.
+
+A phase may require several feature specifications. Do not schedule an entire
+phase as one sprint. Sprint planning may select tasks only from reviewed feature
+artifacts whose dependencies and entry criteria are satisfied.
+
+### Phase status
+
+- **Ready:** sufficiently bounded for the next Spec Kit specification.
+- **Active:** at least one approved feature specification is in implementation.
+- **Queued:** sequenced, but an earlier dependency or decision remains.
+- **Later:** held until its named product horizon becomes active.
+- **Blocked:** an identified external decision or dependency prevents progress.
+- **Complete:** exit evidence is recorded in `STATUS.md` and all associated
+  feature acceptance evidence passes.
+
+Only one phase is the default source of the next core feature. Explicitly
+independent preparation or compatibility work may run in parallel under the
+rules below.
+
 ## Current baseline
 
 The core already provides a tested NMOS 6502, BBC memory map, partial VIAs,
@@ -17,105 +42,387 @@ Exact verified coverage and hardware gaps are recorded in
 [STATUS.md](STATUS.md). Architecture changes must preserve the deterministic,
 host-agnostic boundary in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Priority 1 — product-enabling runtime contracts
+## Delivery map
 
-The next core work should make the existing machine safe to embed in a
-sustained host runtime.
+| Phase | Status | Product trace | Depends on | May overlap |
+| --- | --- | --- | --- | --- |
+| C0 — Baseline evidence | Ready | Machine foundation | Current verified core | Compatibility fixture research |
+| C1 — Runtime ownership | Queued | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
+| C2 — Bounded output contracts | Queued | Horizon 1: continuous video and audio | C1 | C3 implementation |
+| C3 — Session continuity | Queued | Horizon 1: background and restore | C1 safe-point contract | C2 implementation |
+| C4 — Bus-cycle timing | Queued | Compatibility and timing fidelity | C1; C3 snapshot invariant | Pull-based compatibility fixtures |
+| C5 — Dependable media core | Later | Horizon 2: Media | C1; slice-specific timing prerequisites | Curated device fixtures |
+| C6 — Inspection and editor bridge | Later | Horizon 3: Editor | C1 and C3 | Read-only inspector research |
 
-- Define single-owner execution semantics instead of relying on callers to
-  coordinate arbitrary `run` calls.
-- Add versioned, deterministic save-state serialization with compatibility
-  checks and explicit mounted-media state.
-- Add bounded completed-frame and audio-production contracts suitable for
-  decoupled host consumers.
-- Expose emulation rate, frame number, buffer demand and failure diagnostics
-  without importing host timing APIs into the core.
-- Add controlled pause-and-transact operations for memory inspection and
-  mutation, required by future editor and debugger workflows.
-- Export modified writable disk images explicitly.
+The default sequence is C0 → C1 → C2, with C3 allowed to proceed beside C2
+once C1 defines a quiescent safe point. C4 implementation begins only after the
+snapshot invariant described in C3 is fixed. C5 and C6 do not enter the active
+Machine critical path.
 
-Exit evidence:
+## Phase C0 — baseline evidence
 
-- snapshot round trips reproduce CPU, memory and device state;
-- host consumers cannot observe invalidated frame/audio memory;
-- execution, inspection and media export cannot race;
-- the C and Swift APIs report structured, recoverable failures.
+**Status:** Ready
 
-## Priority 2 — bus-cycle timing foundation
+**Outcome:** Lock the observable foundation before changing execution and
+buffer ownership.
 
-Instruction-level results and aggregate cycles are already well tested, but
-devices currently advance after each instruction. Replace that granularity
-without discarding the semantic test layer.
+**Product capability unlocked:** Safe delivery of the sustained Machine
+runtime.
 
-- Express instruction execution as ordered bus-cycle micro-operations.
-- Tick devices and apply slow-bus stretching at each relevant cycle.
-- Sample IRQ, NMI and ready state at defined boundaries.
-- Preserve documented dummy reads/writes and read-modify-write behavior.
-- Add bus-trace fixtures for reset, interrupts, branches, indexed crossings and
-  representative I/O accesses.
+### Candidate Spec Kit slice
 
-Exit evidence:
+- `core-baseline-evidence`: consolidate deterministic boot, representative
+  frame, ABI and performance baselines with documented fixture provenance.
 
-- existing CPU functional and arithmetic suites remain green;
-- bus traces match primary or transistor-level references;
-- device interrupts are no longer delayed by a complete instruction;
-- timing-sensitive compatibility fixtures improve without host-specific hacks.
+### Entry criteria
 
-## Priority 3 — compatibility-led device completion
+- The verified baseline in `STATUS.md` matches the current test suites.
+- Existing proprietary firmware remains outside the repository and cannot be a
+  required CI fixture.
 
-Complete hardware behavior in response to representative software and traces,
-not by expanding every chip indiscriminately.
+### Exit evidence
 
-- VIA: shift modes, CA2/CB2 handshakes, latches and missing keyboard/IC32
+- `make test`, `make sanitize`, `swift test` and `swift build` pass on their
+  supported hosts.
+- A redistributable boot fixture reaches a named deterministic state with an
+  exact cycle count or state signature.
+- Representative bitmap and Mode 7 output has provenance-recorded golden
+  evidence.
+- Current emulation throughput is measured reproducibly and recorded as a
+  comparison baseline, not presented as a product guarantee.
+- The C and Swift version/error boundary remains covered by automated tests.
+
+### Non-goals
+
+- Increasing hardware fidelity or restructuring the CPU.
+- Adding a new benchmark dependency when the existing harness can record the
+  required measurements.
+
+## Phase C1 — runtime ownership and recoverable boundaries
+
+**Status:** Queued
+
+**Outcome:** Make machine execution a single owned state machine with explicit
+commands and recoverable public failures.
+
+**Product capability unlocked:** Sustained background execution without
+cross-thread races or undefined pause/reset behavior.
+
+**Depends on:** C0.
+
+### Candidate Spec Kit slices
+
+1. `single-owner-runtime`: execution states, command serialization and
+   run/pause/reset lifecycle.
+2. `recoverable-runtime-errors`: consistent ownership, nullability and failure
+   contracts across C++, C and Swift.
+
+### Required design decision
+
+Define a **quiescent safe point** at the completed-instruction boundary after
+all devices have advanced through the instruction's aggregate cycles. Pause,
+snapshot and host transactions may complete only at such a point. The later
+bus-cycle sequencer MUST preserve the ability to reach this boundary.
+
+### Entry criteria
+
+- C0 evidence is green.
+- The specification defines legal execution states, command ordering and which
+  operations reject, queue or wait while the machine is running.
+
+### Exit evidence
+
+- Concurrent run, pause, reset and load attempts are deterministically
+  serialized or rejected according to contract tests.
+- Race-focused stress tests and sanitizers find no unsynchronized access to
+  machine state.
+- Every fallible C entry point returns a structured, recoverable failure that
+  the Swift wrapper preserves without a C++ exception crossing the ABI.
+- Repeating the same command sequence from the same state produces the same
+  result and quiescent boundary.
+
+### Non-goals
+
+- Arbitrary editor memory mutation, watchpoints or source-level debugging.
+- Host frame presentation and audio-device integration.
+
+## Phase C2 — bounded frame, audio and diagnostic contracts
+
+**Status:** Queued
+
+**Outcome:** Give decoupled host consumers stable, bounded output without
+making host timing authoritative.
+
+**Product capability unlocked:** Continuous Machine video and audio that do not
+stall the UI.
+
+**Depends on:** C1.
+
+**Parallelism:** C3 may proceed in parallel after the C1 safe-point contract is
+accepted.
+
+### Candidate Spec Kit slices
+
+1. `completed-frame-contract`: immutable or explicitly owned completed frames,
+   bounded capacity and an overflow policy.
+2. `audio-production-contract`: bounded sample production and demand reporting
+   suitable for a host ring buffer.
+3. `runtime-diagnostics`: frame number, emulation rate, buffer demand and
+   recoverable underrun/overrun diagnostics.
+
+### Entry criteria
+
+- C1 defines the only legal execution owner and command path.
+- Each specification defines ownership, lifetime, capacity and overflow
+  behavior before choosing an implementation.
+
+### Exit evidence
+
+- A consumer retaining a valid frame or audio view cannot observe invalidated
+  or concurrently mutated storage.
+- Capacity and overflow behavior are deterministic and covered at empty, full
+  and sustained-production boundaries.
+- Sustained production meets the measurable duration and tolerance established
+  by the feature specification without unbounded memory growth.
+- Metrics use emulated counters and explicit host observations; host wall-clock
+  values never drive core state.
+- C and Swift boundary tests cover lifetime, failure and back-pressure
   behavior.
-- CRTC/ULA: cursor, sync widths, scrolling, address sequences and justified
-  mid-frame changes.
-- Mode 7: double height, hold/release graphics, conceal and control latency
-  through clean-room implementation.
-- SN76489: confirm noise behavior, improve clock coupling and add band-limited
-  output only where measurements justify it.
-- 8271: commands, timing and error semantics required by curated DFS media;
-  flux and copy-protection remain outside current scope.
 
-Every change requires a focused regression and a documented compatibility or
-reference reason.
+### Non-goals
 
-## Priority 4 — cassette hardware and media primitives
+- Metal presentation, AVAudioEngine callbacks or host refresh scheduling.
+- Visual CRT effects or host UI diagnostics.
 
-The core owns deterministic tape hardware and byte/edge processing; microphone
-capture and waveform UI remain host/product responsibilities.
+## Phase C3 — versioned session continuity
 
-- Implement 6850 ACIA and Serial ULA behavior.
-- Model motor state and cassette timing on the machine clock.
-- Parse required UEF data, carrier and gap chunks behind a bounded media API.
-- Add deterministic WAV edge-decoder fixtures before accepting live samples.
-- Surface checksums and decode failures as structured diagnostics.
+**Status:** Queued
 
-Exit evidence:
+**Outcome:** Save and restore architectural machine state deterministically and
+reject incompatible or damaged state safely.
 
-- redistributable UEF/WAV fixtures load repeatably;
-- motor behavior follows emulated control state;
-- file decoding is independent of host audio callback timing.
+**Product capability unlocked:** Backgrounding and session restoration for the
+Machine experience.
 
-## Priority 5 — inspection and editor bridge
+**Depends on:** The C1 safe-point contract.
 
-- Provide stable CPU/device snapshots for a future inspector.
-- Add memory watchpoints, breakpoints and disassembly hooks without coupling to
-  a particular UI.
-- Define BASIC program memory discovery and atomic injection boundaries.
-- Keep label resolution, source models and diff presentation outside the core;
-  expose only authentic bytes and safe transactions.
+**Parallelism:** May run beside C2.
 
-## Validation track
+### Candidate Spec Kit slices
 
-- Maintain exhaustive arithmetic, opcode, device and ABI tests.
-- Keep an independent 6502 functional suite and add redistributable boot
+1. `snapshot-format-v1`: format envelope, version policy and architectural
+   state model.
+2. `snapshot-round-trip`: CPU, memory, ROM selection and device state.
+3. `snapshot-mounted-media`: mounted-media identity and modified in-memory
+   media state.
+4. `snapshot-host-boundary`: recoverable C and Swift load/save contracts.
+
+### Snapshot invariant
+
+Version 1 snapshots may be captured only at the C1 quiescent
+completed-instruction boundary. They serialize architectural machine state,
+not an in-progress CPU micro-operation. C4 MUST preserve this safe point. A
+future requirement for mid-instruction snapshots requires a new format version
+and an explicit compatibility or migration plan.
+
+### Entry criteria
+
+- The quiescent safe point is tested and documented.
+- The specification defines compatibility policy, size limits, corruption
+  handling and whether unknown optional data can be skipped.
+
+### Exit evidence
+
+- Snapshot round trips reproduce CPU, memory, selected ROM, device and mounted
+  media state exactly at the safe point.
+- Continuing both the original and restored machines for the same emulated
+  interval produces matching state and observable outputs.
+- Truncated, corrupt and unsupported-version input is rejected without
+  partially mutating the destination machine.
+- At least one version-1 fixture is retained to detect future compatibility
+  drift.
+- C and Swift callers receive structured failures and retain ownership of their
+  original data.
+
+### Non-goals
+
+- Time-travel history, cloud synchronization or source-level editor state.
+- Serializing host windows, audio devices or presentation queues.
+
+## Phase C4 — bus-cycle timing foundation
+
+**Status:** Queued
+
+**Outcome:** Replace instruction-end device advancement with ordered bus-cycle
+micro-operations while preserving the semantic layer.
+
+**Product capability unlocked:** Evidence-led compatibility improvements for
+timing-sensitive Machine software.
+
+**Depends on:** C1 completion and the C3 snapshot invariant being fixed.
+
+### Candidate Spec Kit sequence
+
+1. `bus-trace-contract`: trace vocabulary and fixtures for reset, interrupts,
+   branches, indexed crossings, read-modify-write and representative I/O.
+2. `cpu-bus-sequencer`: fetch/read/write micro-operations while retaining
+   instruction semantic tests.
+3. `interrupt-and-ready-sampling`: IRQ, NMI and ready-state boundaries.
+4. `slow-bus-and-device-ticks`: 1 MHz stretching and per-cycle device clocks.
+5. `timing-compatibility-gate`: curated software fixtures that demonstrate the
+   intended improvement.
+
+These are sequential migration slices, not one feature or sprint. Trace-fixture
+research may begin earlier; sequencer implementation may not.
+
+### Entry criteria
+
+- C0 baseline evidence remains reproducible.
+- C1 owns execution and exposes the quiescent safe point.
+- C3 has fixed the rule that version-1 snapshots exclude in-progress
+  micro-operation state.
+- Each slice identifies the primary or transistor-level reference used for its
+  expected bus sequence.
+
+### Exit evidence
+
+- Existing CPU functional, arithmetic, device and ABI suites remain green.
+- Bus traces match cited references for every fixture in the agreed set.
+- Device interrupts are no longer delayed by a complete instruction.
+- Dummy accesses, read-modify-write behavior and slow-bus stretching occur at
+  their specified cycles.
+- The C1/C3 quiescent safe point and version-1 snapshot compatibility remain
+  intact.
+- Throughput is compared with the C0 baseline; any accepted regression has a
+  measured limit and rationale in the feature plan.
+- Compatibility improves without host-specific timing hacks.
+
+### Non-goals
+
+- Undocumented opcodes unless a separate compatibility case justifies them.
+- Indiscriminate completion of every device or expansion platform.
+
+## Compatibility-led device workstream
+
+This is a pull-based workstream, not an open-ended delivery phase. A device
+slice becomes Ready only when it has:
+
+1. a reproducible software, trace or product case;
+2. a primary reference or documented clean-room observation;
+3. a focused failing regression;
+4. a bounded behavior change and explicit non-goals.
+
+The current candidate pool is:
+
+- VIA shift modes, CA2/CB2 handshakes, latches and keyboard/IC32 behavior;
+- CRTC/ULA cursor, sync widths, scrolling, address sequences and justified
+  mid-frame changes;
+- Mode 7 double height, hold/release graphics, conceal and control latency;
+- SN76489 noise confirmation, clock coupling and evidence-led band limiting;
+- 8271 commands, timing and errors required by curated DFS media.
+
+Each completed slice MUST pass its focused regression, preserve unrelated
+suites, improve its named compatibility case, and update `STATUS.md`. Flux and
+copy-protection remain outside the current horizon.
+
+## Phase C5 — dependable media core
+
+**Status:** Later
+
+**Product trace:** Horizon 2 — Media.
+
+**Outcome:** Provide deterministic, recoverable disk and cassette primitives
+without silently modifying imported content.
+
+**Depends on:** C1; each timing-sensitive slice must also state whether C4 is a
+prerequisite.
+
+### Candidate Spec Kit sequence
+
+1. `writable-disk-export`: explicit export of modified in-memory SSD/DSD data.
+2. `dfs-controller-compatibility`: only the 8271 behavior required by the
+   curated Media fixture set.
+3. `cassette-chipset`: 6850 ACIA, Serial ULA and motor timing.
+4. `uef-media-primitives`: required UEF data, carrier and gap chunks.
+5. `wav-edge-decoder`: deterministic edge fixtures after file-based UEF loading
+   is reliable.
+
+### Entry criteria
+
+- The corresponding Product Horizon 2 slice is selected.
+- Fixture provenance and supported media boundaries are documented.
+- Import, in-memory mutation and explicit export ownership are specified.
+
+### Exit evidence
+
+- Writable disk data exports explicitly and never overwrites imported source
+  media silently.
+- Supported UEF/WAV fixtures load repeatably and report checksum or decode
+  failures through structured diagnostics.
+- Motor behavior follows emulated control state.
+- File decoding is independent of host audio callback timing.
+
+### Non-goals
+
+- Microphone capture, waveform UI, flux preservation or copy-protection.
+
+## Phase C6 — inspection and editor bridge
+
+**Status:** Later
+
+**Product trace:** Horizon 3 — Editor.
+
+**Outcome:** Expose authentic bytes and atomic machine transactions without
+coupling the core to source models or UI.
+
+**Depends on:** C1 execution ownership and C3 session-state boundaries.
+
+### Candidate Spec Kit sequence
+
+1. `stable-inspection-snapshots`: CPU and device state for a read-only
+   inspector.
+2. `breakpoint-watchpoint-contract`: bounded execution control and observation.
+3. `atomic-memory-transactions`: pause, validate, mutate and resume safely.
+4. `basic-program-boundaries`: discover and inject BBC BASIC program bytes.
+
+### Entry criteria
+
+- The corresponding Product Horizon 3 workflow is specified.
+- The host/core contract states concurrency, validation and rollback behavior.
+
+### Exit evidence
+
+- Inspection cannot race execution or expose invalidated state.
+- Failed mutations leave the original machine state intact.
+- BASIC program boundaries and injected bytes round-trip against documented
   fixtures.
-- Add golden frames with documented provenance.
-- Maintain sustained timing and buffer tests for host integration.
-- Run warnings as errors, sanitizers and both C and Swift boundary tests in CI.
-- Record every known accuracy limit in `STATUS.md` before making compatibility
-  claims.
+- Label resolution, source models and diff presentation remain outside the
+  core.
+
+### Non-goals
+
+- Source editing, UI navigation, label models or semantic diff presentation.
+- Time-travel debugging without a separate product and storage decision.
+
+## Phase and sprint gates
+
+A candidate slice is **sprint-ready** only when:
+
+- its Spec Kit specification names one independently testable outcome and the
+  product capability it unlocks;
+- phase dependencies and required decisions are complete;
+- acceptance criteria include measurable failure, boundary and recovery cases;
+- the first failing regression or evidence task is identified;
+- ownership, lifetime, threading, compatibility and fixture provenance are
+  explicit where applicable;
+- the plan passes every Constitution Check; and
+- `tasks.md` is dependency-ordered and contains no unresolved critical
+  analysis finding.
+
+A phase may move to **Complete** only when every exit-evidence item is linked to
+passing tests, traces or measurements, affected C and Swift boundary tests pass,
+sanitizers are green, and `STATUS.md`, architecture and changelog documentation
+reflect the delivered boundary.
 
 ## Core non-goals
 

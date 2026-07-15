@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BBC Model B – Color Theme Explorer</title>
+  <style>
+    :root {
+      --bg: #0b0b0c; --fg: #f2f2f3; --muted:#9aa0a6;
+      --primary:#00E676; --secondary:#FFB300; --accent:#1E88E5;
+      --success:#2e7d32; --warning:#f9a825; --error:#c62828; --info:#1565c0;
+      --card:#141416; --border:#2a2d31; --shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+    [data-theme="Amber"] { --primary:#FFB300; --secondary:#00E676; --accent:#90CAF9; }
+    [data-theme="Green"] { --primary:#00E676; --secondary:#FFB300; --accent:#80DEEA; }
+    [data-theme="Slate"] { --primary:#64B5F6; --secondary:#E57373; --accent:#A5D6A7; }
+    [data-theme="Classic"] { --primary:#007AFF; --secondary:#34C759; --accent:#AF52DE; }
+
+    * { box-sizing: border-box; font-family: -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif; }
+    body { margin:0; background:var(--bg); color:var(--fg); }
+    header { position:sticky; top:0; background:rgba(11,11,12,0.8); backdrop-filter:saturate(140%) blur(8px); border-bottom:1px solid var(--border); padding:12px 16px; z-index:2; }
+    h1 { margin:0 0 4px; font-size:18px; }
+    .muted{ color:var(--muted); font-size:12px }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:16px; padding:16px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); overflow:hidden; }
+    .card header { position:relative; background:linear-gradient(180deg, rgba(255,255,255,0.04), transparent); border-bottom:1px solid var(--border); padding:12px 14px; }
+    .swatches{ display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; padding:12px; }
+    .swatch{ border-radius:10px; height:54px; display:flex; align-items:end; padding:6px; color:#0b0b0c; font-weight:600; }
+    .swatch small{ display:block; font-size:10px; color:rgba(0,0,0,0.7) }
+    .content{ padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .btn{ border-radius:10px; padding:10px 12px; font-weight:600; border:1px solid var(--border); background:var(--primary); color:#0b0b0c }
+    .btn.secondary{ background:var(--secondary) }
+    .btn.ghost{ background:transparent; color:var(--fg) }
+    .input{ padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0f1012; color:var(--fg) }
+    .cardDemo{ border-radius:12px; border:1px solid var(--border); padding:12px; background:#0f1012 }
+    .alert{ padding:10px 12px; border-radius:10px; border:1px solid; }
+    .alert.success{ border-color:var(--success) }
+    .alert.warning{ border-color:var(--warning) }
+    .alert.error{ border-color:var(--error) }
+    .kvs { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; font-size:12px }
+    .kv { padding:8px; border:1px dashed var(--border); border-radius:8px }
+    footer { padding:16px; text-align:center; color:var(--muted) }
+  </style>
+  <script>
+    function applyTheme(theme){
+      document.querySelectorAll('.theme').forEach(el=>{
+        el.hidden = el.dataset.theme !== theme && theme !== 'All';
+      });
+      document.getElementById('currentTheme').textContent = theme;
+    }
+  </script>
+  </head>
+<body>
+  <header>
+    <h1>BBC Model B – Color Theme Explorer</h1>
+    <div class="muted">Preview multiple visual themes with live components. Current: <strong id="currentTheme">All</strong></div>
+    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn" onclick="applyTheme('All')">All</button>
+      <button class="btn secondary" onclick="applyTheme('Amber')">Retro Amber</button>
+      <button class="btn secondary" onclick="applyTheme('Green')">Retro Green</button>
+      <button class="btn secondary" onclick="applyTheme('Slate')">Modern Slate</button>
+      <button class="btn secondary" onclick="applyTheme('Classic')">Classic Mac</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- Retro Amber -->
+    <section class="card theme" data-theme="Amber">
+      <header><strong>Retro Amber</strong> <span class="muted">Phosphor amber with green highlights</span></header>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--primary)">Primary<small>#FFB300</small></div>
+        <div class="swatch" style="background:var(--secondary)">Secondary<small>#00E676</small></div>
+        <div class="swatch" style="background:var(--accent)">Accent<small>#90CAF9</small></div>
+        <div class="swatch" style="background:var(--success)">Success</div>
+        <div class="swatch" style="background:var(--warning)">Warning</div>
+        <div class="swatch" style="background:var(--error)">Error</div>
+      </div>
+      <div class="content">
+        <div>
+          <div class="kvs">
+            <div class="kv"><strong>Personality</strong><br/>Warm, retro, focused</div>
+            <div class="kv"><strong>Best for</strong><br/>Waveforms, HUD accents</div>
+            <div class="kv"><strong>Accessibility</strong><br/>High contrast</div>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn">Primary</button>
+            <button class="btn secondary">Secondary</button>
+            <button class="btn ghost">Ghost</button>
+          </div>
+        </div>
+        <div class="cardDemo">
+          <input class="input" placeholder="Input text" />
+          <div style="height:8px"></div>
+          <div class="alert success">Success: Theme applied</div>
+          <div style="height:6px"></div>
+          <div class="alert warning">Warning: Check levels</div>
+          <div style="height:6px"></div>
+          <div class="alert error">Error: Decode failed</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Retro Green -->
+    <section class="card theme" data-theme="Green">
+      <header><strong>Retro Green</strong> <span class="muted">Phosphor green with amber accents</span></header>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--primary)">Primary<small>#00E676</small></div>
+        <div class="swatch" style="background:var(--secondary)">Secondary<small>#FFB300</small></div>
+        <div class="swatch" style="background:var(--accent)">Accent<small>#80DEEA</small></div>
+        <div class="swatch" style="background:var(--success)">Success</div>
+        <div class="swatch" style="background:var(--warning)">Warning</div>
+        <div class="swatch" style="background:var(--error)">Error</div>
+      </div>
+      <div class="content">
+        <div>
+          <div class="kvs">
+            <div class="kv"><strong>Personality</strong><br/>Classic terminal vibe</div>
+            <div class="kv"><strong>Best for</strong><br/>Editor highlights</div>
+            <div class="kv"><strong>Accessibility</strong><br/>AA+ ready</div>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn">Primary</button>
+            <button class="btn secondary">Secondary</button>
+            <button class="btn ghost">Ghost</button>
+          </div>
+        </div>
+        <div class="cardDemo">
+          <input class="input" placeholder="Search" />
+          <div style="height:8px"></div>
+          <div class="alert success">Success: 50 Hz locked</div>
+          <div style="height:6px"></div>
+          <div class="alert warning">Warning: Audio buffer low</div>
+          <div style="height:6px"></div>
+          <div class="alert error">Error: Block checksum</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modern Slate -->
+    <section class="card theme" data-theme="Slate">
+      <header><strong>Modern Slate</strong> <span class="muted">Neutral modern with blue accents</span></header>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--primary)">Primary</div>
+        <div class="swatch" style="background:var(--secondary)">Secondary</div>
+        <div class="swatch" style="background:var(--accent)">Accent</div>
+        <div class="swatch" style="background:var(--success)">Success</div>
+        <div class="swatch" style="background:var(--warning)">Warning</div>
+        <div class="swatch" style="background:var(--error)">Error</div>
+      </div>
+      <div class="content">
+        <div>
+          <div class="kvs">
+            <div class="kv"><strong>Personality</strong><br/>Clean, modern, balanced</div>
+            <div class="kv"><strong>Best for</strong><br/>General UI</div>
+            <div class="kv"><strong>Accessibility</strong><br/>Strong focus states</div>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn">Primary</button>
+            <button class="btn secondary">Secondary</button>
+            <button class="btn ghost">Ghost</button>
+          </div>
+        </div>
+        <div class="cardDemo">
+          <input class="input" placeholder="Filename.ssd" />
+          <div style="height:8px"></div>
+          <div class="alert success">Mounted: DISC0</div>
+          <div style="height:6px"></div>
+          <div class="alert warning">Write-protect ON</div>
+          <div style="height:6px"></div>
+          <div class="alert error">Disk error 18</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Classic Mac -->
+    <section class="card theme" data-theme="Classic">
+      <header><strong>Classic Mac</strong> <span class="muted">Platform-native blues and greens</span></header>
+      <div class="swatches">
+        <div class="swatch" style="background:var(--primary)">Primary</div>
+        <div class="swatch" style="background:var(--secondary)">Secondary</div>
+        <div class="swatch" style="background:var(--accent)">Accent</div>
+        <div class="swatch" style="background:var(--success)">Success</div>
+        <div class="swatch" style="background:var(--warning)">Warning</div>
+        <div class="swatch" style="background:var(--error)">Error</div>
+      </div>
+      <div class="content">
+        <div>
+          <div class="kvs">
+            <div class="kv"><strong>Personality</strong><br/>Native, trustworthy</div>
+            <div class="kv"><strong>Best for</strong><br/>macOS menus, dialogs</div>
+            <div class="kv"><strong>Accessibility</strong><br/>OS-aligned</div>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn">Primary</button>
+            <button class="btn secondary">Secondary</button>
+            <button class="btn ghost">Ghost</button>
+          </div>
+        </div>
+        <div class="cardDemo">
+          <input class="input" placeholder="Tape: program.uef" />
+          <div style="height:8px"></div>
+          <div class="alert success">Decoding: 92%</div>
+          <div style="height:6px"></div>
+          <div class="alert warning">Level high – reduce input</div>
+          <div style="height:6px"></div>
+          <div class="alert error">Checksum mismatch at block 7</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    BBC Model B – Generated Theme Explorer · Switch themes at the top to compare
+  </footer>
+</body>
+</html>
