@@ -8,6 +8,7 @@
 #include "beeb/via6522.hpp"
 #include "beeb_c.h"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -727,6 +728,10 @@ void testC1RuntimeContractFaultAndRecoveryMatrix() {
     CHECK(!failed.status.message.empty());
     CHECK(!failed.value.has_value());
     CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::faulted);
+    const auto fault = runtimeValue(runtime.fault());
+    CHECK(fault.available);
+    CHECK(fault.message == failed.status.message);
+    CHECK(fault.safePoint.state == beeb::RuntimeState::faulted);
 
     CHECK(runtime.start().code == beeb::RuntimeStatusCode::invalidState);
     CHECK(runtime.pause().code == beeb::RuntimeStatusCode::invalidState);
@@ -736,6 +741,9 @@ void testC1RuntimeContractFaultAndRecoveryMatrix() {
 
     checkRuntimeOK(runtime.reset());
     CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+    CHECK(!runtimeValue(runtime.fault()).available);
+    checkRuntimeOK(runtime.loadOSROM(makeNOPOSROM()));
+    checkRuntimeOK(runtime.reset());
     CHECK(runtimeValue(runtime.runFor(1)) >= 1);
 }
 
@@ -781,6 +789,38 @@ void testC1ReplayDeterministicLedger() {
         CHECK(actual.cpu == expected.cpu);
         CHECK(actual.safePoint == expected.safePoint);
         CHECK(actual.ledger == expected.ledger);
+    }
+}
+
+void testC1RuntimeFixedExecutionSlices() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    loadNOPFixture(runtime);
+    checkRuntimeOK(runtime.start());
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    bool observedSlice = false;
+    while (std::chrono::steady_clock::now() < deadline) {
+        const auto ledger = runtime.ledger();
+        observedSlice = std::any_of(ledger.begin(), ledger.end(), [](const auto& entry) {
+            return entry.event == beeb::LedgerEventKind::executionSlice;
+        });
+        if (observedSlice) break;
+        std::this_thread::yield();
+    }
+    CHECK(observedSlice);
+    checkRuntimeOK(runtime.pause());
+
+    const auto ledger = runtime.ledger();
+    std::uint64_t previousSequence = 0;
+    for (const auto& entry : ledger) {
+        CHECK(entry.sequence > previousSequence);
+        previousSequence = entry.sequence;
+        CHECK(entry.safePoint.ledgerSequence == entry.sequence);
+        if (entry.event == beeb::LedgerEventKind::executionSlice) {
+            CHECK_EQ(entry.requestedCycles, beeb::MachineRuntime::executionSliceCycles);
+            CHECK(entry.actualCycles >= entry.requestedCycles);
+            CHECK(entry.safePoint.cpuCycles >= entry.actualCycles);
+        }
     }
 }
 
@@ -891,6 +931,7 @@ int main(int argc, char** argv) {
         {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
         {"C1 contract: structured status isolation", testC1RuntimeContractStructuredStatusIsolation},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
+        {"C1 contract: fixed execution slices share ledger order", testC1RuntimeFixedExecutionSlices},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };
