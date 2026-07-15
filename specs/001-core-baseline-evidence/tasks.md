@@ -94,9 +94,10 @@ not change.
   including nullability, invalid lengths/indices, stable error reset, and no C++
   exception escape; observe any new failing contract before code changes
   - Characterization evidence: all new cases pass without a production change.
-- [ ] T010 [P] [US1] Extend `Tests/BeebKitTests/BeebKitTests.swift` with matching
+- [x] T010 [P] [US1] Extend `Tests/BeebKitTests/BeebKitTests.swift` with matching
   Swift version/error translation and recovery cases; observe any new failing
   contract before code changes
+  - Characterization evidence: all new cases pass without a production change.
 
 ### Implementation for User Story 1
 
