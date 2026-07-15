@@ -105,7 +105,7 @@ not change.
   summary output in `scripts/verify-c0.sh` according to
   `contracts/baseline-verification.md`; make T008 pass while continuing after
   group failures
-- [ ] T012 [US1] Add `verify-c0` and `test-c0` targets to `Makefile`, ensuring
+- [x] T012 [US1] Add `verify-c0` and `test-c0` targets to `Makefile`, ensuring
   normal verification can write only under `.build/c0/` and never update
   `Tests/Fixtures/C0/`
 - [ ] T013 [US1] Fix only contract defects exposed by T009/T010 in

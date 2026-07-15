@@ -10,7 +10,7 @@ else
 SANITIZERS ?= address,undefined
 endif
 
-.PHONY: all test sanitize check-version demo-rom clean
+.PHONY: all test sanitize check-version demo-rom test-c0 verify-c0 clean
 
 all: $(BUILD_DIR)/beeb-headless
 
@@ -49,6 +49,15 @@ sanitize: | $(BUILD_DIR)
 		-fsanitize=$(SANITIZERS) -fno-omit-frame-pointer $(INCLUDES) \
 		$(CORE_SOURCES) Tests/test_main.cpp -o $(BUILD_DIR)/beeb-tests-sanitize
 	$(BUILD_DIR)/beeb-tests-sanitize --quick
+
+test-c0:
+	@for test_script in Tests/C0/test-*.sh; do \
+		echo "$$test_script"; \
+		"$$test_script"; \
+	done
+
+verify-c0:
+	scripts/verify-c0.sh
 
 clean:
 	rm -rf $(BUILD_DIR)
