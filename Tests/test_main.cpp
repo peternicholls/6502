@@ -1109,6 +1109,64 @@ void testC1TransactionsRejectAtomicallyAndCopyInput() {
     checkRuntimeOK(runtime.pause());
 }
 
+std::uint64_t c1PayloadDigest(
+    const beeb::MachineRuntime& runtime, std::uint64_t acceptanceSequence) {
+    const auto ledger = runtime.ledger();
+    const auto entry = std::find_if(ledger.begin(), ledger.end(), [&](const auto& candidate) {
+        return candidate.event == beeb::LedgerEventKind::command &&
+               candidate.acceptanceSequence == acceptanceSequence;
+    });
+    CHECK(entry != ledger.end());
+    return entry->payloadDigest;
+}
+
+void testC1MediaTransactionsCopyAndRejectAtomically() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    auto os = makeNOPOSROM();
+    os[0] = 0xA9; os[1] = 0x03;             // LDA #3
+    os[2] = 0x8D; os[3] = 0x30; os[4] = 0xFE; // STA $FE30
+    os[5] = 0xAD; os[6] = 0x00; os[7] = 0x80; // LDA $8000
+    checkRuntimeOK(runtime.loadOSROM(os));
+
+    std::vector<std::uint8_t> sideways(0x4000, 0x42);
+    const auto sidewaysAcceptance = runtime.acceptedCommandCount() + 1;
+    auto sidewaysLoad = std::async(std::launch::async, [&] {
+        return runtime.loadSidewaysROM(3, sideways);
+    });
+    waitForC1Acceptance(runtime, sidewaysAcceptance);
+    sideways[0] = 0x99;
+    const auto sidewaysStatus = sidewaysLoad.get();
+    checkRuntimeOK(sidewaysStatus);
+
+    std::vector<std::uint8_t> oversizedSideways(0x4001, 0x11);
+    CHECK(runtime.loadSidewaysROM(3, oversizedSideways).code ==
+          beeb::RuntimeStatusCode::invalidArgument);
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.runFor(10)) >= 10);
+    CHECK_EQ(runtimeValue(runtime.cpuState()).a, 0x42);
+
+    std::vector<std::uint8_t> expectedDisc(40 * 10 * 256, 0);
+    expectedDisc[0] = 0xA7;
+    auto disc = expectedDisc;
+    const auto firstDiscAcceptance = runtime.acceptedCommandCount() + 1;
+    auto discMount = std::async(std::launch::async, [&] {
+        return runtime.mountDisc(0, disc, beeb::DiscImage::Layout::SSD);
+    });
+    waitForC1Acceptance(runtime, firstDiscAcceptance);
+    disc[0] = 0xB8;
+    const auto firstDiscStatus = discMount.get();
+    checkRuntimeOK(firstDiscStatus);
+
+    const std::array<std::uint8_t, 1> invalidDisc{0};
+    CHECK(runtime.mountDisc(0, invalidDisc, beeb::DiscImage::Layout::SSD).code ==
+          beeb::RuntimeStatusCode::invalidArgument);
+    const auto secondDiscStatus = runtime.mountDisc(
+        0, expectedDisc, beeb::DiscImage::Layout::SSD);
+    checkRuntimeOK(secondDiscStatus);
+    CHECK_EQ(c1PayloadDigest(runtime, firstDiscStatus.acceptanceSequence),
+             c1PayloadDigest(runtime, secondDiscStatus.acceptanceSequence));
+}
+
 void testC1RaceMixedCommands() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     loadNOPFixture(runtime);
@@ -1221,6 +1279,7 @@ int main(int argc, char** argv) {
         {"C1 lifecycle: accepted pause completes within one slice", testC1PauseCompletesWithinOneAcceptedSlice},
         {"C1 transactions: FIFO reset load query and explicit resume", testC1TransactionsFIFOAndNoAutoResume},
         {"C1 transactions: invalid input is atomic and payload is copied", testC1TransactionsRejectAtomicallyAndCopyInput},
+        {"C1 transactions: media payloads are copied and reject atomically", testC1MediaTransactionsCopyAndRejectAtomically},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };
