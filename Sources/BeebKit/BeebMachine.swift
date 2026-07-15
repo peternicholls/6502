@@ -1,6 +1,36 @@
 import BeebCore
 import Foundation
 
+/// Stable Swift mapping of the C runtime status categories.
+public enum BeebStatusCategory: Sendable, Equatable {
+    /// A pointer, size, value, or output was invalid.
+    case invalidArgument
+    /// The command was not legal in the current lifecycle state.
+    case invalidState
+    /// Emulated execution faulted at a safe point.
+    case executionFailed
+    /// A required allocation or capacity could not be obtained.
+    case resourceExhausted
+    /// The runtime was shutting down or no longer accepted work.
+    case unavailable
+    /// Owner-thread re-entry would have deadlocked.
+    case reentrantCall
+    /// An unexpected implementation failure was contained.
+    case internalFailure
+}
+
+/// Lifecycle state observed at a serialized runtime safe point.
+public enum BeebRuntimeState: Sendable, Equatable {
+    /// Quiescent and accepting commands.
+    case paused
+    /// Executing deterministic slices.
+    case running
+    /// Execution failed and reset is required.
+    case faulted
+    /// Acceptance stopped while accepted work drains.
+    case shuttingDown
+}
+
 /// A value snapshot of the emulated 6502's programmer-visible state.
 public struct BeebCPUState: Sendable {
     /// Accumulator register.
@@ -31,12 +61,28 @@ public struct BeebVideoFrame: Sendable {
     public let rgba: Data
 }
 
-/// Errors produced by validating input or crossing the C core boundary.
+/// Identity of one completed-instruction and fully advanced-device boundary.
+public struct BeebSafePoint: Sendable, Equatable {
+    /// Total completed CPU cycles.
+    public let cpuCycles: UInt64
+    /// Latest completed frame number.
+    public let frameNumber: UInt64
+    /// Runtime lifecycle state at the boundary.
+    public let state: BeebRuntimeState
+    /// Latest total command/execution ledger identity.
+    public let ledgerSequence: UInt64
+}
+
+/// Retained execution failure available until reset succeeds.
+public struct BeebRuntimeFault: Sendable, Equatable {
+    /// Stable diagnostic from the execution failure.
+    public let message: String
+    /// Safe point at which fault detail was observed.
+    public let safePoint: BeebSafePoint
+}
+
+/// Errors produced by validating input or crossing the C runtime boundary.
 public enum BeebError: LocalizedError {
-    /// The C++ machine could not be allocated or constructed.
-    case coreCreationFailed
-    /// A C++ exception or C boundary validation error, preserved as text.
-    case coreFailure(String)
     /// The operating-system ROM was not exactly 16 KiB.
     case invalidOSROM
     /// The sideways-ROM bank or byte count was outside the supported range.
@@ -45,73 +91,99 @@ public enum BeebError: LocalizedError {
     case invalidDiscImage
     /// The drive number was not zero or one.
     case invalidDrive
+    /// The audio frame count or sample rate was invalid.
+    case invalidAudioRequest
+    /// The keyboard matrix coordinates were outside 0...15.
+    case invalidKey
+    /// A C status category and its operation-scoped diagnostic.
+    case coreStatus(BeebStatusCategory, String)
 
     /// A user-facing description of this error.
     public var errorDescription: String? {
         switch self {
-        case .coreCreationFailed: return "The emulator core could not be created."
-        case let .coreFailure(message): return "The emulator core failed: \(message)"
-        case .invalidOSROM: return "A BBC Model B OS ROM must be exactly 16 KiB."
-        case .invalidSidewaysROM: return "Use bank 0–15 and a sideways ROM between 1 byte and 16 KiB."
-        case .invalidDiscImage: return "The disc is not a valid 40/80-track SSD or DSD image."
-        case .invalidDrive: return "The drive number must be 0 or 1."
+        case .invalidOSROM:
+            return "A BBC Model B OS ROM must be exactly 16 KiB."
+        case .invalidSidewaysROM:
+            return "Use bank 0–15 and a sideways ROM between 1 byte and 16 KiB."
+        case .invalidDiscImage:
+            return "The disc is not a valid 40/80-track SSD or DSD image."
+        case .invalidDrive:
+            return "The drive number must be 0 or 1."
+        case .invalidAudioRequest:
+            return "Audio needs a positive frame count and finite positive sample rate."
+        case .invalidKey:
+            return "Keyboard row and column must both be in 0...15."
+        case let .coreStatus(category, message):
+            return "The emulator core reported \(category): \(message)"
         }
     }
 }
 
-/// Thread-safe Swift owner of one deterministic BBC Model B core.
+/// Concurrent Swift owner of one deterministic BBC Model B runtime.
 ///
-/// The instance owns its C handle until deinitialization. Public operations are
-/// serialized by an internal lock, so the class can cross concurrency domains;
-/// callbacks are not invoked while that lock is held. ROM and disc inputs and
-/// returned frames/audio are copied into independently owned storage.
+/// The C++ owner serializes all machine operations. This wrapper adds no second
+/// lock: each method submits one synchronous C command and immediately maps its
+/// operation-owned status or copies its successful output into a Swift value.
+/// Callers may retain the instance across concurrency domains. Deinitialization
+/// performs blocking shutdown after the final strong reference is released.
 public final class BeebMachine: @unchecked Sendable {
     private let handle: OpaquePointer
-    private let lock = NSLock()
 
-    /// Creates a machine with no ROM or disc loaded.
-    /// - Throws: ``BeebError/coreCreationFailed`` if the core cannot be created.
+    /// Creates a paused machine with no ROM or disc loaded.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if runtime creation fails.
     public init() throws {
-        guard let handle = beeb_create() else { throw BeebError.coreCreationFailed }
-        self.handle = handle
+        var created: OpaquePointer?
+        try Self.check(beeb_create(&created))
+        guard let created else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C runtime succeeded without returning a handle")
+        }
+        handle = created
     }
 
-    deinit { beeb_destroy(handle) }
+    deinit { _ = beeb_destroy(handle) }
+
+    /// Lifecycle state from one FIFO safe point.
+    public var state: BeebRuntimeState {
+        get throws {
+            var state = BEEB_RUNTIME_STATE_PAUSED
+            try Self.check(beeb_get_runtime_state(handle, &state))
+            return Self.runtimeState(state)
+        }
+    }
+
+    /// Starts sustained deterministic execution; running is idempotent.
+    public func start() throws { try Self.check(beeb_start(handle)) }
+
+    /// Pauses at a safe point; paused is idempotent.
+    public func pause() throws { try Self.check(beeb_pause(handle)) }
 
     /// Validates and copies a BBC Model B operating-system ROM.
     /// - Parameter data: Exactly 16 KiB of ROM bytes.
-    /// - Throws: ``BeebError/invalidOSROM`` for the wrong size, or
-    ///   ``BeebError/coreFailure(_:)`` for a core diagnostic.
+    /// - Throws: ``BeebError/invalidOSROM`` or a typed core status.
     public func loadOSROM(_ data: Data) throws {
         guard data.count == 16 * 1024 else { throw BeebError.invalidOSROM }
-        let (loaded, coreError) = lock.withLock {
-            let loaded = data.withUnsafeBytes { bytes in
-                beeb_load_os_rom(handle, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
-            }
-            return (loaded, coreErrorDescription())
+        let status = data.withUnsafeBytes { bytes in
+            beeb_load_os_rom(
+                handle, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
         }
-        if let coreError { throw BeebError.coreFailure(coreError) }
-        guard loaded != 0 else { throw BeebError.invalidOSROM }
+        try Self.check(status)
     }
 
-    /// Validates and copies a sideways ROM into a bank.
+    /// Validates and copies a sideways ROM into one bank.
     /// - Parameters:
-    ///   - data: Between one byte and 16 KiB; the machine does not retain this value.
+    ///   - data: Between one byte and 16 KiB.
     ///   - bank: Bank number in the range 0...15.
-    /// - Throws: ``BeebError/invalidSidewaysROM`` for invalid input, or
-    ///   ``BeebError/coreFailure(_:)`` for a core diagnostic.
+    /// - Throws: ``BeebError/invalidSidewaysROM`` or a typed core status.
     public func loadSidewaysROM(_ data: Data, bank: UInt8) throws {
         guard bank < 16, !data.isEmpty, data.count <= 16 * 1024 else {
             throw BeebError.invalidSidewaysROM
         }
-        let (loaded, coreError) = lock.withLock {
-            let loaded = data.withUnsafeBytes { bytes in
-                beeb_load_sideways_rom(handle, bank, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
-            }
-            return (loaded, coreErrorDescription())
+        let status = data.withUnsafeBytes { bytes in
+            beeb_load_sideways_rom(
+                handle, bank, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
         }
-        if let coreError { throw BeebError.coreFailure(coreError) }
-        guard loaded != 0 else { throw BeebError.invalidSidewaysROM }
+        try Self.check(status)
     }
 
     /// Validates, copies, and mounts a DFS disc image.
@@ -119,129 +191,193 @@ public final class BeebMachine: @unchecked Sendable {
     ///   - data: Complete 1...80-track image bytes.
     ///   - drive: Drive zero or one.
     ///   - doubleSided: `true` for interleaved DSD ordering; `false` for SSD.
-    ///   - writable: Whether the machine may modify its private image copy.
-    /// - Throws: An input-specific ``BeebError`` or
-    ///   ``BeebError/coreFailure(_:)`` for a core diagnostic.
-    public func mountDisc(_ data: Data, drive: Int = 0, doubleSided: Bool, writable: Bool = false) throws {
+    ///   - writable: Whether the runtime may modify its private image copy.
+    /// - Throws: An input-specific ``BeebError`` or typed core status.
+    public func mountDisc(
+        _ data: Data,
+        drive: Int = 0,
+        doubleSided: Bool,
+        writable: Bool = false
+    ) throws {
         guard (0...1).contains(drive) else { throw BeebError.invalidDrive }
         let bytesPerTrack = 10 * 256 * (doubleSided ? 2 : 1)
         let tracks = data.count / bytesPerTrack
         guard data.count.isMultiple(of: bytesPerTrack), (1...80).contains(tracks) else {
             throw BeebError.invalidDiscImage
         }
-        let (loaded, coreError) = lock.withLock {
-            let loaded = data.withUnsafeBytes { bytes in
-                beeb_mount_disc(handle, UInt32(drive), bytes.bindMemory(to: UInt8.self).baseAddress,
-                                bytes.count, doubleSided ? 1 : 0, writable ? 1 : 0)
-            }
-            return (loaded, coreErrorDescription())
+        let status = data.withUnsafeBytes { bytes in
+            beeb_mount_disc(
+                handle,
+                UInt32(drive),
+                bytes.bindMemory(to: UInt8.self).baseAddress,
+                bytes.count,
+                doubleSided ? 1 : 0,
+                writable ? 1 : 0
+            )
         }
-        if let coreError { throw BeebError.coreFailure(coreError) }
-        guard loaded != 0 else { throw BeebError.invalidDiscImage }
+        try Self.check(status)
     }
 
-    /// Resets CPU and device state while retaining loaded media.
-    public func reset() {
-        lock.withLock { beeb_reset(handle) }
-    }
+    /// Resets CPU and devices, clears a fault, retains media, and finishes paused.
+    public func reset() throws { try Self.check(beeb_reset(handle)) }
 
-    @discardableResult
-    /// Executes whole instructions until at least the cycle budget has elapsed.
+    /// Executes whole instructions while paused until the cycle budget is met.
     /// - Parameter cycles: Minimum CPU-cycle budget; zero performs no work.
-    /// - Returns: Actual cycles, which may exceed the budget by one instruction.
-    /// - Throws: ``BeebError/coreFailure(_:)`` if the core rejects execution.
+    /// - Returns: Actual cycles, which may exceed the request by one instruction.
+    @discardableResult
     public func run(cycles: UInt64) throws -> UInt64 {
-        let (executed, coreError) = lock.withLock {
-            let executed = beeb_run_cycles(handle, cycles)
-            return (executed, coreErrorDescription())
-        }
-        if let coreError { throw BeebError.coreFailure(coreError) }
-        return executed
+        var actual: UInt64 = 0
+        try Self.check(beeb_run_cycles(handle, cycles, &actual))
+        return actual
     }
 
-    @discardableResult
-    /// Runs until a frame completes or the instruction-cycle limit is reached.
+    /// Executes while paused until a frame completes or the budget is met.
     /// - Parameter maximumCycles: Maximum cycle budget before returning `false`.
     /// - Returns: `true` when a new frame completed.
-    /// - Throws: ``BeebError/coreFailure(_:)`` if execution fails.
+    @discardableResult
     public func runToNextFrame(maximumCycles: UInt64 = 100_000) throws -> Bool {
-        let (result, coreError) = lock.withLock {
-            let result = beeb_run_until_frame(handle, maximumCycles)
-            return (result, coreErrorDescription())
-        }
-        if let coreError { throw BeebError.coreFailure(coreError) }
-        return result > 0
+        var completed: Int32 = 0
+        try Self.check(beeb_run_until_frame(handle, maximumCycles, &completed))
+        return completed != 0
     }
 
-    /// A value copy of the current CPU registers and cycle counter.
-    public var cpuState: BeebCPUState {
-        lock.withLock {
-            let state = beeb_get_cpu_state(handle)
-            return BeebCPUState(a: state.a, x: state.x, y: state.y, stackPointer: state.sp,
-                                status: state.p, programCounter: state.pc, cycles: state.cycles)
-        }
+    /// Copies CPU registers and cycle count from one safe point.
+    public func cpuState() throws -> BeebCPUState {
+        var state = beeb_cpu_state()
+        try Self.check(beeb_get_cpu_state(handle, &state))
+        return BeebCPUState(
+            a: state.a,
+            x: state.x,
+            y: state.y,
+            stackPointer: state.sp,
+            status: state.p,
+            programCounter: state.pc,
+            cycles: state.cycles
+        )
     }
 
-    /// Copies the latest machine-owned C frame buffer into Swift-owned storage.
-    ///
-    /// The copy is completed while the machine lock is held, before the C
-    /// buffer can be invalidated by another operation.
-    /// - Returns: A complete frame, or `nil` before a frame has been rendered.
-    public func videoFrame() -> BeebVideoFrame? {
-        lock.withLock {
-            var width: UInt32 = 0
-            var height: UInt32 = 0
-            var number: UInt64 = 0
-            guard let pointer = beeb_get_frame_rgba(handle, &width, &height, &number), width > 0, height > 0 else {
-                return nil
-            }
-            let byteCount = Int(width) * Int(height) * 4
-            return BeebVideoFrame(width: Int(width), height: Int(height), number: number,
-                                  rgba: Data(bytes: pointer, count: byteCount))
+    /// Copies the latest C-owned frame into independently owned Swift storage.
+    /// - Returns: A complete frame, or `nil` before one has rendered.
+    public func videoFrame() throws -> BeebVideoFrame? {
+        var frame = beeb_frame()
+        try Self.check(beeb_get_frame(handle, &frame))
+        defer { _ = beeb_frame_release(&frame) }
+        guard frame.available != 0 else { return nil }
+        guard let bytes = frame.rgba else {
+            throw BeebError.coreStatus(
+                .internalFailure, "available C frame did not contain RGBA storage")
         }
+        let width = Int(frame.width)
+        let height = Int(frame.height)
+        let expectedSize = width * height * 4
+        guard frame.rgba_size == expectedSize else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C frame byte count did not match its dimensions")
+        }
+        return BeebVideoFrame(
+            width: width,
+            height: height,
+            number: frame.number,
+            rgba: Data(bytes: bytes, count: expectedSize)
+        )
     }
 
-    /// Renders mono samples without advancing CPU time.
+    /// Renders independently owned mono samples without advancing CPU time.
     /// - Parameters:
-    ///   - frames: Positive number of samples to render.
-    ///   - sampleRate: Finite, positive sample rate in hertz.
-    /// - Returns: Swift-owned samples, or an empty array for invalid arguments.
-    public func renderAudio(frames: Int, sampleRate: Double) -> [Float] {
-        guard frames > 0, sampleRate.isFinite, sampleRate > 0 else { return [] }
-        return lock.withLock {
-            var output = Array(repeating: Float.zero, count: frames)
-            output.withUnsafeMutableBufferPointer {
-                beeb_render_audio(handle, $0.baseAddress, $0.count, sampleRate)
-            }
-            return output
+    ///   - frames: Positive number of samples.
+    ///   - sampleRate: Finite positive sample rate in hertz.
+    public func renderAudio(frames: Int, sampleRate: Double) throws -> [Float] {
+        guard frames > 0, sampleRate.isFinite, sampleRate > 0 else {
+            throw BeebError.invalidAudioRequest
+        }
+        var output = Array(repeating: Float.zero, count: frames)
+        let status = output.withUnsafeMutableBufferPointer { buffer in
+            beeb_render_audio(handle, buffer.baseAddress, buffer.count, sampleRate)
+        }
+        try Self.check(status)
+        return output
+    }
+
+    /// Changes one keyboard-matrix bit in FIFO order.
+    public func setKey(column: UInt8, row: UInt8, pressed: Bool) throws {
+        guard column < 16, row < 16 else { throw BeebError.invalidKey }
+        try Self.check(beeb_set_key(handle, column, row, pressed ? 1 : 0))
+    }
+
+    /// Changes BREAK state without inventing a lifecycle transition.
+    public func setBreak(pressed: Bool) throws {
+        try Self.check(beeb_set_break(handle, pressed ? 1 : 0))
+    }
+
+    /// Returns the current completed-instruction/device-tick identity.
+    public func safePoint() throws -> BeebSafePoint {
+        var point = beeb_safe_point()
+        try Self.check(beeb_get_safe_point(handle, &point))
+        return Self.safePoint(point)
+    }
+
+    /// Returns retained execution-fault detail, or `nil` outside faulted state.
+    public func fault() throws -> BeebRuntimeFault? {
+        var detail = beeb_fault_detail()
+        try Self.check(beeb_get_fault(handle, &detail))
+        guard detail.available != 0 else { return nil }
+        return BeebRuntimeFault(
+            message: Self.faultMessage(detail),
+            safePoint: Self.safePoint(detail.safe_point)
+        )
+    }
+
+    private static func check(_ status: beeb_status) throws {
+        guard status.code != BEEB_STATUS_OK else { return }
+        throw BeebError.coreStatus(
+            statusCategory(status.code), statusMessage(status))
+    }
+
+    private static func statusCategory(_ code: beeb_status_code) -> BeebStatusCategory {
+        switch code {
+        case BEEB_STATUS_INVALID_ARGUMENT: return .invalidArgument
+        case BEEB_STATUS_INVALID_STATE: return .invalidState
+        case BEEB_STATUS_EXECUTION_FAILED: return .executionFailed
+        case BEEB_STATUS_RESOURCE_EXHAUSTED: return .resourceExhausted
+        case BEEB_STATUS_UNAVAILABLE: return .unavailable
+        case BEEB_STATUS_REENTRANT_CALL: return .reentrantCall
+        default: return .internalFailure
         }
     }
 
-    /// Changes one key in the emulated keyboard matrix.
-    /// - Parameters:
-    ///   - column: Matrix column; values outside 0...15 are ignored by the core.
-    ///   - row: Matrix row; values outside 0...15 are ignored by the core.
-    ///   - pressed: Whether the key is pressed.
-    public func setKey(column: UInt8, row: UInt8, pressed: Bool) {
-        lock.withLock { beeb_set_key(handle, column, row, pressed ? 1 : 0) }
+    private static func runtimeState(_ state: beeb_runtime_state) -> BeebRuntimeState {
+        switch state {
+        case BEEB_RUNTIME_STATE_PAUSED: return .paused
+        case BEEB_RUNTIME_STATE_RUNNING: return .running
+        case BEEB_RUNTIME_STATE_FAULTED: return .faulted
+        default: return .shuttingDown
+        }
     }
 
-    /// Changes BREAK state; a released-to-pressed transition resets the machine.
-    /// - Parameter pressed: Whether BREAK is held.
-    public func setBreak(pressed: Bool) {
-        lock.withLock { beeb_set_break(handle, pressed ? 1 : 0) }
+    private static func safePoint(_ point: beeb_safe_point) -> BeebSafePoint {
+        BeebSafePoint(
+            cpuCycles: point.cpu_cycles,
+            frameNumber: point.frame_number,
+            state: runtimeState(point.state),
+            ledgerSequence: point.ledger_sequence
+        )
     }
 
-    private func coreErrorDescription() -> String? {
-        guard let error = beeb_last_error(handle), error.pointee != 0 else { return nil }
-        return String(cString: error)
+    private static func statusMessage(_ status: beeb_status) -> String {
+        var message = status.message
+        return withUnsafePointer(to: &message) { pointer in
+            pointer.withMemoryRebound(to: CChar.self, capacity: 256) {
+                String(cString: $0)
+            }
+        }
     }
-}
 
-private extension NSLock {
-    func withLock<T>(_ operation: () throws -> T) rethrows -> T {
-        lock()
-        defer { unlock() }
-        return try operation()
+    private static func faultMessage(_ fault: beeb_fault_detail) -> String {
+        var message = fault.message
+        return withUnsafePointer(to: &message) { pointer in
+            pointer.withMemoryRebound(to: CChar.self, capacity: 256) {
+                String(cString: $0)
+            }
+        }
     }
 }

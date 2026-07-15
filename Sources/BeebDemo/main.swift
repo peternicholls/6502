@@ -32,7 +32,7 @@ final class EmulatorModel: ObservableObject {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
             try machine.loadOSROM(Data(contentsOf: url))
-            machine.reset()
+            try machine.reset()
             status = "OS loaded — running"
             start()
         } catch { status = error.localizedDescription }
@@ -62,14 +62,18 @@ final class EmulatorModel: ObservableObject {
         isRunning = false
     }
 
-    func reset() { machine?.reset() }
+    func reset() {
+        guard let machine else { return }
+        do { try machine.reset() }
+        catch { status = error.localizedDescription; stop() }
+    }
 
     private func stepFrame() {
         guard let machine else { return }
         do {
             _ = try machine.runToNextFrame()
-            if let frame = machine.videoFrame() { screen = platformImage(frame) }
-            let cpu = machine.cpuState
+            if let frame = try machine.videoFrame() { screen = platformImage(frame) }
+            let cpu = try machine.cpuState()
             status = String(format: "PC %04X   %,llu cycles", cpu.programCounter, cpu.cycles)
         } catch { status = error.localizedDescription; stop() }
     }
