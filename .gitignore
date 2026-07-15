@@ -1,48 +1,51 @@
-## macOS
+# macOS
 .DS_Store
+._*
 .AppleDouble
 .LSOverride
-Icon
-._*
-.Spotlight-V100
-.Trashes
+Icon?
+*.rom
+*.ssd
+*.dsd
+*.uef
+*.wav
 
-## Xcode
-build/
+# Xcode build artifacts
 DerivedData/
+build/
+Build/
 *.xcuserstate
-*.xcuserdatad/
-xcuserdata/
-*.xccheckout
 *.moved-aside
+*.xccheckout
 *.xcscmblueprint
+
+# Xcode user data
+**/xcuserdata/
+**/*.xcuserstate
+
+# Swift Package Manager
+/.build/
+/.swiftpm/
+
+# Swift Playgrounds
+timeline.xctimeline
+playground.xcworkspace/
+
+# CocoaPods
+/Pods/
+
+# Carthage
+/Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
 
 # Code coverage
 *.xccovreport
 *.xccovarchive
-
-## Swift Package Manager
-.build/
-Packages/
-Package.pins
-Package.resolved
-*.xcodeproj/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
-.swiftpm/
-
-## CocoaPods
-Pods/
-
-## Carthage
-Carthage/Build/
-Carthage/Checkouts/
-
-## fastlane
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots/**/*.png
-fastlane/test_output
 
 # Bot/Agent Infrastructure
 logs/*.log
@@ -51,7 +54,18 @@ scripts/bots/venv-bots/
 scripts/agents/venv-agents/
 *.pyc
 __pycache__/
+
+# uv (Python package manager)
+.venv/
+uv.lock
 !**/.gitkeep
+
+# Agent/tool state
+.omx/
+
+# Backup files
+.gitignore_prev
+*_prev
 
 ## Misc
 *.hmap

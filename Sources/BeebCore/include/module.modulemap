@@ -1,0 +1,4 @@
+module BeebCore {
+    header "beeb_c.h"
+    export *
+}
