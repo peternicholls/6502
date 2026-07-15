@@ -81,6 +81,8 @@ default_groups() {
     printf 'cleanroom-boot\tall\t@internal\n'
     printf 'bitmap-reference\tall\t@internal\n'
     printf 'mode7-reference\tall\t@internal\n'
+    printf 'cpp-documentation\tall\t@internal\n'
+    printf 'swift-documentation\tmacos\t@internal\n'
 }
 
 applicable() {
@@ -121,6 +123,14 @@ run_internal() {
         mode7-reference)
             "${root}/scripts/verify-c0-references.sh" --check mode7-reference \
                 --output-dir "${output_dir}/reference-mode7"
+            ;;
+        cpp-documentation)
+            "${root}/scripts/build-docs.sh" --profile portable --check \
+                --output-dir "${root}/.build/docs"
+            ;;
+        swift-documentation)
+            "${root}/scripts/build-docs.sh" --profile macos --check \
+                --output-dir "${root}/.build/docs"
             ;;
         *) printf 'unknown internal group: %s\n' "${id}" >&2; return 127 ;;
     esac

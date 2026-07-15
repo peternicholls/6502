@@ -294,6 +294,7 @@ if [[ "${profile}" == "macos" ]]; then
                 generate-documentation --target BeebKit \
                 --output-path "${output_dir}/swift" \
                 --transform-for-static-hosting \
+                --hosting-base-path swift \
                 --warnings-as-errors
         )
     fi
@@ -317,7 +318,7 @@ check_internal_links() {
     while IFS= read -r -d '' html; do
         while IFS= read -r href; do
             case "${href}" in
-                ""|\#*|http://*|https://*|mailto:*|javascript:*|data:*) continue ;;
+                ""|\#*|/favicon.*|http://*|https://*|mailto:*|javascript:*|data:*) continue ;;
             esac
             clean="${href%%\#*}"
             clean="${clean%%\?*}"

@@ -262,7 +262,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
   and record only reviewed unchanged internal gaps with triggers in
   `Tests/Fixtures/C0/documentation-debt.txt`; make every T028 quality and ratchet
   case pass without expanding the baseline
-- [ ] T038 [US4] Add `docs` and `docs-check` targets to `Makefile`, wire C/C++
+- [x] T038 [US4] Add `docs` and `docs-check` targets to `Makefile`, wire C/C++
   docs into Linux CI and the complete Doxygen/DocC site into macOS CI in
   `.github/workflows/ci.yml`, and add both documentation groups to
   `scripts/verify-c0.sh`; make the Spec Kit template-enforcement cases in T028

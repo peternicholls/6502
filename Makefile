@@ -3,6 +3,7 @@ CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
 BUILD_DIR = .build/cpp
+DOCS_PROFILE ?= auto
 VERSION := $(strip $(shell sed -n '1p' VERSION))
 ifeq ($(shell uname -s),Darwin)
 SANITIZERS ?= undefined
@@ -12,7 +13,7 @@ endif
 
 .PHONY: all test sanitize check-version demo-rom test-c0 verify-c0 \
 	verify-c0-references update-c0-reference measure-c0 \
-	validate-c0-measurement clean
+	validate-c0-measurement docs docs-check clean
 
 all: $(BUILD_DIR)/beeb-headless
 
@@ -75,6 +76,12 @@ measure-c0:
 
 validate-c0-measurement:
 	Tests/C0/test-measurement-record.sh
+
+docs:
+	scripts/build-docs.sh --profile "$(DOCS_PROFILE)"
+
+docs-check:
+	scripts/build-docs.sh --profile "$(DOCS_PROFILE)" --check
 
 clean:
 	rm -rf $(BUILD_DIR)

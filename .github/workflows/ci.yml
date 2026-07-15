@@ -12,20 +12,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install documentation generator
+        run: sudo apt-get update && sudo apt-get install -y doxygen
       - name: Test C0 verifier orchestration
         run: Tests/C0/test-baseline-verifier.sh
       - name: Build and test the C++ core
         run: make test all demo-rom
       - name: Run native sanitizers
         run: make sanitize
+      - name: Validate portable code documentation
+        run: make docs-check DOCS_PROFILE=portable
 
   apple-package:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install documentation generator
+        run: brew install doxygen
       - name: Test C0 verifier orchestration
         run: Tests/C0/test-baseline-verifier.sh
       - name: Test the Swift package
         run: swift test
       - name: Build the SwiftUI demo
         run: swift build
+      - name: Validate complete code documentation
+        run: make docs-check DOCS_PROFILE=macos
