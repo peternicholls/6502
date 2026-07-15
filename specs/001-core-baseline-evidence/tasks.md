@@ -166,7 +166,7 @@ normal verification reports but never replaces it.
 - [x] T022 [US2] Wire fixture provenance, boot state, bitmap, and Mode 7 groups
   into `scripts/verify-c0.sh`; make all T016 cases pass and preserve later-group
   execution after a reference mismatch
-- [ ] T023 [US2] Record the approved identities, exact coverage, known visual
+- [x] T023 [US2] Record the approved identities, exact coverage, known visual
   limitations, and replacement history policy in `docs/CORE_BASELINE.md`
 
 **Checkpoint**: US2 independently proves lawful deterministic boot and selected
