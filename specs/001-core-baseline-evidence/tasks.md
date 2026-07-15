@@ -284,7 +284,7 @@ evidence without claiming undelivered fidelity.
 - [x] T040 [P] Update `docs/ARCHITECTURE.md` with the evidence-tool boundary,
   generated-documentation architecture, comment/guide ownership, and the rule
   that neither tooling path enters the runtime core
-- [ ] T041 [P] Update `docs/STATUS.md` with only verified C0 commands, exact
+- [x] T041 [P] Update `docs/STATUS.md` with only verified C0 commands, exact
   approved fixture/reference coverage, documentation coverage/debt, measurement
   context, and remaining hardware limitations
 - [ ] T042 [P] Move C0 to Complete and C1 to Ready in `docs/CORE_ROADMAP.md` only
