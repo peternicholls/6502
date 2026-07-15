@@ -122,9 +122,9 @@ identity precedes the marker and completes before owner exit. The machine is
 released only after the owner has stopped dereferencing it.
 
 The owner cannot invoke shutdown because it cannot join itself. Destruction
-calls the same idempotent drain-and-join path. The later C handle adds a separate
-outer lifetime guard so `beeb_destroy` can overlap calls already inside the C
-API without releasing the runtime early.
+calls the same idempotent drain-and-join path. The C handle adds a separate outer
+lifetime guard so `beeb_destroy` can overlap calls already inside the C API
+without releasing the runtime early.
 
 ## Diagnostic replay
 

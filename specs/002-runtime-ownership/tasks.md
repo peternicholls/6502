@@ -48,7 +48,7 @@
 - [x] T022 [US3] Migrate `Tools/beeb-headless/main.cpp`, `Tools/beeb-evidence/main.cpp`, and examples to 0.2. Verify builds, C0 evidence, and no old API usage via `rg`.
 - [x] T023 [US3] Add failing Swift state/start/pause/status-category/concurrency/recovery tests in `Tests/BeebKitTests/BeebMachineTests.swift`. Verify focused red failure.
 - [x] T024 [US3] Migrate `BeebMachine` ownership and operations to structured results in `Sources/BeebKit/BeebMachine.swift`, removing redundant direct-state `NSLock` serialization. Verify Swift tests/build.
-- [ ] T025 [US3] Document typed errors, concurrency, lifecycle, ownership, recovery, and every changed private/internal Swift or C-boundary named abstraction in declarations, `Sources/BeebKit/Documentation.docc/BeebKit.md`, and `docs/code/host-boundary.md`. Verify representative internal and public pages in `make docs-check`; commit the complete verified Phase 5 once.
+- [x] T025 [US3] Document typed errors, concurrency, lifecycle, ownership, recovery, and every changed private/internal Swift or C-boundary named abstraction in declarations, `Sources/BeebKit/Documentation.docc/BeebKit.md`, and `docs/code/host-boundary.md`. Verify representative internal and public pages in `make docs-check`; commit the complete verified Phase 5 once.
 
 ## Phase 6: C1 Exit and Governance
 

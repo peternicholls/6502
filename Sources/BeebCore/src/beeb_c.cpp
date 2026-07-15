@@ -21,6 +21,7 @@ struct beeb_machine final {};
 
 namespace {
 
+/// Creates a zero-filled, null-terminated operation status without throwing.
 beeb_status makeStatus(
     beeb_status_code code, std::string_view message = {}) noexcept {
     beeb_status result{};
@@ -32,6 +33,7 @@ beeb_status makeStatus(
     return result;
 }
 
+/// Maps the closed C++ status vocabulary one-to-one into the C ABI vocabulary.
 beeb_status_code translateStatusCode(beeb::RuntimeStatusCode code) noexcept {
     switch (code) {
     case beeb::RuntimeStatusCode::ok: return BEEB_STATUS_OK;
@@ -46,10 +48,12 @@ beeb_status_code translateStatusCode(beeb::RuntimeStatusCode code) noexcept {
     return BEEB_STATUS_INTERNAL_FAILURE;
 }
 
+/// Copies a C++ category and diagnostic into one self-contained C result.
 beeb_status translateStatus(const beeb::RuntimeStatus& status) noexcept {
     return makeStatus(translateStatusCode(status.code), status.message);
 }
 
+/// Maps runtime lifecycle state without exposing implementation storage.
 beeb_runtime_state translateState(beeb::RuntimeState state) noexcept {
     switch (state) {
     case beeb::RuntimeState::paused: return BEEB_RUNTIME_STATE_PAUSED;
@@ -60,6 +64,7 @@ beeb_runtime_state translateState(beeb::RuntimeState state) noexcept {
     return BEEB_RUNTIME_STATE_FAULTED;
 }
 
+/// Copies a runtime safe point into its portable C aggregate.
 beeb_safe_point translateSafePoint(const beeb::SafePoint& point) noexcept {
     return {
         point.cpuCycles,
@@ -81,7 +86,9 @@ struct HandleState final {
     beeb::MachineRuntime runtime;
 };
 
+/// Serializes raw-token admission and removal without dereferencing the token.
 std::mutex registryMutex;
+/// Retains each live state independently of its opaque allocation lifetime.
 std::unordered_map<beeb_machine*, std::shared_ptr<HandleState>> registry;
 
 /// RAII admission record that prevents handle release while one C call is inside.
@@ -143,6 +150,7 @@ private:
     beeb_status status_ = makeStatus(BEEB_STATUS_INTERNAL_FAILURE);
 };
 
+/// Admits one handle call, contains adapter exceptions, and releases admission on return.
 template <typename Callable>
 beeb_status operation(beeb_machine* machine, Callable&& callable) noexcept {
     ActiveCall call(machine);
@@ -158,6 +166,7 @@ beeb_status operation(beeb_machine* machine, Callable&& callable) noexcept {
     }
 }
 
+/// Creates the consistent invalid-argument result for a required null pointer.
 beeb_status missingOutput(const char* name) noexcept {
     return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, name);
 }

@@ -16,28 +16,27 @@ window creation, audio-device access or network access. ROM/media bytes enter
 through explicit load methods. Video and audio leave as plain buffers.
 
 The C ABI in `beeb_c.h` is the stable cross-language seam. `BeebKit` owns the
-Swift lifetime and locking wrapper. `BeebDemo` owns document import and UI.
+Swift lifetime and typed value/error mapping. `BeebDemo` owns document import
+and UI.
 
-No C++ exception may cross the C ABI. Fallible entry points translate failures
-into sentinel return values and retain a per-machine diagnostic for the host to
-read immediately. `BeebKit` converts those diagnostics into `BeebError` values.
-The Swift wrapper serializes every read and mutation of core state with one
-lock, which is the basis for its `Sendable` conformance.
+No C++ exception may cross the C ABI. Fallible entry points return structured,
+operation-owned statuses and write outputs only on success. `BeebKit` preserves
+each category and diagnostic as a typed `BeebError` and returns Swift-owned
+values. It adds no lock because the runtime owner already serializes concurrent
+calls.
 
 Within C++, `MachineRuntime` is the supported synchronization boundary for a
 machine. It constructs one `BBCMicro` on one owner thread, accepts copied
 commands through a capacity-64 FIFO, and returns only operation-owned status or
-result values. Direct `BBCMicro` construction remains a low-level facility for
-single-threaded core tests while the C and Swift hosts complete their C1
-migration. The host-boundary migration replaces the sentinel/lock arrangement
-described above as one atomic 0.2 contract change; hosts must not combine the
-old boundary with direct runtime access.
+result values. Direct `BBCMicro` construction remains a low-level facility only
+for single-threaded core and standalone CPU diagnostics.
 
 ```mermaid
 flowchart TD
     Host["SwiftUI · Files · Metal · AVAudioEngine"] --> Kit[BeebKit]
     Kit --> ABI["C ABI · beeb_c.h"]
-    ABI --> Core["CPU + BBC bus"]
+    ABI --> Runtime["MachineRuntime · owner + FIFO"]
+    Runtime --> Core["CPU + BBC bus"]
     Core --> Devices["VIA · CRTC/ULA · 8271 · SN76489"]
     Devices --> Buffers["RGBA + float audio buffers"]
 ```

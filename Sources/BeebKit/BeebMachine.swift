@@ -127,6 +127,7 @@ public enum BeebError: LocalizedError {
 /// Callers may retain the instance across concurrency domains. Deinitialization
 /// performs blocking shutdown after the final strong reference is released.
 public final class BeebMachine: @unchecked Sendable {
+    /// Opaque C token whose registry admission keeps concurrent calls alive through return.
     private let handle: OpaquePointer
 
     /// Creates a paused machine with no ROM or disc loaded.
@@ -327,12 +328,14 @@ public final class BeebMachine: @unchecked Sendable {
         )
     }
 
+    /// Converts one non-OK C status into its lossless typed Swift error.
     private static func check(_ status: beeb_status) throws {
         guard status.code != BEEB_STATUS_OK else { return }
         throw BeebError.coreStatus(
             statusCategory(status.code), statusMessage(status))
     }
 
+    /// Maps the closed C category vocabulary into the public Swift vocabulary.
     private static func statusCategory(_ code: beeb_status_code) -> BeebStatusCategory {
         switch code {
         case BEEB_STATUS_INVALID_ARGUMENT: return .invalidArgument
@@ -345,6 +348,7 @@ public final class BeebMachine: @unchecked Sendable {
         }
     }
 
+    /// Maps a C lifecycle value without introducing mirrored mutable state.
     private static func runtimeState(_ state: beeb_runtime_state) -> BeebRuntimeState {
         switch state {
         case BEEB_RUNTIME_STATE_PAUSED: return .paused
@@ -354,6 +358,7 @@ public final class BeebMachine: @unchecked Sendable {
         }
     }
 
+    /// Copies a C safe-point aggregate into a Swift-owned value.
     private static func safePoint(_ point: beeb_safe_point) -> BeebSafePoint {
         BeebSafePoint(
             cpuCycles: point.cpu_cycles,
@@ -363,6 +368,7 @@ public final class BeebMachine: @unchecked Sendable {
         )
     }
 
+    /// Copies the fixed status tuple before the operation-scoped C value leaves scope.
     private static func statusMessage(_ status: beeb_status) -> String {
         var message = status.message
         return withUnsafePointer(to: &message) { pointer in
@@ -372,6 +378,7 @@ public final class BeebMachine: @unchecked Sendable {
         }
     }
 
+    /// Copies the fixed retained-fault tuple into Swift-owned string storage.
     private static func faultMessage(_ fault: beeb_fault_detail) -> String {
         var message = fault.message
         return withUnsafePointer(to: &message) { pointer in

@@ -1,35 +1,72 @@
 # The Host Boundary
 
-The supported host path is C++ core to C ABI to Swift wrapper. Each layer makes
-ownership and failure more explicit without changing emulated behavior.
+The supported host path is `MachineRuntime` to structured C 0.2 to
+`BeebMachine`. Each layer strengthens ownership and recovery without becoming a
+second source of machine state or emulated time.
 
 ## C ABI
 
-`beeb_create()` returns an owned opaque handle and `beeb_destroy()` releases it.
-The C API does not synchronize a handle; one caller must serialize operations.
-No C++ exception crosses the boundary. Operations clear the previous error,
-catch failures, and store a fixed-size diagnostic retrievable through
-`beeb_last_error()`.
+Every fallible C function returns one `beeb_status` by value. Its category maps
+one-to-one to `RuntimeStatusCode`, its fixed diagnostic belongs to that
+operation, and success is the sole status allowed to write a required
+out-parameter. There is no shared last-error slot and no sentinel that must be
+interpreted using a later call.
 
-ROM and disc functions copy input bytes. `beeb_get_cpu_state()` returns a value.
-`beeb_get_frame_rgba()` instead returns a machine-owned pointer: its width,
-height, and frame number describe the same buffer, and the pointer is valid only
-until the next machine mutation or destruction.
+`beeb_create()` writes an opaque token only after both the runtime and the outer
+handle state exist. The token is a registry key, not an object that entry points
+dereference. `ActiveCall` looks it up under the registry mutex, retains the
+shared `HandleState`, and increments the active-call count before touching
+`MachineRuntime`. This indirection closes the raw-pointer race in which destroy
+could otherwise free a mutex while another call was entering it.
+
+The first `beeb_destroy()` caller marks the state as destroying, which makes new
+entries return `unavailable`. It waits for admitted calls, invokes the runtime's
+drain-and-join shutdown, removes the registry entry, and releases the token.
+Concurrent destroy callers already inside wait for the same completion. A
+caller must not use the pointer after destroy returns.
+
+## Payloads and outputs
+
+ROM and disc functions copy caller bytes into their runtime command before the
+call completes. CPU, lifecycle, safe-point, and fault results are plain value
+aggregates. Audio renders into a caller buffer only after validation and
+successful owner completion.
+
+`beeb_get_frame()` allocates a complete caller-owned RGBA copy. No completed
+frame is a successful value with `available == 0`, null storage, and zero
+metadata; it is not a failure. Every successful frame value is passed to
+`beeb_frame_release()`, which releases its allocation and clears the aggregate.
+A failed frame call leaves the caller's aggregate untouched.
+
+No C++ exception crosses C. Adapter allocation failures become
+`resource_exhausted`; contained standard or unknown failures become
+`internal_failure`. Outputs remain untouched on every non-OK path.
 
 ## Swift wrapper
 
-`BeebMachine` owns exactly one C handle. Its internal lock serializes all public
-operations, which is the basis for its `@unchecked Sendable` conformance. Input
-`Data` is borrowed only during the C call; the core copies accepted media.
+`BeebMachine` owns exactly one opaque C token and is `@unchecked Sendable`
+because the underlying C runtime accepts concurrent calls. It deliberately has
+no `NSLock`: adding another lock would hide the runtime's FIFO acceptance order
+and duplicate lifecycle serialization. Each public method performs one
+synchronous C operation and immediately copies its successful output.
 
-The frame wrapper computes `width * height * 4` while holding the lock and copies
-the complete borrowed buffer into a new `Data` before unlocking. CPU state and
-audio are likewise returned as Swift-owned values. Validation errors use
-specific `BeebError` cases; core diagnostics become `coreFailure`.
+`BeebStatusCategory` preserves the C category. `BeebError.coreStatus` retains
+that category and the operation-owned diagnostic, while Swift-only validation
+uses input-specific cases before crossing C. Lifecycle and fault values are
+queried from the runtime rather than cached in Swift. Frame bytes are copied
+into `Data` before the C frame is released; CPU, safe-point, fault, and audio
+results are likewise independently owned Swift values.
+
+Concurrent tasks retain the object through each method call. Deinitialization
+runs only after the final strong reference is gone and performs blocking C
+destroy. Public callbacks are not part of this boundary, so neither Swift nor C
+invokes host code under runtime synchronization.
 
 ## Adding a boundary operation
 
-Define the C contract first: null behavior, ownership, lifetime, error channel,
-threading, and side effects. Lock and map it in Swift, copying borrowed output
-before unlocking. Add C boundary tests and Swift error/lifetime tests before
-publishing the symbol.
+Define the C contract first: legal lifecycle states, null behavior, copied input
+ownership, success-only output writes, result lifetime, and side effects. Route
+the implementation through one `MachineRuntime` command and contain every
+exception. Then add a Swift value/error mapping without a host-side lock or
+mirrored mutable state. Boundary tests must cover nulls, failure output
+preservation, concurrent entry, and recovery before publishing the symbol.
