@@ -15,7 +15,8 @@ c1_tsan_supported() {
         "${probe_source}" -o "${probe_binary}" >/dev/null 2>&1; then
         return 1
     fi
-    TSAN_OPTIONS="halt_on_error=1:exitcode=66" "${probe_binary}" >/dev/null 2>&1
+    sh -c 'TSAN_OPTIONS="halt_on_error=1:exitcode=66" "$1" >/dev/null 2>&1' \
+        c1-tsan-probe "${probe_binary}" >/dev/null 2>&1
 }
 
 if [[ "${C1_ONLY_TSAN:-0}" != "1" ]]; then

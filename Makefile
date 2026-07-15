@@ -3,8 +3,9 @@ CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 THREAD_FLAGS ?= -pthread
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
+CORE_HEADERS = $(wildcard Sources/BeebCore/include/*.h Sources/BeebCore/include/beeb/*.hpp)
 C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
-C1_TEST_SCRIPTS ?= $(wildcard Tests/C1/test-*.sh)
+C1_TEST_SCRIPTS ?= $(filter-out Tests/C1/testlib.sh,$(wildcard Tests/C1/test-*.sh))
 BUILD_DIR = .build/cpp
 C0_PROFILE ?=
 DOCS_PROFILE ?= auto
@@ -24,14 +25,14 @@ all: $(BUILD_DIR)/beeb-headless
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/beeb-tests: $(CORE_SOURCES) Tests/test_main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $^ -o $@
+$(BUILD_DIR)/beeb-tests: $(CORE_SOURCES) $(CORE_HEADERS) Tests/test_main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $(CORE_SOURCES) Tests/test_main.cpp -o $@
 
-$(BUILD_DIR)/beeb-headless: $(CORE_SOURCES) Tools/beeb-headless/main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $^ -o $@
+$(BUILD_DIR)/beeb-headless: $(CORE_SOURCES) $(CORE_HEADERS) Tools/beeb-headless/main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $(CORE_SOURCES) Tools/beeb-headless/main.cpp -o $@
 
-$(BUILD_DIR)/beeb-evidence: $(CORE_SOURCES) Tools/beeb-evidence/main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $^ -o $@
+$(BUILD_DIR)/beeb-evidence: $(CORE_SOURCES) $(CORE_HEADERS) Tools/beeb-evidence/main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(THREAD_FLAGS) $(INCLUDES) $(CORE_SOURCES) Tools/beeb-evidence/main.cpp -o $@
 
 $(BUILD_DIR)/make-demo-rom: Tools/make-demo-rom/main.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
@@ -63,8 +64,13 @@ thread-sanitize:
 test-c1:
 	@status=0; \
 	for test_script in $(C1_TEST_SCRIPTS); do \
-		echo "$$test_script"; \
-		"$$test_script" || status=$$?; \
+		echo "C1 group: $$test_script"; \
+		if "$$test_script"; then \
+			echo "C1 group PASS: $$test_script"; \
+		else \
+			code=$$?; status=1; \
+			echo "C1 group FAIL ($$code): $$test_script" >&2; \
+		fi; \
 	done; \
 	exit $$status
 

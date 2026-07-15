@@ -52,7 +52,7 @@
 
 ## Phase 6: C1 Exit and Governance
 
-- [ ] T026 [P] Finish aggregate C1 and negative documentation/runtime coverage in `Makefile` and `Tests/C1/*.sh`. Verify `make test-c1` runs all groups without masking later failures.
+- [x] T026 [P] Finish aggregate C1 and negative documentation/runtime coverage in `Makefile` and `Tests/C1/*.sh`. Verify `make test-c1` runs all groups without masking later failures.
 - [ ] T027 Run the full clean-tree candidate gate and record exact evidence in `docs/STATUS.md`. Verify `make test`, `make sanitize`, `make thread-sanitize`, `swift test`, `swift build`, `make verify-c0`, `make test-c1`, and `make docs-check`.
 - [ ] T028 Synchronize the intentional pre-1.0 boundary release at `0.2.0` in `VERSION`, `Sources/BeebCore/include/beeb/version.h`, `Sources/BeebKit/BeebVersion.swift`, `CHANGELOG.md`, and release links. Verify `make check-version` and `git diff --check`.
 - [ ] T029 Mark C1 Complete and unblock C2/C3 only with exit evidence in `docs/CORE_ROADMAP.md`, `docs/STATUS.md`, `docs/ARCHITECTURE.md`, and applicable product trace. Verify links and roadmap/status consistency.
