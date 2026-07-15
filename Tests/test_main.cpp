@@ -1316,24 +1316,87 @@ void testC1RaceMixedCommands() {
 
 void testC1RaceShutdownDrainAndRejection() {
     beeb::MachineRuntime runtime;
-    loadNOPFixture(runtime);
+    auto loopingOS = makeNOPOSROM();
+    loopingOS[0] = 0x4C;
+    loopingOS[1] = 0x00;
+    loopingOS[2] = 0xC0;
+    checkRuntimeOK(runtime.loadOSROM(loopingOS));
+    checkRuntimeOK(runtime.reset());
+    const auto baselineAcceptance = runtime.acceptedCommandCount();
+    constexpr unsigned callerCount = 96;
+    std::latch ready(callerCount);
+    std::latch release(1);
     std::vector<std::future<beeb::RuntimeStatus>> calls;
-    calls.reserve(96);
-    for (unsigned index = 0; index < 96; ++index) {
-        calls.emplace_back(std::async(std::launch::async, [&runtime, index] {
+    calls.reserve(callerCount);
+    for (unsigned index = 0; index < callerCount; ++index) {
+        calls.emplace_back(std::async(std::launch::async, [&, index] {
+            ready.count_down();
+            release.wait();
             if ((index & 1) == 0) return runtime.cpuState().status;
             return runtime.setKey(
                 static_cast<std::uint8_t>(index % 16),
                 static_cast<std::uint8_t>((index / 16) % 16), true);
         }));
     }
-    checkRuntimeOK(runtime.shutdown());
+    ready.wait();
+    auto longRun = std::async(std::launch::async, [&runtime] {
+        return runtime.runFor(50'000'000);
+    });
+    waitForC1Acceptance(runtime, baselineAcceptance + 1);
+    release.count_down();
+    waitForC1Acceptance(
+        runtime, baselineAcceptance + beeb::MachineRuntime::commandCapacity);
+
+    constexpr unsigned shutdownCallerCount = 4;
+    std::vector<std::future<beeb::RuntimeStatus>> shutdowns;
+    shutdowns.reserve(shutdownCallerCount);
+    for (unsigned index = 0; index < shutdownCallerCount; ++index) {
+        shutdowns.emplace_back(std::async(std::launch::async, [&runtime] {
+            return runtime.shutdown();
+        }));
+    }
+
+    const auto waiterDeadline = std::chrono::steady_clock::now() +
+                                std::chrono::seconds(2);
+    bool rejectedWaiterReady = false;
+    while (!rejectedWaiterReady && std::chrono::steady_clock::now() < waiterDeadline) {
+        rejectedWaiterReady = std::any_of(calls.begin(), calls.end(), [](auto& call) {
+            return call.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+        });
+        if (!rejectedWaiterReady) std::this_thread::yield();
+    }
+    CHECK(rejectedWaiterReady);
+    CHECK(runtime.start().code == beeb::RuntimeStatusCode::unavailable);
+
+    const auto longRunResult = longRun.get();
+    checkRuntimeOK(longRunResult.status);
+    std::uint64_t maximumAcceptedSequence = longRunResult.status.acceptanceSequence;
+    unsigned accepted = 0;
+    unsigned unavailable = 0;
     for (auto& call : calls) {
         const auto status = call.get();
-        CHECK(status.code == beeb::RuntimeStatusCode::ok ||
-              status.code == beeb::RuntimeStatusCode::unavailable);
+        if (status.acceptanceSequence != 0) {
+            checkRuntimeOK(status);
+            maximumAcceptedSequence = std::max(
+                maximumAcceptedSequence, status.acceptanceSequence);
+            ++accepted;
+        } else {
+            CHECK(status.code == beeb::RuntimeStatusCode::unavailable);
+            ++unavailable;
+        }
     }
-    CHECK(runtime.start().code == beeb::RuntimeStatusCode::unavailable);
+    CHECK(accepted > 0);
+    CHECK(unavailable > 0);
+
+    std::uint64_t shutdownAcceptance = 0;
+    for (auto& shutdown : shutdowns) {
+        CHECK(shutdown.wait_for(std::chrono::seconds(15)) == std::future_status::ready);
+        const auto status = shutdown.get();
+        checkRuntimeOK(status);
+        shutdownAcceptance = std::max(shutdownAcceptance, status.acceptanceSequence);
+    }
+    CHECK(shutdownAcceptance > maximumAcceptedSequence);
+    checkRuntimeOK(runtime.shutdown());
 }
 
 } // namespace

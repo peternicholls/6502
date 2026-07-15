@@ -35,7 +35,7 @@
 - [x] T014 [US2] Route reset, OS/sideways ROM, and disc transactions with copied payloads through `Sources/BeebCore/src/runtime.cpp`. Verify focused and existing media tests.
 - [x] T015 [US2] Route keyboard/BREAK mutations through the FIFO in `Sources/BeebCore/src/runtime.cpp`. Verify ordered input/reset tests and sanitizer.
 - [x] T016 [US2] Route CPU state, frame, and audio observations through owner commands and return owned values in `Sources/BeebCore/include/beeb/runtime.hpp` and `Sources/BeebCore/src/runtime.cpp`. Verify consistency/lifetime and C0 frame tests.
-- [ ] T017 [US2] Complete capacity back-pressure, accepted-before-shutdown drain, new-call rejection, waiter wakeup, and join in `Sources/BeebCore/src/runtime.cpp`. Verify queue/overlap/timeout/10,000-command TSan stress.
+- [x] T017 [US2] Complete capacity back-pressure, accepted-before-shutdown drain, new-call rejection, waiter wakeup, and join in `Sources/BeebCore/src/runtime.cpp`. Verify queue/overlap/timeout/10,000-command TSan stress.
 - [ ] T018 [US2] Update ownership, transaction matrix, shutdown, and future bus-cycle constraints in `docs/ARCHITECTURE.md`, `docs/code/runtime-ownership.md`, and `docs/code/timing-model.md`. Verify docs gates; commit the complete verified Phase 4 once.
 
 ## Phase 5: User Story 3 — Recover Across Public Boundaries (P3)
