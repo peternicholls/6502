@@ -220,13 +220,14 @@ public docs, malformed markup, broken links, and debt growth each fail.
 
 ### Tests for User Story 4 (write and observe failing first)
 
-- [ ] T028 [US4] Add `Tests/C0/test-documentation.sh` temporary-fixture cases for
+- [x] T028 [US4] Add `Tests/C0/test-documentation.sh` temporary-fixture cases for
   clean Doxygen generation, clean DocC generation on macOS, unified landing
   links, invalid markup, unresolved link, missing changed public contract,
   changed complex code without rationale/N/A, debt addition/broadening, and
   ignored generated output; also assert that every coding feature template
   carries a documentation-impact decision and generated-doc validation task;
   observe the missing docs system failures
+  - Red evidence: exits `1` with `missing code documentation builder` before T031.
 
 ### Implementation for User Story 4
 
