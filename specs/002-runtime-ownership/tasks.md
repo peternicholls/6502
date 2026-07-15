@@ -22,7 +22,7 @@
 
 **Independent Test**: Concurrent start/pause commands serialize through one owner and exact ledger replay matches ten times.
 
-- [ ] T009 [US1] Add/confirm failing create-paused, start, pause, idempotence, invalid-transition, and latency tests in `Tests/test_main.cpp`.
+- [x] T009 [US1] Add/confirm failing create-paused, start, pause, idempotence, invalid-transition, and latency tests in `Tests/test_main.cpp`.
 - [ ] T010 [US1] Implement paused/running transitions and execution-loop arbitration in `Sources/BeebCore/src/runtime.cpp`. Verify US1 tests and `make sanitize`.
 - [ ] T011 [US1] Implement exact accepted-command/execution-slice replay test hooks in `Tests/test_main.cpp` and `.build/c1/`, with no production persisted format. Verify `Tests/C1/test-runtime-replay.sh`.
 - [ ] T012 [US1] Document public and private/internal C++ runtime types, lifecycle/safe-point contracts, responsibility boundaries, invariants, and state graph in `Sources/BeebCore/include/beeb/runtime.hpp`, `Sources/BeebCore/src/runtime.cpp`, and `docs/code/runtime-ownership.md`. Verify representative internal and public pages in `make docs-check`; commit the complete verified Phase 3 once.

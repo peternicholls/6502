@@ -824,6 +824,54 @@ void testC1RuntimeFixedExecutionSlices() {
     }
 }
 
+void testC1PauseCompletesWithinOneAcceptedSlice() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    loadNOPFixture(runtime);
+    checkRuntimeOK(runtime.start());
+
+    const auto sliceDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (std::chrono::steady_clock::now() < sliceDeadline) {
+        const auto entries = runtime.ledger();
+        if (std::any_of(entries.begin(), entries.end(), [](const auto& entry) {
+                return entry.event == beeb::LedgerEventKind::executionSlice;
+            })) break;
+        std::this_thread::yield();
+    }
+
+    const auto acceptedBeforePause = runtime.acceptedCommandCount();
+    auto pause = std::async(std::launch::async, [&runtime] { return runtime.pause(); });
+    const auto acceptanceDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (runtime.acceptedCommandCount() == acceptedBeforePause &&
+           std::chrono::steady_clock::now() < acceptanceDeadline) {
+        std::this_thread::yield();
+    }
+    CHECK(runtime.acceptedCommandCount() == acceptedBeforePause + 1);
+
+    const auto atAcceptance = runtime.ledger();
+    const auto lastSequenceAtAcceptance =
+        atAcceptance.empty() ? 0 : atAcceptance.back().sequence;
+    const auto pauseStatus = pause.get();
+    checkRuntimeOK(pauseStatus);
+
+    unsigned slicesAfterObservedAcceptance = 0;
+    bool foundPause = false;
+    for (const auto& entry : runtime.ledger()) {
+        if (entry.event == beeb::LedgerEventKind::command &&
+            entry.command == beeb::RuntimeCommandKind::pause &&
+            entry.acceptanceSequence == pauseStatus.acceptanceSequence) {
+            foundPause = true;
+            break;
+        }
+        if (entry.sequence > lastSequenceAtAcceptance &&
+            entry.event == beeb::LedgerEventKind::executionSlice) {
+            ++slicesAfterObservedAcceptance;
+        }
+    }
+    CHECK(foundPause);
+    CHECK(slicesAfterObservedAcceptance <= 1);
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+}
+
 void testC1RaceMixedCommands() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     loadNOPFixture(runtime);
@@ -932,6 +980,7 @@ int main(int argc, char** argv) {
         {"C1 contract: structured status isolation", testC1RuntimeContractStructuredStatusIsolation},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
         {"C1 contract: fixed execution slices share ledger order", testC1RuntimeFixedExecutionSlices},
+        {"C1 lifecycle: accepted pause completes within one slice", testC1PauseCompletesWithinOneAcceptedSlice},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };
