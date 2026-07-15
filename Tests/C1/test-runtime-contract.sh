@@ -8,3 +8,4 @@ c1_build_tests
 "${c1_test_binary}" --filter "C1 lifecycle:"
 "${c1_test_binary}" --filter "C1 transactions:"
 "${c1_test_binary}" --filter "C1 input:"
+"${c1_test_binary}" --filter "C1 observations:"

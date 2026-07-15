@@ -1213,6 +1213,70 @@ void testC1InputAndBreakSerializeWithReset() {
     CHECK(std::equal(expectedKinds.begin(), expectedKinds.end(), observedKinds.begin()));
 }
 
+void testC1ObservationsReturnConsistentOwnedValues() {
+    beeb::MachineRuntime runtime;
+    auto os = makeNOPOSROM();
+    std::size_t cursor = 0;
+    const auto emit = [&](std::uint8_t byte) { os[cursor++] = byte; };
+    const auto loadImmediate = [&](std::uint8_t value) {
+        emit(0xA9); emit(value);
+    };
+    const auto storeAbsolute = [&](std::uint16_t address) {
+        emit(0x8D); emit(static_cast<std::uint8_t>(address));
+        emit(static_cast<std::uint8_t>(address >> 8));
+    };
+    const auto setCRTC = [&](std::uint8_t reg, std::uint8_t value) {
+        loadImmediate(reg); storeAbsolute(0xFE00);
+        loadImmediate(value); storeAbsolute(0xFE01);
+    };
+    setCRTC(1, 1);
+    setCRTC(6, 1);
+    setCRTC(9, 0);
+    setCRTC(12, 0);
+    setCRTC(13, 0);
+    loadImmediate(0x1C); storeAbsolute(0xFE20);
+    loadImmediate(0xA0); storeAbsolute(0x0000);
+    const auto idle = static_cast<std::uint16_t>(0xC000 + cursor);
+    emit(0x4C); emit(static_cast<std::uint8_t>(idle));
+    emit(static_cast<std::uint8_t>(idle >> 8));
+
+    checkRuntimeOK(runtime.loadOSROM(os));
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.runUntilFrame(10'000)));
+
+    const auto cpuResult = runtime.cpuState();
+    const auto frameResult = runtime.frame();
+    const auto pointResult = runtime.safePoint();
+    const auto cpu = runtimeValue(cpuResult);
+    const auto firstFrame = runtimeValue(frameResult);
+    const auto point = runtimeValue(pointResult);
+    CHECK(firstFrame.available);
+    CHECK_EQ(firstFrame.width, 8);
+    CHECK_EQ(firstFrame.height, 1);
+    CHECK_EQ(firstFrame.rgba.size(), 32);
+    CHECK_EQ(cpu.cycles, point.cpuCycles);
+    CHECK_EQ(firstFrame.number, point.frameNumber);
+
+    CHECK(runtimeValue(runtime.runUntilFrame(10'000)));
+    auto secondFrameResult = runtime.frame();
+    auto secondFrame = runtimeValue(secondFrameResult);
+    CHECK(firstFrame.rgba.data() != secondFrame.rgba.data());
+    const auto firstPixel = firstFrame.rgba.front();
+    secondFrame.rgba.front() ^= 0xFF;
+    CHECK_EQ(firstFrame.rgba.front(), firstPixel);
+
+    const auto firstAudioResult = runtime.renderAudio(32, 48'000.0);
+    const auto secondAudioResult = runtime.renderAudio(32, 48'000.0);
+    const auto firstAudio = runtimeValue(firstAudioResult);
+    const auto secondAudio = runtimeValue(secondAudioResult);
+    CHECK_EQ(firstAudio.size(), 32);
+    CHECK_EQ(secondAudio.size(), 32);
+    CHECK(firstAudio.data() != secondAudio.data());
+    const auto invalidAudio = runtime.renderAudio(1, 0.0);
+    CHECK(invalidAudio.status.code == beeb::RuntimeStatusCode::invalidArgument);
+    CHECK(!invalidAudio.value.has_value());
+}
+
 void testC1RaceMixedCommands() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     loadNOPFixture(runtime);
@@ -1327,6 +1391,7 @@ int main(int argc, char** argv) {
         {"C1 transactions: invalid input is atomic and payload is copied", testC1TransactionsRejectAtomicallyAndCopyInput},
         {"C1 transactions: media payloads are copied and reject atomically", testC1MediaTransactionsCopyAndRejectAtomically},
         {"C1 input: keyboard and BREAK serialize with reset", testC1InputAndBreakSerializeWithReset},
+        {"C1 observations: CPU frame and audio values are owned", testC1ObservationsReturnConsistentOwnedValues},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };
