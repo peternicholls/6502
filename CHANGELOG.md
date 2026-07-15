@@ -11,6 +11,8 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 - Swift package regression tests for the public host boundary.
 - A public runtime version contract and `--version` command.
 - A documented release checklist and version-consistency check.
+- Separate product and emulator documentation strands, with canonical vision,
+  roadmaps, a legacy decision register and an explicit authority hierarchy.
 
 ## [0.1.0] - 2026-07-15
 

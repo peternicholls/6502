@@ -56,8 +56,8 @@ firmware:
 
 ```sh
 make demo-rom all
-.build/beeb-headless --os .build/cleanroom-demo.rom \
-  --cycles 100000 --frame .build/cleanroom-demo.ppm
+.build/cpp/beeb-headless --os .build/cpp/cleanroom-demo.rom \
+  --cycles 100000 --frame .build/cpp/cleanroom-demo.ppm
 ```
 
 For the independent processor suite:
@@ -73,7 +73,7 @@ it does not add it to this MIT-licensed project.
 ## Run a user-supplied BBC ROM set
 
 ```sh
-.build/beeb-headless \
+.build/cpp/beeb-headless \
   --os /path/to/os12.rom \
   --rom 14 /path/to/basic2.rom \
   --cycles 5000000 \
@@ -87,7 +87,7 @@ currently exposes mounting through its file importer.
 Inspect the installed runtime version with:
 
 ```sh
-.build/beeb-headless --version
+.build/cpp/beeb-headless --version
 ```
 
 ## Build on Apple platforms
@@ -95,10 +95,10 @@ Inspect the installed runtime version with:
 Open `Package.swift` in Xcode. `BeebKit` is the reusable product and `BeebDemo`
 is the SwiftUI shell. The package declares macOS 13 and iOS 16 minimums.
 
-The Apple package files have been structured for Swift Package Manager, but the
-current Linux build environment has no Swift toolchain. Run the first Xcode
-build before treating the SwiftUI shell as release-ready; the C++ core and C
-bridge are compiled and tested here.
+The complete package builds with Swift Package Manager on macOS, and `swift
+test` exercises the C-to-Swift error and version boundaries. Xcode remains the
+recommended environment for interactive macOS/iOS UI and document-picker
+validation.
 
 ## Accuracy boundary
 
@@ -121,8 +121,11 @@ This is a booting development core, not yet a preservation-grade emulator.
 - Audio register behaviour is present; the Swift demo still needs an
   AVAudioEngine ring-buffer output path.
 
-See [docs/STATUS.md](docs/STATUS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-for the detailed hand-off.
+Start with the [documentation index](docs/README.md). The
+[product strand](docs/product/README.md) describes the complete Machine, Media
+and Editor experience. The separate [core roadmap](docs/CORE_ROADMAP.md),
+[STATUS](docs/STATUS.md) and [ARCHITECTURE](docs/ARCHITECTURE.md) govern the
+portable emulator foundation.
 
 ## Releases and compatibility
 

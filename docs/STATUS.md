@@ -1,5 +1,9 @@
 # Implementation status
 
+This document records verified emulator implementation state. Technical
+priority belongs to the [core roadmap](CORE_ROADMAP.md); the wider application
+is governed separately by the [product strand](product/README.md).
+
 ## Verified
 
 | Area | Evidence | Status |
@@ -30,15 +34,8 @@
 | Keyboard | Matrix injection through System VIA | Complete host-to-BBC key map and all IC32 nuances |
 | Cassette | — | 6850, Serial ULA, UEF chunks, WAV edge decoder, motor timing |
 
-## Highest-value next steps
+## Current core focus
 
-1. Run the Swift package in Xcode and fix any Apple importer/UI differences.
-2. Replace instruction-end peripheral ticking with a CPU bus-cycle sequencer.
-3. Add a deterministic boot test that uses a redistributable test ROM rather
-   than proprietary OS/BASIC images.
-4. Connect `SN76489::render` to an AVAudioEngine ring buffer.
-5. Implement ACIA + Serial ULA and UEF `0x0100`, carrier and gap chunks.
-6. Add debugger breakpoints, memory watchpoints, disassembly and save states to
-   the public C/Swift API.
-7. Compare screen address sequences and VIA timers against hardware traces or a
-   transistor/logic reference before labelling the core cycle-accurate.
+The active core priorities are product-enabling runtime contracts and a
+bus-cycle timing foundation. The [core roadmap](CORE_ROADMAP.md) owns technical
+sequence; the tables above own verified hardware-fidelity status.

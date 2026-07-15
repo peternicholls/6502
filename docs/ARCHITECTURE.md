@@ -1,5 +1,14 @@
 # Architecture
 
+## Product relationship
+
+The core is a standalone technical strand with its own
+[roadmap](CORE_ROADMAP.md). It enables, but is not governed internally by, the
+wider [product vision](product/VISION.md). Product requirements may request a
+capability; this architecture determines how to provide it while keeping the
+machine deterministic and portable. Host presentation must not become the
+source of emulated machine time.
+
 ## Boundary
 
 `BeebCore` owns deterministic emulation state. It performs no file access,

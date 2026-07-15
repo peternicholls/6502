@@ -2,7 +2,10 @@
 
 Beeb6502 keeps the emulation core deterministic, dependency-free and separate
 from host UI and file access. Changes should preserve the boundaries described
-in `docs/ARCHITECTURE.md`.
+in `docs/ARCHITECTURE.md` and advance a capability in either the core or product
+roadmap. The two documentation strands and their authority are defined in
+`docs/README.md`; legacy product documents are reference material, not active
+specifications.
 
 ## Development checks
 
@@ -10,17 +13,22 @@ Run the checks relevant to every changed layer:
 
 ```sh
 make test all
+make sanitize
 swift test
 swift build
 ```
 
 `make test` treats warnings as errors and verifies that the compiled version,
-`VERSION` and `CHANGELOG.md` agree. The clean-room smoke test is available with:
+`VERSION` and `CHANGELOG.md` agree. `make sanitize` runs the non-exhaustive test
+set under AddressSanitizer and UndefinedBehaviorSanitizer on Linux, and under
+UndefinedBehaviorSanitizer on Apple hosts where the dynamic AddressSanitizer
+runtime is not reliable. Override `SANITIZERS` when validating another
+toolchain. The clean-room smoke test is available with:
 
 ```sh
 make demo-rom
-.build/beeb-headless --os .build/cleanroom-demo.rom \
-  --cycles 100000 --frame .build/cleanroom-demo.ppm
+.build/cpp/beeb-headless --os .build/cpp/cleanroom-demo.rom \
+  --cycles 100000 --frame .build/cpp/cleanroom-demo.ppm
 ```
 
 ## Code standards
