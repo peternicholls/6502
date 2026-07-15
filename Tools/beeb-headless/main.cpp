@@ -1,21 +1,46 @@
 #include "beeb/cpu6502.hpp"
-#include "beeb/machine.hpp"
 #include "beeb/version.h"
+#include "beeb_c.h"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <optional>
-#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace {
+
+// Documentation rationale: docs/code/host-boundary.md owns structured status,
+// runtime-handle, and caller-owned frame rules shared by command-line hosts.
+
+void requireStatus(const beeb_status& status) {
+    if (status.code == BEEB_STATUS_OK) return;
+    throw std::runtime_error(
+        status.message[0] != '\0' ? status.message : "emulator core operation failed");
+}
+
+/// Releases a C runtime when the headless command leaves scope.
+struct MachineDeleter final {
+    void operator()(beeb_machine* machine) const noexcept {
+        if (machine) (void)beeb_destroy(machine);
+    }
+};
+
+using Machine = std::unique_ptr<beeb_machine, MachineDeleter>;
+
+/// Releases the caller-owned C frame after output or error handling completes.
+struct OwnedFrame final {
+    beeb_frame value{};
+    ~OwnedFrame() { (void)beeb_frame_release(&value); }
+};
 
 std::vector<std::uint8_t> readFile(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
@@ -30,13 +55,15 @@ std::vector<std::uint8_t> readFile(const std::string& path) {
     return bytes;
 }
 
-void writeFrame(const beeb::VideoFrame& frame, const std::string& path) {
-    if (frame.rgba.empty()) throw std::runtime_error("no video frame is available");
+void writeFrame(const beeb_frame& frame, const std::string& path) {
+    if (!frame.available || !frame.rgba) {
+        throw std::runtime_error("no video frame is available");
+    }
     std::ofstream output(path, std::ios::binary);
     if (!output) throw std::runtime_error("cannot create " + path);
     output << "P6\n" << frame.width << ' ' << frame.height << "\n255\n";
-    for (std::size_t offset = 0; offset < frame.rgba.size(); offset += 4) {
-        output.write(reinterpret_cast<const char*>(frame.rgba.data() + offset), 3);
+    for (std::size_t offset = 0; offset < frame.rgba_size; offset += 4) {
+        output.write(reinterpret_cast<const char*>(frame.rgba + offset), 3);
     }
 }
 
@@ -51,6 +78,17 @@ std::uint64_t number(std::string_view text) {
 }
 
 void printState(const beeb::CPUState& s) {
+    std::cout << std::hex << std::uppercase << std::setfill('0')
+              << "PC=$" << std::setw(4) << s.pc
+              << " A=$" << std::setw(2) << static_cast<unsigned>(s.a)
+              << " X=$" << std::setw(2) << static_cast<unsigned>(s.x)
+              << " Y=$" << std::setw(2) << static_cast<unsigned>(s.y)
+              << " SP=$" << std::setw(2) << static_cast<unsigned>(s.sp)
+              << " P=$" << std::setw(2) << static_cast<unsigned>(s.p)
+              << std::dec << " cycles=" << s.cycles << '\n';
+}
+
+void printState(const beeb_cpu_state& s) {
     std::cout << std::hex << std::uppercase << std::setfill('0')
               << "PC=$" << std::setw(4) << s.pc
               << " A=$" << std::setw(2) << static_cast<unsigned>(s.a)
@@ -112,29 +150,32 @@ int runFunctional(const std::string& path, std::uint16_t pc, std::uint64_t maxim
 
 int runBBC(const std::string& osPath, const std::vector<std::pair<unsigned, std::string>>& roms,
            std::uint64_t cycles, bool trace, const std::string& framePath) {
-    beeb::BBCMicro machine;
-    const auto os = readFile(osPath);
-    if (!machine.loadOSROM(os)) throw std::runtime_error("OS ROM must be exactly 16 KiB");
-    for (const auto& [bank, path] : roms) {
-        const auto bytes = readFile(path);
-        if (!machine.loadSidewaysROM(static_cast<std::uint8_t>(bank), bytes)) {
-            throw std::runtime_error("sideways ROM must be no larger than 16 KiB");
-        }
+    if (trace) {
+        throw std::runtime_error("--trace is supported only with --functional");
     }
-    machine.reset();
-    if (trace) machine.cpu().setTraceCallback([](const auto& state, auto opcode) {
-        std::cout << std::hex << std::uppercase << std::setfill('0')
-                  << '$' << std::setw(4) << static_cast<unsigned>(state.pc - 1)
-                  << "  " << std::setw(2) << static_cast<unsigned>(opcode) << "  ";
-        printState(state);
-    });
-    machine.runFor(cycles);
-    printState(machine.cpu().state());
-    const auto& frame = machine.frame();
-    std::cout << "frame=" << frame.number << " " << frame.width << 'x' << frame.height
-              << " selected-ROM=" << static_cast<unsigned>(machine.selectedROM()) << '\n';
+    beeb_machine* rawMachine = nullptr;
+    requireStatus(beeb_create(&rawMachine));
+    Machine machine(rawMachine);
+    const auto os = readFile(osPath);
+    requireStatus(beeb_load_os_rom(machine.get(), os.data(), os.size()));
+    for (const auto& [bank, path] : roms) {
+        if (bank > 15) throw std::runtime_error("sideways ROM bank must be in 0...15");
+        const auto bytes = readFile(path);
+        requireStatus(beeb_load_sideways_rom(
+            machine.get(), static_cast<std::uint8_t>(bank), bytes.data(), bytes.size()));
+    }
+    requireStatus(beeb_reset(machine.get()));
+    std::uint64_t actualCycles = 0;
+    requireStatus(beeb_run_cycles(machine.get(), cycles, &actualCycles));
+    beeb_cpu_state state{};
+    requireStatus(beeb_get_cpu_state(machine.get(), &state));
+    printState(state);
+    OwnedFrame frame;
+    requireStatus(beeb_get_frame(machine.get(), &frame.value));
+    std::cout << "frame=" << frame.value.number << " " << frame.value.width << 'x'
+              << frame.value.height << '\n';
     if (!framePath.empty()) {
-        writeFrame(frame, framePath);
+        writeFrame(frame.value, framePath);
         std::cout << "wrote " << framePath << '\n';
     }
     return 0;
@@ -143,7 +184,7 @@ int runBBC(const std::string& osPath, const std::vector<std::pair<unsigned, std:
 void usage() {
     std::cout <<
         "beeb-headless --version\n"
-        "beeb-headless --os MOS.rom [--rom BANK ROM] [--cycles N] [--frame output.ppm] [--trace]\n"
+        "beeb-headless --os MOS.rom [--rom BANK ROM] [--cycles N] [--frame output.ppm]\n"
         "beeb-headless --functional 6502_functional_test.bin [--pc 0x0400]\n"
         "              [--success 0x3469] [--max-instructions N] [--trace]\n";
 }

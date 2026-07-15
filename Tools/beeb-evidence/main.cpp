@@ -14,6 +14,9 @@
 
 namespace {
 
+// Documentation rationale: docs/code/host-boundary.md owns structured status,
+// runtime-handle, and caller-owned frame rules shared by command-line hosts.
+
 struct Output {
     enum class Kind { State, Frame };
     Kind kind;
@@ -27,7 +30,26 @@ struct Options {
     std::vector<Output> outputs;
 };
 
-using Machine = std::unique_ptr<beeb_machine, decltype(&beeb_destroy)>;
+void requireStatus(const beeb_status& status) {
+    if (status.code == BEEB_STATUS_OK) return;
+    throw std::runtime_error(
+        status.message[0] != '\0' ? status.message : "emulator core operation failed");
+}
+
+/// Releases the evidence tool's C runtime on every exit path.
+struct MachineDeleter final {
+    void operator()(beeb_machine* machine) const noexcept {
+        if (machine) (void)beeb_destroy(machine);
+    }
+};
+
+using Machine = std::unique_ptr<beeb_machine, MachineDeleter>;
+
+/// Retains one caller-owned frame through all requested evidence writes.
+struct OwnedFrame final {
+    beeb_frame value{};
+    ~OwnedFrame() { (void)beeb_frame_release(&value); }
+};
 
 std::vector<std::uint8_t> readFile(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
@@ -132,36 +154,35 @@ void writeFrame(const std::string& path, const std::uint8_t* rgba,
 
 int run(const Options& options) {
     const auto rom = readFile(options.romPath);
-    Machine machine(beeb_create(), &beeb_destroy);
-    if (!machine) throw std::runtime_error("cannot create machine");
-    if (!beeb_load_os_rom(machine.get(), rom.data(), rom.size())) {
-        throw std::runtime_error(beeb_last_error(machine.get()));
-    }
-    beeb_reset(machine.get());
-    const auto actualCycles = beeb_run_cycles(machine.get(), options.requestedCycles);
-    if (actualCycles == 0) {
-        const auto* error = beeb_last_error(machine.get());
-        throw std::runtime_error(error && *error ? error : "execution failed");
-    }
+    beeb_machine* rawMachine = nullptr;
+    requireStatus(beeb_create(&rawMachine));
+    Machine machine(rawMachine);
+    requireStatus(beeb_load_os_rom(machine.get(), rom.data(), rom.size()));
+    requireStatus(beeb_reset(machine.get()));
+    std::uint64_t actualCycles = 0;
+    requireStatus(beeb_run_cycles(
+        machine.get(), options.requestedCycles, &actualCycles));
 
-    const auto state = beeb_get_cpu_state(machine.get());
-    std::uint32_t width = 0;
-    std::uint32_t height = 0;
-    std::uint64_t frameNumber = 0;
-    const auto* frame = beeb_get_frame_rgba(machine.get(), &width, &height, &frameNumber);
+    beeb_cpu_state state{};
+    requireStatus(beeb_get_cpu_state(machine.get(), &state));
+    OwnedFrame frame;
+    requireStatus(beeb_get_frame(machine.get(), &frame.value));
 
     for (const auto& output : options.outputs) {
         if (output.kind == Output::Kind::State) {
-            writeState(output.path, options, state, actualCycles, width, height, frameNumber);
+            writeState(output.path, options, state, actualCycles,
+                       frame.value.width, frame.value.height, frame.value.number);
         } else {
-            writeFrame(output.path, frame, width, height);
+            writeFrame(output.path, frame.value.rgba,
+                       frame.value.width, frame.value.height);
         }
     }
 
     std::cout << "workload=" << options.workload
               << " requested_cycles=" << options.requestedCycles
               << " actual_cycles=" << actualCycles
-              << " frame=" << frameNumber << ' ' << width << 'x' << height << '\n';
+              << " frame=" << frame.value.number << ' ' << frame.value.width
+              << 'x' << frame.value.height << '\n';
     return 0;
 }
 
