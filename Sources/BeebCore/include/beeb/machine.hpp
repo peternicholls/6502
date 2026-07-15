@@ -28,7 +28,8 @@ struct VideoFrame {
 /// Aggregate BBC Model B core and the owner of all emulated devices and media.
 ///
 /// The machine is deterministic for a given initial state and input sequence.
-/// It has no internal synchronization; callers must serialize access.
+/// It has no internal synchronization. Supported hosts use MachineRuntime;
+/// direct construction is reserved for low-level single-threaded core tests.
 class BBCMicro final : public Bus {
 public:
     /// Constructs a machine, connects device callbacks, and resets all state.
