@@ -55,9 +55,10 @@ identity before story implementations. These tasks block all user stories.
   unwritable output, and unknown output kind; run them and record the expected
   pre-implementation failures in the task notes
   - Red evidence: exits `1` with `missing C0 evidence executable` before T006.
-- [ ] T005 [P] Add named bitmap and Mode 7 workload contract coverage for
+- [x] T005 [P] Add named bitmap and Mode 7 workload contract coverage for
   `Tools/make-demo-rom/main.cpp` in `Tests/C0/test-demo-rom.sh` before generator
   changes; observe the missing-workload failure
+  - Red evidence: named Mode 7 invocation exits `1` before T007.
 - [ ] T006 Implement the minimal deterministic workload/output interface in
   `Tools/beeb-evidence/main.cpp`, reusing public CPU-state and frame access only,
   and add its build rule to `Makefile`; make T004 pass without changing
