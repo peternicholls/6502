@@ -1,62 +1,165 @@
 #include "beeb_c.h"
 
-#include "beeb/machine.hpp"
+#include "beeb/runtime.hpp"
 
 #include <algorithm>
-#include <array>
-#include <cmath>
+#include <condition_variable>
 #include <cstring>
 #include <exception>
+#include <memory>
+#include <mutex>
 #include <new>
 #include <span>
-
-namespace {
-
-constexpr std::size_t errorCapacity = 256;
-
-} // namespace
+#include <string_view>
+#include <unordered_map>
+#include <utility>
 
 /// @cond INTERNAL
-struct beeb_machine {
-    beeb::BBCMicro value;
-    std::array<char, errorCapacity> lastError{};
-};
+/// Opaque allocation used only as a stable registry key; machine state lives in HandleState.
+struct beeb_machine final {};
 /// @endcond
 
 namespace {
 
-void setError(beeb_machine* machine, const char* message) noexcept {
-    if (!machine) return;
-    const auto length = std::min(std::strlen(message), machine->lastError.size() - 1);
-    std::memcpy(machine->lastError.data(), message, length);
-    machine->lastError[length] = '\0';
+beeb_status makeStatus(
+    beeb_status_code code, std::string_view message = {}) noexcept {
+    beeb_status result{};
+    result.code = code;
+    const auto length = std::min(
+        message.size(), static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
+    if (length != 0) std::memcpy(result.message, message.data(), length);
+    result.message[length] = '\0';
+    return result;
 }
 
-template <typename Result, typename Callable>
-Result operation(beeb_machine* machine, Result failure, Callable&& callable) noexcept {
-    if (!machine) return failure;
-    machine->lastError[0] = '\0';
-    try {
-        return callable();
-    } catch (const std::exception& error) {
-        setError(machine, error.what());
-    } catch (...) {
-        setError(machine, "unknown C++ exception");
+beeb_status_code translateStatusCode(beeb::RuntimeStatusCode code) noexcept {
+    switch (code) {
+    case beeb::RuntimeStatusCode::ok: return BEEB_STATUS_OK;
+    case beeb::RuntimeStatusCode::invalidArgument: return BEEB_STATUS_INVALID_ARGUMENT;
+    case beeb::RuntimeStatusCode::invalidState: return BEEB_STATUS_INVALID_STATE;
+    case beeb::RuntimeStatusCode::executionFailed: return BEEB_STATUS_EXECUTION_FAILED;
+    case beeb::RuntimeStatusCode::resourceExhausted: return BEEB_STATUS_RESOURCE_EXHAUSTED;
+    case beeb::RuntimeStatusCode::unavailable: return BEEB_STATUS_UNAVAILABLE;
+    case beeb::RuntimeStatusCode::reentrantCall: return BEEB_STATUS_REENTRANT_CALL;
+    case beeb::RuntimeStatusCode::internalFailure: return BEEB_STATUS_INTERNAL_FAILURE;
     }
-    return failure;
+    return BEEB_STATUS_INTERNAL_FAILURE;
 }
+
+beeb_status translateStatus(const beeb::RuntimeStatus& status) noexcept {
+    return makeStatus(translateStatusCode(status.code), status.message);
+}
+
+beeb_runtime_state translateState(beeb::RuntimeState state) noexcept {
+    switch (state) {
+    case beeb::RuntimeState::paused: return BEEB_RUNTIME_STATE_PAUSED;
+    case beeb::RuntimeState::running: return BEEB_RUNTIME_STATE_RUNNING;
+    case beeb::RuntimeState::faulted: return BEEB_RUNTIME_STATE_FAULTED;
+    case beeb::RuntimeState::shuttingDown: return BEEB_RUNTIME_STATE_SHUTTING_DOWN;
+    }
+    return BEEB_RUNTIME_STATE_FAULTED;
+}
+
+beeb_safe_point translateSafePoint(const beeb::SafePoint& point) noexcept {
+    return {
+        point.cpuCycles,
+        point.frameNumber,
+        translateState(point.state),
+        point.ledgerSequence,
+    };
+}
+
+/// Shared runtime state retained until destruction and every entered call complete.
+struct HandleState final {
+    std::mutex mutex;
+    std::condition_variable callsFinished;
+    std::size_t activeCalls = 0;
+    bool destroying = false;
+    bool destroyComplete = false;
+    beeb_status destroyStatus = makeStatus(
+        BEEB_STATUS_INTERNAL_FAILURE, "destroy did not complete");
+    beeb::MachineRuntime runtime;
+};
+
+std::mutex registryMutex;
+std::unordered_map<beeb_machine*, std::shared_ptr<HandleState>> registry;
+
+/// RAII admission record that prevents handle release while one C call is inside.
+class ActiveCall final {
+public:
+    explicit ActiveCall(beeb_machine* machine) noexcept {
+        if (!machine) {
+            status_ = makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "machine handle is null");
+            return;
+        }
+        try {
+            std::lock_guard registryLock(registryMutex);
+            const auto entry = registry.find(machine);
+            if (entry == registry.end()) {
+                status_ = makeStatus(
+                    BEEB_STATUS_INVALID_ARGUMENT, "machine handle is not live");
+                return;
+            }
+            auto state = entry->second;
+            std::lock_guard stateLock(state->mutex);
+            if (state->destroying) {
+                status_ = makeStatus(
+                    BEEB_STATUS_UNAVAILABLE, "machine is being destroyed");
+                return;
+            }
+            ++state->activeCalls;
+            state_ = std::move(state);
+            status_ = makeStatus(BEEB_STATUS_OK);
+        } catch (const std::exception& error) {
+            status_ = makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
+        } catch (...) {
+            status_ = makeStatus(
+                BEEB_STATUS_INTERNAL_FAILURE, "unknown C handle admission failure");
+        }
+    }
+
+    ActiveCall(const ActiveCall&) = delete;
+    ActiveCall& operator=(const ActiveCall&) = delete;
+
+    ~ActiveCall() {
+        if (!state_) return;
+        try {
+            {
+                std::lock_guard lock(state_->mutex);
+                --state_->activeCalls;
+            }
+            state_->callsFinished.notify_all();
+        } catch (...) {
+            // Mutex destruction cannot race while this shared state is retained.
+        }
+    }
+
+    explicit operator bool() const noexcept { return state_ != nullptr; }
+    const beeb_status& status() const noexcept { return status_; }
+    beeb::MachineRuntime& runtime() noexcept { return state_->runtime; }
+
+private:
+    std::shared_ptr<HandleState> state_;
+    beeb_status status_ = makeStatus(BEEB_STATUS_INTERNAL_FAILURE);
+};
 
 template <typename Callable>
-void operation(beeb_machine* machine, Callable&& callable) noexcept {
-    if (!machine) return;
-    machine->lastError[0] = '\0';
+beeb_status operation(beeb_machine* machine, Callable&& callable) noexcept {
+    ActiveCall call(machine);
+    if (!call) return call.status();
     try {
-        callable();
+        return callable(call.runtime());
+    } catch (const std::bad_alloc&) {
+        return makeStatus(BEEB_STATUS_RESOURCE_EXHAUSTED, "C adapter allocation failed");
     } catch (const std::exception& error) {
-        setError(machine, error.what());
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
     } catch (...) {
-        setError(machine, "unknown C++ exception");
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "unknown C++ exception");
     }
+}
+
+beeb_status missingOutput(const char* name) noexcept {
+    return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, name);
 }
 
 } // namespace
@@ -65,109 +168,254 @@ extern "C" {
 
 const char* beeb_version_string(void) { return BEEB_VERSION_STRING; }
 
-beeb_machine* beeb_create(void) {
-    try { return new beeb_machine; } catch (...) { return nullptr; }
+beeb_status beeb_create(beeb_machine** out_machine) {
+    if (!out_machine) return missingOutput("machine output is null");
+    try {
+        auto token = std::make_unique<beeb_machine>();
+        auto state = std::make_shared<HandleState>();
+        {
+            std::lock_guard lock(registryMutex);
+            registry.emplace(token.get(), std::move(state));
+        }
+        *out_machine = token.release();
+        return makeStatus(BEEB_STATUS_OK);
+    } catch (const std::bad_alloc&) {
+        return makeStatus(BEEB_STATUS_RESOURCE_EXHAUSTED, "machine allocation failed");
+    } catch (const std::exception& error) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
+    } catch (...) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "unknown machine creation failure");
+    }
 }
 
-void beeb_destroy(beeb_machine* machine) { delete machine; }
+beeb_status beeb_destroy(beeb_machine* machine) {
+    if (!machine) return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "machine handle is null");
+    try {
+        std::shared_ptr<HandleState> state;
+        bool ownsDestroy = false;
+        {
+            std::lock_guard registryLock(registryMutex);
+            const auto entry = registry.find(machine);
+            if (entry == registry.end()) {
+                return makeStatus(
+                    BEEB_STATUS_INVALID_ARGUMENT, "machine handle is not live");
+            }
+            state = entry->second;
+            std::lock_guard stateLock(state->mutex);
+            if (!state->destroying) {
+                state->destroying = true;
+                ownsDestroy = true;
+            }
+        }
 
-const char* beeb_last_error(const beeb_machine* machine) {
-    return machine ? machine->lastError.data() : nullptr;
+        if (!ownsDestroy) {
+            std::unique_lock lock(state->mutex);
+            state->callsFinished.wait(lock, [&] { return state->destroyComplete; });
+            return state->destroyStatus;
+        }
+
+        {
+            std::unique_lock lock(state->mutex);
+            state->callsFinished.wait(lock, [&] { return state->activeCalls == 0; });
+        }
+        const auto result = translateStatus(state->runtime.shutdown());
+        {
+            std::lock_guard registryLock(registryMutex);
+            const auto entry = registry.find(machine);
+            if (entry != registry.end() && entry->second == state) registry.erase(entry);
+        }
+        delete machine;
+        {
+            std::lock_guard lock(state->mutex);
+            state->destroyStatus = result;
+            state->destroyComplete = true;
+        }
+        state->callsFinished.notify_all();
+        return result;
+    } catch (const std::exception& error) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
+    } catch (...) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "unknown machine destruction failure");
+    }
 }
 
-int beeb_load_os_rom(beeb_machine* machine, const uint8_t* bytes, size_t count) {
-    return operation(machine, 0, [=] {
-        if (!bytes) {
-            setError(machine, "OS ROM data is null");
-            return 0;
-        }
-        if (!machine->value.loadOSROM(std::span(bytes, count))) {
-            setError(machine, "OS ROM must be exactly 16384 bytes");
-            return 0;
-        }
-        return 1;
+beeb_status beeb_get_runtime_state(
+    beeb_machine* machine, beeb_runtime_state* out_state) {
+    if (!out_state) return missingOutput("runtime-state output is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.state();
+        if (!result.status) return translateStatus(result.status);
+        *out_state = translateState(*result.value);
+        return makeStatus(BEEB_STATUS_OK);
     });
 }
 
-int beeb_load_sideways_rom(beeb_machine* machine, uint8_t bank, const uint8_t* bytes, size_t count) {
-    return operation(machine, 0, [=] {
-        if (!bytes) {
-            setError(machine, "sideways ROM data is null");
-            return 0;
-        }
-        if (!machine->value.loadSidewaysROM(bank, std::span(bytes, count))) {
-            setError(machine, "invalid sideways ROM bank or size");
-            return 0;
-        }
-        return 1;
+beeb_status beeb_start(beeb_machine* machine) {
+    return operation(machine, [](beeb::MachineRuntime& runtime) {
+        return translateStatus(runtime.start());
     });
 }
 
-int beeb_mount_disc(beeb_machine* machine, unsigned drive, const uint8_t* bytes, size_t count,
-                    int double_sided, int writable) {
-    return operation(machine, 0, [=] {
-        if (!bytes) {
-            setError(machine, "disc image data is null");
-            return 0;
-        }
-        const auto layout = double_sided ? beeb::DiscImage::Layout::DSD : beeb::DiscImage::Layout::SSD;
-        if (!machine->value.mountDisc(drive, std::span(bytes, count), layout, writable != 0)) {
-            setError(machine, "invalid drive or disc image");
-            return 0;
-        }
-        return 1;
+beeb_status beeb_pause(beeb_machine* machine) {
+    return operation(machine, [](beeb::MachineRuntime& runtime) {
+        return translateStatus(runtime.pause());
     });
 }
 
-void beeb_reset(beeb_machine* machine) {
-    operation(machine, [=] { machine->value.reset(); });
-}
-
-uint64_t beeb_run_cycles(beeb_machine* machine, uint64_t cycles) {
-    return operation(machine, std::uint64_t{0}, [=] { return machine->value.runFor(cycles); });
-}
-
-int beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles) {
-    return operation(machine, -1, [=] { return machine->value.runUntilFrame(maximum_cycles) ? 1 : 0; });
-}
-
-beeb_cpu_state beeb_get_cpu_state(const beeb_machine* machine) {
-    if (!machine) return {};
-    const auto state = machine->value.cpu().state();
-    return {state.a, state.x, state.y, state.sp, state.p, state.pc, state.cycles};
-}
-
-const uint8_t* beeb_get_frame_rgba(const beeb_machine* machine, uint32_t* width, uint32_t* height, uint64_t* number) {
-    // C0-DOC-RATIONALE: docs/code/host-boundary.md owns the borrowed-buffer
-    // lifetime rule; higher-level wrappers copy before releasing their lock.
-    if (!machine) return nullptr;
-    const auto& frame = machine->value.frame();
-    if (width) *width = frame.width;
-    if (height) *height = frame.height;
-    if (number) *number = frame.number;
-    return frame.rgba.empty() ? nullptr : frame.rgba.data();
-}
-
-void beeb_render_audio(beeb_machine* machine, float* mono, size_t frames, double sample_rate) {
-    operation(machine, [=] {
-        if (!mono) {
-            setError(machine, "audio output buffer is null");
-            return;
-        }
-        if (!std::isfinite(sample_rate) || sample_rate <= 0) {
-            setError(machine, "audio sample rate must be finite and positive");
-            return;
-        }
-        machine->value.sound().render(mono, frames, sample_rate);
+beeb_status beeb_reset(beeb_machine* machine) {
+    return operation(machine, [](beeb::MachineRuntime& runtime) {
+        return translateStatus(runtime.reset());
     });
 }
 
-void beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {
-    operation(machine, [=] { machine->value.setKey(column, row, pressed != 0); });
+beeb_status beeb_run_cycles(
+    beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles) {
+    if (!out_actual_cycles) return missingOutput("cycle-count output is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.runFor(cycles);
+        if (!result.status) return translateStatus(result.status);
+        *out_actual_cycles = *result.value;
+        return makeStatus(BEEB_STATUS_OK);
+    });
 }
 
-void beeb_set_break(beeb_machine* machine, int pressed) {
-    operation(machine, [=] { machine->value.setBreak(pressed != 0); });
+beeb_status beeb_run_until_frame(
+    beeb_machine* machine, uint64_t maximum_cycles, int* out_completed) {
+    if (!out_completed) return missingOutput("frame-completion output is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.runUntilFrame(maximum_cycles);
+        if (!result.status) return translateStatus(result.status);
+        *out_completed = *result.value ? 1 : 0;
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
+beeb_status beeb_load_os_rom(
+    beeb_machine* machine, const uint8_t* bytes, size_t count) {
+    if (!bytes) return missingOutput("OS ROM data is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        return translateStatus(runtime.loadOSROM(std::span(bytes, count)));
+    });
+}
+
+beeb_status beeb_load_sideways_rom(
+    beeb_machine* machine, uint8_t bank, const uint8_t* bytes, size_t count) {
+    if (!bytes) return missingOutput("sideways ROM data is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        return translateStatus(runtime.loadSidewaysROM(bank, std::span(bytes, count)));
+    });
+}
+
+beeb_status beeb_mount_disc(
+    beeb_machine* machine, unsigned drive, const uint8_t* bytes, size_t count,
+    int double_sided, int writable) {
+    if (!bytes) return missingOutput("disc image data is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto layout = double_sided != 0
+            ? beeb::DiscImage::Layout::DSD
+            : beeb::DiscImage::Layout::SSD;
+        return translateStatus(runtime.mountDisc(
+            drive, std::span(bytes, count), layout, writable != 0));
+    });
+}
+
+beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state) {
+    if (!out_state) return missingOutput("CPU-state output is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.cpuState();
+        if (!result.status) return translateStatus(result.status);
+        const auto& state = *result.value;
+        const beeb_cpu_state output{
+            state.a, state.x, state.y, state.sp, state.p, state.pc, state.cycles};
+        *out_state = output;
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
+beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame) {
+    if (!out_frame) return missingOutput("frame output is null");
+    if (out_frame->rgba != nullptr) {
+        return makeStatus(
+            BEEB_STATUS_INVALID_ARGUMENT, "frame output must be released before reuse");
+    }
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto result = runtime.frame();
+        if (!result.status) return translateStatus(result.status);
+        const auto& frame = *result.value;
+        beeb_frame output{};
+        if (frame.available) {
+            auto bytes = std::make_unique<uint8_t[]>(frame.rgba.size());
+            std::copy(frame.rgba.begin(), frame.rgba.end(), bytes.get());
+            output.available = 1;
+            output.width = frame.width;
+            output.height = frame.height;
+            output.number = frame.number;
+            output.rgba_size = frame.rgba.size();
+            output.rgba = bytes.release();
+        }
+        *out_frame = output;
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
+beeb_status beeb_frame_release(beeb_frame* frame) {
+    if (!frame) return missingOutput("frame is null");
+    delete[] frame->rgba;
+    *frame = {};
+    return makeStatus(BEEB_STATUS_OK);
+}
+
+beeb_status beeb_render_audio(
+    beeb_machine* machine, float* mono, size_t frames, double sample_rate) {
+    if (!mono) return missingOutput("audio output buffer is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto result = runtime.renderAudio(frames, sample_rate);
+        if (!result.status) return translateStatus(result.status);
+        std::copy(result.value->begin(), result.value->end(), mono);
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
+beeb_status beeb_set_key(
+    beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        return translateStatus(runtime.setKey(column, row, pressed != 0));
+    });
+}
+
+beeb_status beeb_set_break(beeb_machine* machine, int pressed) {
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        return translateStatus(runtime.setBreak(pressed != 0));
+    });
+}
+
+beeb_status beeb_get_safe_point(
+    beeb_machine* machine, beeb_safe_point* out_safe_point) {
+    if (!out_safe_point) return missingOutput("safe-point output is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.safePoint();
+        if (!result.status) return translateStatus(result.status);
+        *out_safe_point = translateSafePoint(*result.value);
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
+beeb_status beeb_get_fault(beeb_machine* machine, beeb_fault_detail* out_fault) {
+    if (!out_fault) return missingOutput("fault output is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.fault();
+        if (!result.status) return translateStatus(result.status);
+        beeb_fault_detail output{};
+        output.available = result.value->available ? 1 : 0;
+        const auto message = std::string_view(result.value->message);
+        const auto length = std::min(
+            message.size(), static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
+        if (length != 0) std::memcpy(output.message, message.data(), length);
+        output.message[length] = '\0';
+        output.safe_point = translateSafePoint(result.value->safePoint);
+        *out_fault = output;
+        return makeStatus(BEEB_STATUS_OK);
+    });
 }
 
 } // extern "C"

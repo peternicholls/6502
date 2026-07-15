@@ -44,7 +44,7 @@
 
 - [x] T019 [US3] Add failing C 0.2 status, out-parameter, nullability, stale-diagnostic, fault, and destroy-overlap tests in `Tests/test_main.cpp`.
 - [x] T020 [US3] Replace 0.1 sentinel declarations with structured 0.2 contracts in `Sources/BeebCore/include/beeb_c.h`, including migration notes. Verify C11/C++ header compilation.
-- [ ] T021 [US3] Implement exception-safe C adapters and operation-scoped diagnostics over `MachineRuntime` in `Sources/BeebCore/src/beeb_c.cpp`. Verify C tests, `make test`, and sanitizer.
+- [x] T021 [US3] Implement exception-safe C adapters and operation-scoped diagnostics over `MachineRuntime` in `Sources/BeebCore/src/beeb_c.cpp`. Verify C tests, `make test`, and sanitizer.
 - [ ] T022 [US3] Migrate `Tools/beeb-headless/main.cpp`, `Tools/beeb-evidence/main.cpp`, and examples to 0.2. Verify builds, C0 evidence, and no old API usage via `rg`.
 - [ ] T023 [US3] Add failing Swift state/start/pause/status-category/concurrency/recovery tests in `Tests/BeebKitTests/BeebMachineTests.swift`. Verify focused red failure.
 - [ ] T024 [US3] Migrate `BeebMachine` ownership and operations to structured results in `Sources/BeebKit/BeebMachine.swift`, removing redundant direct-state `NSLock` serialization. Verify Swift tests/build.
