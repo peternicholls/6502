@@ -235,7 +235,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
   `swiftlang/swift-docc-plugin` as a documentation-only dependency in
   `Package.swift` and `Package.resolved`; verify normal `swift build` adds no
   runtime product dependency
-- [ ] T030 [P] [US4] Configure strict C/C++/C ABI generation in `Doxyfile` with
+- [x] T030 [P] [US4] Configure strict C/C++/C ABI generation in `Doxyfile` with
   `EXTRACT_ALL=NO`, public-surface and parameter/incomplete warnings, source
   links, Markdown guides, and warnings promoted to failure
 - [ ] T031 [US4] Implement host-profile detection, Doxygen/DocC static generation,
