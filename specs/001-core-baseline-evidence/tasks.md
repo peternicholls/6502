@@ -194,7 +194,7 @@ interruption produce an invalid result.
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Implement release-build sampling, portable environment capture,
+- [x] T025 [US3] Implement release-build sampling, portable environment capture,
   strict validity derivation, and structured output in `scripts/measure-c0.sh`
   according to `contracts/measurement-record.md`; make T024 pass
 - [ ] T026 [US3] Add `measure-c0` and an internal measurement-record validation
