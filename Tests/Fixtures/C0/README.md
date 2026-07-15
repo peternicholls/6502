@@ -88,4 +88,5 @@ entered the fixture.
 
 ## Review history
 
-- Initial C0 references: pending deterministic generation and review in T019.
+- 2026-07-15 — Initial C0 state, bitmap, and Mode 7 references approved after
+  ten byte-identical ROM, state, and frame generations for each workload.

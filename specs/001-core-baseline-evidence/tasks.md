@@ -152,7 +152,7 @@ normal verification reports but never replaces it.
 - [x] T018 [US2] Add lawful origin, redistribution basis, workload generation,
   coverage limits, and reference-review instructions to
   `Tests/Fixtures/C0/README.md`
-- [ ] T019 [US2] Generate ten identical candidates for each named workload into
+- [x] T019 [US2] Generate ten identical candidates for each named workload into
   `.build/c0/candidate/`; only after T016's determinism/provenance portions pass,
   add `approved-state.txt`, `bitmap.ppm`, `mode7.ppm`, and complete derived fields
   in `Tests/Fixtures/C0/manifest.txt`
