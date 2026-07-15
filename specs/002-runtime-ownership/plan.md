@@ -38,9 +38,10 @@ and `docs/code/runtime-ownership.md`, plus architecture, host-boundary, and
 timing-guide updates; `make docs-check` retains zero debt.
 
 **Git Checkpoints**: Each task begins with its named failing test where behavior
-changes, passes focused verification, and is committed in Lore format before
-the next task. The final task in every phase records phase completion; no empty
-checkpoint is created.
+changes and passes focused verification before it is marked complete. Routine
+task-level commits are not created. The complete verified phase is committed
+once in Lore format before the next phase begins; no empty duplicate checkpoint
+is created.
 
 **Target Platform**: Portable C++ core on current Linux/macOS CI; Swift wrapper
 on macOS 13+/iOS 16+ hosts.
@@ -55,7 +56,7 @@ scheduler time. C0 throughput remains comparison evidence only.
 while runtime synchronization is held; no exception across C; copied inputs;
 safe shutdown; later bus-cycle work must retain the safe point.
 
-**Scale/Scope**: One runtime per machine, four lifecycle states, twelve command
+**Scale/Scope**: One runtime per machine, four lifecycle states, fifteen command
 kinds, one status taxonomy, C++/C/Swift contracts, race/replay evidence.
 
 ## Constitution Check
@@ -71,7 +72,7 @@ kinds, one status taxonomy, C++/C/Swift contracts, race/replay evidence.
 - [x] Public and conceptual documentation plus zero-debt validation are planned.
 - [x] Content provenance is unchanged; accessibility is N/A for core-only work.
 - [x] The owner/queue is justified; no dependency or general scheduler is added.
-- [x] Every task and phase has focused verification and a Lore commit checkpoint.
+- [x] Every task has focused verification and every phase has one Lore commit checkpoint.
 
 **Post-design re-check**: Passed. Contracts define the complete state/command
 matrix, safe point, status lifetime, bounded queue, shutdown, and intentional

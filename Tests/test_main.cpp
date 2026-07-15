@@ -3,18 +3,24 @@
 #include "beeb/disc_image.hpp"
 #include "beeb/intel8271.hpp"
 #include "beeb/machine.hpp"
+#include "beeb/runtime.hpp"
 #include "beeb/sn76489.hpp"
 #include "beeb/via6522.hpp"
 #include "beeb_c.h"
 
 #include <array>
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <functional>
+#include <future>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -657,14 +663,202 @@ void testTeletextControlCellsUseActiveBackground() {
     CHECK_EQ(bitmap.rgba[controlCell + 2], 0);
 }
 
+std::array<std::uint8_t, 0x4000> makeNOPOSROM() {
+    std::array<std::uint8_t, 0x4000> os{};
+    os.fill(0xEA);
+    os[0x3FFC] = 0x00;
+    os[0x3FFD] = 0xC0;
+    return os;
+}
+
+void checkRuntimeOK(const beeb::RuntimeStatus& status) {
+    CHECK(status.code == beeb::RuntimeStatusCode::ok);
+    CHECK(status.message.empty());
+}
+
+template <typename T>
+const T& runtimeValue(const beeb::RuntimeResult<T>& result) {
+    checkRuntimeOK(result.status);
+    CHECK(result.value.has_value());
+    return *result.value;
+}
+
+void loadNOPFixture(beeb::MachineRuntime& runtime) {
+    const auto os = makeNOPOSROM();
+    checkRuntimeOK(runtime.loadOSROM(os));
+    checkRuntimeOK(runtime.reset());
+}
+
+void testC1RuntimeContractLifecycleMatrix() {
+    beeb::MachineRuntime runtime;
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+    loadNOPFixture(runtime);
+
+    checkRuntimeOK(runtime.pause());
+    checkRuntimeOK(runtime.start());
+    checkRuntimeOK(runtime.start());
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::running);
+
+    const auto boundedWhileRunning = runtime.runFor(1);
+    CHECK(boundedWhileRunning.status.code == beeb::RuntimeStatusCode::invalidState);
+    CHECK(!boundedWhileRunning.value.has_value());
+
+    checkRuntimeOK(runtime.pause());
+    checkRuntimeOK(runtime.pause());
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+    CHECK(runtimeValue(runtime.runFor(0)) == 0);
+
+    checkRuntimeOK(runtime.shutdown());
+    CHECK(runtime.start().code == beeb::RuntimeStatusCode::unavailable);
+    CHECK(runtime.pause().code == beeb::RuntimeStatusCode::unavailable);
+    CHECK(runtime.reset().code == beeb::RuntimeStatusCode::unavailable);
+    CHECK(runtime.state().status.code == beeb::RuntimeStatusCode::unavailable);
+}
+
+void testC1RuntimeContractFaultAndRecoveryMatrix() {
+    beeb::MachineRuntime runtime;
+    auto illegal = makeNOPOSROM();
+    illegal[0] = 0x02;
+    checkRuntimeOK(runtime.loadOSROM(illegal));
+    checkRuntimeOK(runtime.reset());
+
+    const auto failed = runtime.runFor(1);
+    CHECK(failed.status.code == beeb::RuntimeStatusCode::executionFailed);
+    CHECK(!failed.status.message.empty());
+    CHECK(!failed.value.has_value());
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::faulted);
+
+    CHECK(runtime.start().code == beeb::RuntimeStatusCode::invalidState);
+    CHECK(runtime.pause().code == beeb::RuntimeStatusCode::invalidState);
+    CHECK(runtime.loadOSROM(makeNOPOSROM()).code == beeb::RuntimeStatusCode::invalidState);
+    (void)runtimeValue(runtime.cpuState());
+    (void)runtimeValue(runtime.frame());
+
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+    CHECK(runtimeValue(runtime.runFor(1)) >= 1);
+}
+
+void testC1RuntimeContractStructuredStatusIsolation() {
+    beeb::MachineRuntime runtime;
+    const auto first = runtime.loadOSROM(std::span<const std::uint8_t>{});
+    CHECK(first.code == beeb::RuntimeStatusCode::invalidArgument);
+    CHECK(!first.message.empty());
+
+    const auto second = runtime.setKey(16, 0, true);
+    CHECK(second.code == beeb::RuntimeStatusCode::invalidArgument);
+    CHECK(!second.message.empty());
+    CHECK(first.message != second.message);
+
+    loadNOPFixture(runtime);
+    const auto success = runtime.setKey(0, 0, true);
+    checkRuntimeOK(success);
+    CHECK(!first.message.empty());
+    CHECK(runtimeValue(runtime.frame()).available == false);
+}
+
+struct C1ReplaySignature {
+    beeb::CPUState cpu;
+    beeb::SafePoint safePoint;
+    std::vector<beeb::LedgerEntry> ledger;
+};
+
+C1ReplaySignature runC1ReplayScenario() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    loadNOPFixture(runtime);
+    CHECK(runtimeValue(runtime.runFor(17)) >= 17);
+    checkRuntimeOK(runtime.setKey(1, 2, true));
+    CHECK(runtimeValue(runtime.runFor(31)) >= 31);
+    checkRuntimeOK(runtime.setKey(1, 2, false));
+    return {runtimeValue(runtime.cpuState()), runtimeValue(runtime.safePoint()), runtime.ledger()};
+}
+
+void testC1ReplayDeterministicLedger() {
+    const auto expected = runC1ReplayScenario();
+    CHECK(!expected.ledger.empty());
+    for (unsigned repetition = 1; repetition < 10; ++repetition) {
+        const auto actual = runC1ReplayScenario();
+        CHECK(actual.cpu == expected.cpu);
+        CHECK(actual.safePoint == expected.safePoint);
+        CHECK(actual.ledger == expected.ledger);
+    }
+}
+
+void testC1RaceMixedCommands() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    loadNOPFixture(runtime);
+    constexpr unsigned threadCount = 8;
+    constexpr unsigned operationsPerThread = 1'250;
+    std::atomic<unsigned> completed{0};
+    std::atomic<unsigned> failed{0};
+    std::vector<std::thread> workers;
+    workers.reserve(threadCount);
+
+    for (unsigned thread = 0; thread < threadCount; ++thread) {
+        workers.emplace_back([&, thread] {
+            for (unsigned operation = 0; operation < operationsPerThread; ++operation) {
+                beeb::RuntimeStatus status;
+                switch ((thread + operation) % 5) {
+                case 0: status = runtime.start(); break;
+                case 1: status = runtime.pause(); break;
+                case 2: status = runtime.reset(); break;
+                case 3: status = runtime.setKey(
+                    static_cast<std::uint8_t>(thread),
+                    static_cast<std::uint8_t>(operation % 8),
+                    (operation & 1) != 0); break;
+                default: status = runtime.cpuState().status; break;
+                }
+                if (status.code == beeb::RuntimeStatusCode::ok) ++completed;
+                else ++failed;
+            }
+        });
+    }
+    for (auto& worker : workers) worker.join();
+
+    CHECK_EQ(completed.load() + failed.load(), threadCount * operationsPerThread);
+    CHECK_EQ(failed.load(), 0);
+    checkRuntimeOK(runtime.pause());
+    CHECK(runtime.ledger().size() >= completed.load());
+}
+
+void testC1RaceShutdownDrainAndRejection() {
+    beeb::MachineRuntime runtime;
+    loadNOPFixture(runtime);
+    std::vector<std::future<beeb::RuntimeStatus>> calls;
+    calls.reserve(96);
+    for (unsigned index = 0; index < 96; ++index) {
+        calls.emplace_back(std::async(std::launch::async, [&runtime, index] {
+            if ((index & 1) == 0) return runtime.cpuState().status;
+            return runtime.setKey(
+                static_cast<std::uint8_t>(index % 16),
+                static_cast<std::uint8_t>((index / 16) % 16), true);
+        }));
+    }
+    checkRuntimeOK(runtime.shutdown());
+    for (auto& call : calls) {
+        const auto status = call.get();
+        CHECK(status.code == beeb::RuntimeStatusCode::ok ||
+              status.code == beeb::RuntimeStatusCode::unavailable);
+    }
+    CHECK(runtime.start().code == beeb::RuntimeStatusCode::unavailable);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc > 2 || (argc == 2 && std::string(argv[1]) != "--quick")) {
-        std::cerr << "usage: beeb-tests [--quick]\n";
-        return 2;
+    bool quick = false;
+    std::string filter;
+    for (int index = 1; index < argc; ++index) {
+        const std::string argument = argv[index];
+        if (argument == "--quick") {
+            quick = true;
+        } else if (argument == "--filter" && index + 1 < argc) {
+            filter = argv[++index];
+        } else {
+            std::cerr << "usage: beeb-tests [--quick] [--filter text]\n";
+            return 2;
+        }
     }
-    const bool quick = argc == 2;
     const std::vector<Test> tests{
         {"reset and simple program", testResetAndSimpleProgram},
         {"address wrapping and page cycles", testAddressingWrapAndPageCycles},
@@ -693,12 +887,19 @@ int main(int argc, char** argv) {
         {"BBC 8271 memory map", testBBCFDCMemoryMap},
         {"clean-room teletext rendering", testCleanRoomTeletextRendering},
         {"teletext control cells use active background", testTeletextControlCellsUseActiveBackground},
+        {"C1 contract: lifecycle command matrix", testC1RuntimeContractLifecycleMatrix},
+        {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
+        {"C1 contract: structured status isolation", testC1RuntimeContractStructuredStatusIsolation},
+        {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
+        {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
+        {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };
 
     unsigned failed = 0;
     std::size_t executed = 0;
     for (const auto& [name, test] : tests) {
-        if (quick && name.ends_with("exhaustive")) continue;
+        if (quick && (name.ends_with("exhaustive") || name.starts_with("C1 race:"))) continue;
+        if (!filter.empty() && name.find(filter) == std::string::npos) continue;
         ++executed;
         try {
             test();
@@ -707,6 +908,10 @@ int main(int argc, char** argv) {
             ++failed;
             std::cerr << "FAIL  " << name << "\n      " << error.what() << '\n';
         }
+    }
+    if (executed == 0) {
+        std::cerr << "no tests matched filter: " << filter << '\n';
+        return 2;
     }
     std::cout << "\n" << (executed - failed) << '/' << executed << " tests passed\n";
     return failed == 0 ? 0 : 1;

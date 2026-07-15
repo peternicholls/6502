@@ -3,6 +3,7 @@ CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
 C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
+C1_TEST_SCRIPTS ?= $(wildcard Tests/C1/test-*.sh)
 BUILD_DIR = .build/cpp
 C0_PROFILE ?=
 DOCS_PROFILE ?= auto
@@ -13,7 +14,7 @@ else
 SANITIZERS ?= address,undefined
 endif
 
-.PHONY: all test sanitize check-version demo-rom test-c0 verify-c0 \
+.PHONY: all test sanitize thread-sanitize test-c1 check-version demo-rom test-c0 verify-c0 \
 	verify-c0-references update-c0-reference measure-c0 \
 	validate-c0-measurement docs docs-check clean
 
@@ -54,6 +55,17 @@ sanitize: | $(BUILD_DIR)
 		-fsanitize=$(SANITIZERS) -fno-omit-frame-pointer $(INCLUDES) \
 		$(CORE_SOURCES) Tests/test_main.cpp -o $(BUILD_DIR)/beeb-tests-sanitize
 	$(BUILD_DIR)/beeb-tests-sanitize --quick
+
+thread-sanitize:
+	C1_ONLY_TSAN=1 Tests/C1/test-runtime-races.sh
+
+test-c1:
+	@status=0; \
+	for test_script in $(C1_TEST_SCRIPTS); do \
+		echo "$$test_script"; \
+		"$$test_script" || status=$$?; \
+	done; \
+	exit $$status
 
 test-c0:
 	@status=0; \

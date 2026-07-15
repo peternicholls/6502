@@ -7,11 +7,15 @@
 | start | enter running | idempotent OK | invalid state | unavailable |
 | pause | idempotent OK | enter paused at safe point | invalid state | unavailable |
 | reset | reset, remain paused | reset at safe point, become paused | recover to paused | unavailable |
-| load/input/query | execute FIFO at safe point | execute FIFO at safe point | queries only; mutations invalid state | unavailable |
+| bounded run / run-to-frame | execute FIFO, remain paused | invalid state | invalid state | unavailable |
+| load/input | execute FIFO at safe point | execute FIFO at safe point | invalid state | unavailable |
+| state/CPU/frame query | execute FIFO at safe point | execute FIFO at safe point | execute FIFO at safe point | unavailable |
+| render audio | execute FIFO at safe point | execute FIFO at safe point | invalid state | unavailable |
 | shutdown | drain prior accepted work, join | same | same | idempotent for in-flight destroy |
 
 No command implicitly restores a previous running state. FIFO start/pause
-commands express intent explicitly.
+commands express intent explicitly. Bounded execution is legal only while
+paused and never changes sustained-execution intent.
 
 ## Safe point
 

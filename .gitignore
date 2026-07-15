@@ -23,7 +23,7 @@ Build/
 **/xcuserdata/
 **/*.xcuserstate
 
-# Swift Package Manager
+# Swift Package Manager and isolated C1 evidence
 /.build/
 /.swiftpm/
 
