@@ -59,7 +59,7 @@ identity before story implementations. These tasks block all user stories.
   `Tools/make-demo-rom/main.cpp` in `Tests/C0/test-demo-rom.sh` before generator
   changes; observe the missing-workload failure
   - Red evidence: named Mode 7 invocation exits `1` before T007.
-- [ ] T006 Implement the minimal deterministic workload/output interface in
+- [x] T006 Implement the minimal deterministic workload/output interface in
   `Tools/beeb-evidence/main.cpp`, reusing public CPU-state and frame access only,
   and add its build rule to `Makefile`; make T004 pass without changing
   `Sources/BeebCore/`

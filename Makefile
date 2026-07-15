@@ -23,6 +23,9 @@ $(BUILD_DIR)/beeb-tests: $(CORE_SOURCES) Tests/test_main.cpp | $(BUILD_DIR)
 $(BUILD_DIR)/beeb-headless: $(CORE_SOURCES) Tools/beeb-headless/main.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
 
+$(BUILD_DIR)/beeb-evidence: $(CORE_SOURCES) Tools/beeb-evidence/main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
+
 $(BUILD_DIR)/make-demo-rom: Tools/make-demo-rom/main.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
