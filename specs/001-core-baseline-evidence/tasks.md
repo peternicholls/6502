@@ -117,7 +117,7 @@ not change.
   `Tests/C0/test-baseline-verifier.sh` to `.github/workflows/ci.yml`, proving the
   orchestration contract without enabling the full aggregate job before later
   stories provide their required evidence groups
-- [ ] T015 [US1] Document the command, group matrix, failure recovery, profile
+- [x] T015 [US1] Document the command, group matrix, failure recovery, profile
   differences, and non-mutation guarantee in `docs/CORE_BASELINE.md`
 
 **Checkpoint**: US1 independently provides an exhaustive, non-destructive C0

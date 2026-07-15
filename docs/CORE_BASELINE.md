@@ -68,6 +68,56 @@ separate reference-review path exist.
   edge behavior, Mode 7 controls, sound fidelity, 8271 timing, keyboard details,
   and cassette support remain unchanged from [STATUS.md](STATUS.md).
 
+## Aggregate verification
+
+Run the current C0 baseline from the repository root:
+
+```bash
+make verify-c0
+```
+
+The command selects `macos` on Darwin and `portable` elsewhere. An explicit
+profile is available for CI and diagnosis:
+
+```bash
+scripts/verify-c0.sh --profile portable
+scripts/verify-c0.sh --profile macos
+```
+
+Each group writes a separate log under `.build/c0/run/`. The ordered text
+summary reports `pass`, `fail`, `unexpected-skip`, or `not-applicable` for every
+group, then derives one overall result. A failed group does not stop later
+groups, so the summary exposes independent problems in one run.
+
+| Group | Portable | macOS | Current evidence |
+| --- | --- | --- | --- |
+| `cpp-behavior` | Required | Required | `make test`, currently 27 of 27 |
+| `sanitizers` | Required | Required | `make sanitize`, currently 24 of 24 in the quick profile |
+| `version-sync` | Required | Required | `make check-version` |
+| `c-boundary` | Required | Required | C ABI recovery cases in the quick C++ suite |
+| `swift-boundary` | Not applicable | Required | `swift test` (7 cases) and `swift build` |
+
+Fixture, approved-reference, and generated-documentation groups join this table
+only when their later C0 tasks provide passing evidence. Until then, the
+aggregate result proves US1 orchestration and the existing behavioral, safety,
+version, and public-boundary foundation; it is not the complete C0 exit gate.
+
+### Failure and recovery
+
+- `fail` retains the command output in the named group log and makes the final
+  result unsuccessful.
+- `unexpected-skip` means a required command is unavailable and also fails the
+  run; install or restore the named tool before retrying.
+- `not-applicable` is permitted only by the selected profile, currently for the
+  Swift boundary on a portable host.
+- Exit status `130` or `143` is reported as an interrupted failure while later
+  declarative groups still run.
+- Unsupported profiles are rejected before any group executes.
+
+Ordinary verification removes and recreates only `.build/c0/run/`. It has no
+reference-update command and writes nothing under `Tests/`. The focused
+`make test-c0` suite snapshots tracked test content to enforce this boundary.
+
 ## Interpretation
 
 This record distinguishes the known starting behavior from C0 exit evidence.
