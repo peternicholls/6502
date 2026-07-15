@@ -20,6 +20,10 @@
 
 **Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
 
+**Documentation Strand**: [product | core | cross-strand]
+
+**Authoritative Context**: [links to current product/core documents and status]
+
 **Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
@@ -40,7 +44,24 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] The feature is classified as product, core, or cross-strand, and links to
+      the current authoritative documents for that strand.
+- [ ] The outcome is a bounded vertical slice that can be demonstrated and
+      tested independently; non-goals are explicit.
+- [ ] Core determinism and portability are preserved; host wall-clock timing or
+      host frameworks do not become core dependencies.
+- [ ] Test-first evidence is identified across C++, C, Swift, and product
+      acceptance boundaries as applicable.
+- [ ] Fidelity, compatibility, and performance claims name their test, trace,
+      measurement, or primary reference, and known limits remain explicit.
+- [ ] Ownership, lifetime, errors, threading, ABI compatibility, and persisted
+      format versioning are defined for every affected boundary.
+- [ ] User-content provenance, import/export behavior, and legal constraints are
+      addressed where relevant.
+- [ ] Accessibility and failure recovery are specified for user-facing work, or
+      a concrete `N/A` rationale is recorded.
+- [ ] Every new dependency, abstraction, or constitution exception is justified
+      below with the simpler alternative that was rejected.
 
 ## Project Structure
 

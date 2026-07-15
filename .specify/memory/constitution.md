@@ -1,50 +1,162 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version: initial constitution -> 1.0.0
+- Added principles: Product/Core Strand Separation; Deterministic Portable Core;
+  Evidence-Led Fidelity; Test-First Delivery; Safe, Versioned Boundaries;
+  User-Owned Content and Legal Clarity; Accessible Vertical Value and Simplicity
+- Added sections: Technical and Product Constraints; Specification and Delivery Workflow
+- Updated templates: plan-template.md, spec-template.md, tasks-template.md,
+  checklist-template.md
+- Added guidance: specs/README.md
+- Deferred items: none
+-->
+
+# Beeb Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Product and Core Are Separate Strands
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Every specification MUST identify itself as `product`, `core`, or
+`cross-strand`. Product specifications define user problems, journeys, and
+outcomes for Machine, Media, and Editor. Core specifications define portable
+emulation capabilities and contracts. Cross-strand specifications MUST state
+the boundary between those concerns. Product aspirations MUST NOT be reported
+as implemented core behavior, and core capability MUST NOT be treated as a
+complete product experience. `docs/STATUS.md` is the authority for verified
+implementation status. This separation keeps the long-term vision useful
+without allowing it to overstate the present system.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. The Core Is Deterministic and Portable
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+The emulated machine clock MUST be the authority for core state transitions;
+host wall-clock timing MUST NOT drive emulation behavior. The dependency-light
+C++20 core MUST remain independently buildable and testable, with no direct
+dependency on UI, audio, file-picker, network, or Apple platform frameworks.
+Host integrations belong behind explicit C or Swift boundaries. The same
+inputs, initial state, and emulated time MUST produce the same observable core
+result. This makes fidelity testable and keeps the core reusable across hosts.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Fidelity Claims Require Evidence (NON-NEGOTIABLE)
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Claims about accuracy, compatibility, performance, or timing MUST be supported
+by automated tests, reproducible traces, measurements, or a cited primary
+reference. Known limitations MUST be recorded in `docs/STATUS.md`, and planned
+work MUST remain distinct from completed work. Device and timing work SHOULD be
+driven by compatibility evidence and user value rather than checklist
+completion. Test ROMs and fixtures MUST have clear, lawful provenance. This
+prevents confidence from outrunning evidence.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Delivery Is Test-First (NON-NEGOTIABLE)
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Every behavior change MUST begin with a regression, contract, or acceptance
+test that fails for the expected reason before implementation. Work then
+follows red-green-refactor: make the smallest correct change, pass the focused
+test, and run the relevant wider suite. Boundary changes MUST cover the C++
+core, C ABI, and Swift integration where applicable. Documentation-only and
+process-only changes do not require synthetic unit tests, but MUST validate
+links, formatting, and any affected tooling. Tests are delivery evidence, not
+an optional follow-up.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Boundaries Are Safe and Versioned
+
+No C++ exception may cross the C ABI. Public contracts MUST define ownership,
+lifetime, nullability, errors, and threading expectations. Cross-thread access
+MUST use explicit synchronization or immutable snapshots. Persisted machine
+state, media metadata, and other interchange formats MUST be versioned before
+they become user-facing. Failures MUST be recoverable and represented in a form
+the host can handle. Project releases follow Semantic Versioning, and versions
+reported by the C API, Swift API, CLI, `VERSION`, and `CHANGELOG.md` MUST remain
+synchronized. Stable boundaries allow the emulator and native product to
+evolve independently.
+
+### VI. User Content Remains User-Owned
+
+The project MUST NOT bundle proprietary ROMs, character ROMs, games, or user
+media. Imports MUST use host-approved access mechanisms and MUST NOT silently
+modify their source. Any mutation workflow MUST provide an explicit export or
+save operation before it is considered complete. The product MUST remain
+usable without executing downloaded native code or adding a JIT requirement.
+These rules protect users, distribution options, and the project's legal
+clarity.
+
+### VII. Deliver Accessible Vertical Value Simply
+
+Features MUST be planned as the smallest independently demonstrable and
+testable slice that produces product value or unlocks a clearly named product
+outcome. Product and UI specifications MUST cover keyboard access, assistive
+technology, reduced-motion behavior where relevant, and recovery from failed
+imports, exports, or emulation operations. Native hosts SHOULD follow platform
+conventions while leaving the core host-agnostic. New dependencies,
+abstractions, and layers require a current concrete need and MUST be rejected
+when an existing pattern or smaller design suffices. This keeps foundational
+work connected to a usable, inclusive product.
+
+## Technical and Product Constraints
+
+- The supported foundation is a dependency-light C++20 core, a stable C ABI,
+  a Swift `BeebKit` wrapper, and native SwiftUI hosts built with Swift Package
+  Manager. Platform facilities such as Metal and AVAudio belong on the host
+  side of the boundary.
+- The portable build and test path MUST remain usable through the repository
+  Makefile. A new third-party dependency requires an explicit specification and
+  plan justification, including why existing code or platform APIs are
+  insufficient.
+- Current documentation is split into two authorities: `docs/product/` for the
+  wider Machine, Media, and Editor vision, and the core roadmap, architecture,
+  references, and status documents under `docs/` for emulator delivery. Files
+  under `docs/Archive/` are historical input, not current specifications.
+- Product specifications MUST trace to `docs/product/VISION.md` and the active
+  product roadmap horizon. Core specifications MUST trace to
+  `docs/CORE_ROADMAP.md`, `docs/ARCHITECTURE.md`, and `docs/STATUS.md`.
+- Compatibility, frame-rate, latency, or throughput targets MUST state how they
+  will be measured. Visual presentation policy belongs in the host; machine
+  timing remains a core concern.
+- Releases MUST update `CHANGELOG.md` and follow `docs/RELEASING.md`. Breaking
+  public contract or persisted-format changes require a major-version decision
+  or an explicit migration and compatibility plan.
+
+## Specification and Delivery Workflow
+
+1. Start a bounded vertical slice with `/speckit-specify`; use
+   `/speckit-clarify` when requirements contain material ambiguity.
+2. Classify the slice as product, core, or cross-strand and link its current
+   source documents. Record non-goals so the abandoned implementation details
+   in historical documents cannot enter scope implicitly.
+3. A specification MUST include an independently testable outcome, measurable
+   success criteria, edge and failure cases, recovery behavior, evidence needed
+   for fidelity claims, content/legal implications, and accessibility coverage
+   for user-facing work (or a concrete `N/A` rationale).
+4. `/speckit-plan` MUST pass every Constitution Check before Phase 0 research
+   and MUST repeat that check after design. Any exception belongs in Complexity
+   Tracking with a rejected simpler alternative.
+5. `/speckit-tasks` MUST put failing tests or other required evidence before
+   implementation tasks and preserve user-story independence. Run
+   `/speckit-analyze` before implementation when multiple artifacts or strands
+   are involved.
+6. Implementation MUST use focused verification while iterating, then run the
+   affected repository gates: `make test`, `make sanitize`, `swift test`, and
+   `swift build` as applicable. All changes MUST pass `git diff --check`.
+7. Completion MUST update affected status, architecture, roadmap, release, or
+   user documentation. A feature is complete only when its acceptance evidence
+   passes and no known limitation is presented as delivered behavior.
+
+Repository work also follows the active `AGENTS.md` operating contract,
+including its cleanup, verification, and commit-history requirements.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution is the highest project-level authority for specifications,
+plans, and tasks. A conflicting feature artifact MUST be corrected before work
+continues. `AGENTS.md` may add execution rules but MUST NOT weaken these
+principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Amendments require a written rationale, an impact report, migration guidance
+for affected active specifications, and synchronized changes to dependent Spec
+Kit templates. Constitution versions use Semantic Versioning: MAJOR for an
+incompatible governance change or principle removal, MINOR for a new principle
+or materially expanded obligation, and PATCH for clarification without changed
+intent. Every plan and implementation review MUST verify compliance; unresolved
+violations block implementation or release.
+
+**Version**: 1.0.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15

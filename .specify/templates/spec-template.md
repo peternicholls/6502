@@ -8,6 +8,26 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+**Strand**: [product | core | cross-strand]
+
+**Authoritative Context**: [Link the current product vision/roadmap or core
+roadmap/architecture/status documents that govern this feature]
+
+## Constitution Alignment *(mandatory)*
+
+- **Outcome**: [The independently demonstrable user outcome or core capability]
+- **Boundaries and Non-Goals**: [What changes, what remains outside the slice,
+  and where product/host/core responsibilities meet]
+- **Evidence**: [Tests, traces, measurements, or primary references required to
+  prove the behavior and any fidelity, compatibility, or performance claims]
+- **Failure and Recovery**: [Expected failures and how users or callers recover]
+- **Content and Legal**: [Provenance, import/export, mutation, and distribution
+  constraints, or a concrete N/A rationale]
+- **Accessibility**: [Keyboard, assistive technology, reduced motion, and other
+  relevant needs, or a concrete N/A rationale]
+- **Dependencies and Complexity**: [Existing patterns reused; any necessary new
+  dependency or abstraction and why a smaller alternative is insufficient]
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -107,7 +127,9 @@
 
 <!--
   ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
+  These must be technology-agnostic, measurable, and tied to reproducible
+  evidence. Do not present an aspirational compatibility or fidelity target as
+  an achieved result.
 -->
 
 ### Measurable Outcomes

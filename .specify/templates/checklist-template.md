@@ -1,5 +1,8 @@
 # [CHECKLIST TYPE] Checklist: [FEATURE NAME]
 
+**Constitution scope**: [List the project principles and gates this checklist
+validates, or explain why a principle is not applicable]
+
 **Purpose**: [Brief description of what this checklist covers]
 **Created**: [DATE]
 **Feature**: [Link to spec.md or relevant documentation]
