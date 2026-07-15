@@ -255,7 +255,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
   `Sources/BeebKit/Documentation.docc/BeebKit.md` and focused conceptual guides
   to `docs/code/architecture.md`, `docs/code/timing-model.md`,
   `docs/code/host-boundary.md`, and `docs/code/evidence-and-testing.md`
-- [ ] T036 [US4] Add the contributor standard, good/bad examples, required-detail
+- [x] T036 [US4] Add the contributor standard, good/bad examples, required-detail
   matrix, local/CI commands, N/A rule, and debt-repayment workflow to
   `docs/CODE_DOCUMENTATION.md`
 - [ ] T037 [US4] Classify every public header surface as covered or internal-only
