@@ -8,7 +8,9 @@ The version has three synchronized representations:
 
 - `VERSION`, used by release tooling;
 - `BEEB_VERSION_*` in `Sources/BeebCore/include/beeb/version.h`, used by hosts;
-- the matching release heading in `CHANGELOG.md`.
+- the matching release heading in `CHANGELOG.md`;
+- `BeebVersion.current`, which reads the compiled C version and is checked by
+  the Swift release test rather than storing a second Swift literal.
 
 `make check-version` verifies these representations through the public
 `beeb-headless --version` command.

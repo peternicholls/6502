@@ -342,7 +342,7 @@ beeb_machine* createCMachine() {
 }
 
 void testCAPI02StatusOutParametersAndNullability() {
-    CHECK(std::string(beeb_version_string()) == "0.1.0");
+    CHECK(std::string(beeb_version_string()) == "0.2.0");
     checkCStatus(beeb_create(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
     checkCStatus(beeb_destroy(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
