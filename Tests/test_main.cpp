@@ -5,6 +5,7 @@
 #include "beeb/machine.hpp"
 #include "beeb/sn76489.hpp"
 #include "beeb/via6522.hpp"
+#include "beeb_c.h"
 
 #include <array>
 #include <cstdint>
@@ -316,6 +317,29 @@ void testIllegalOpcodeTraps() {
     CHECK(threw);
 }
 
+void testCAPIContainsIllegalOpcodeErrors() {
+    beeb_machine* machine = beeb_create();
+    CHECK(machine != nullptr);
+
+    std::array<std::uint8_t, 0x4000> os{};
+    os.fill(0xEA);
+    os[0] = 0x02; // unsupported opcode at the reset address
+    os[0x3FFC] = 0x00;
+    os[0x3FFD] = 0xC0;
+    CHECK_EQ(beeb_load_os_rom(machine, os.data(), os.size()), 1);
+    beeb_reset(machine);
+
+    CHECK_EQ(beeb_run_cycles(machine, 1), 0);
+    CHECK(std::string(beeb_last_error(machine)).find("unsupported NMOS 6502 opcode $02") != std::string::npos);
+
+    beeb_reset(machine);
+    CHECK(std::string(beeb_last_error(machine)).empty());
+    CHECK_EQ(beeb_run_until_frame(machine, 1), -1);
+    CHECK(std::string(beeb_last_error(machine)).find("unsupported NMOS 6502 opcode $02") != std::string::npos);
+
+    beeb_destroy(machine);
+}
+
 void testVIATimerAndInterruptEnable() {
     beeb::VIA6522 via;
     via.reset();
@@ -363,6 +387,34 @@ void testCRTCFrameTiming() {
     CHECK_EQ(crtc.frameNumber(), 1);
     crtc.consumeFrame();
     CHECK(!crtc.frameReady());
+}
+
+void checkCRTCVerticalAdjustTiming(std::uint8_t adjustment) {
+    beeb::CRTC6845 crtc;
+    crtc.reset();
+    const auto set = [&](std::uint8_t reg, std::uint8_t value) { crtc.select(reg); crtc.write(value); };
+    set(0, 0); // one character clock per scanline
+    set(4, 0); // one character row
+    set(5, adjustment);
+    set(9, 0); // one raster row per character
+
+    crtc.tick(1); // complete the character row and enter vertical adjustment
+    CHECK(!crtc.frameReady());
+    for (std::uint8_t line = 1; line < adjustment; ++line) {
+        crtc.tick(1);
+        CHECK(!crtc.frameReady());
+    }
+    crtc.tick(1);
+    CHECK(crtc.frameReady());
+    CHECK_EQ(crtc.frameNumber(), 1);
+}
+
+void testCRTCOneLineVerticalAdjust() {
+    checkCRTCVerticalAdjustTiming(1);
+}
+
+void testCRTCTwoLineVerticalAdjust() {
+    checkCRTCVerticalAdjustTiming(2);
 }
 
 void testSoundRegisterProtocolAndRendering() {
@@ -503,6 +555,36 @@ void testCleanRoomTeletextRendering() {
     CHECK(redPixels > 0);
 }
 
+void testTeletextControlCellsUseActiveBackground() {
+    beeb::CRTC6845 crtc;
+    crtc.reset();
+    crtc.select(1); crtc.write(4);
+    crtc.select(6); crtc.write(1);
+    crtc.select(12); crtc.write(0);
+    crtc.select(13); crtc.write(0);
+    std::array<std::uint8_t, 0x8000> ram{};
+    ram[0x7C00] = 0x01; // alpha red: set after this cell
+    ram[0x7C01] = 0x1D; // new background: set after this cell
+    ram[0x7C02] = 0x02; // alpha green control on the active red background
+    ram[0x7C03] = ' ';
+
+    beeb::TeletextRenderer renderer;
+    const auto bitmap = renderer.render(ram, crtc, 0);
+    const auto pixel = [&](unsigned column) {
+        return (static_cast<std::size_t>(10) * bitmap.width + column * 12 + 6) * 4;
+    };
+
+    const auto beforeBackground = pixel(1);
+    CHECK_EQ(bitmap.rgba[beforeBackground], 0);
+    CHECK_EQ(bitmap.rgba[beforeBackground + 1], 0);
+    CHECK_EQ(bitmap.rgba[beforeBackground + 2], 0);
+
+    const auto controlCell = pixel(2);
+    CHECK_EQ(bitmap.rgba[controlCell], 255);
+    CHECK_EQ(bitmap.rgba[controlCell + 1], 0);
+    CHECK_EQ(bitmap.rgba[controlCell + 2], 0);
+}
+
 } // namespace
 
 int main() {
@@ -519,9 +601,12 @@ int main() {
         {"NMOS decimal flag vectors", testNMOSDecimalFlagVectors},
         {"all 151 official opcodes decode", testAllOfficialOpcodesDecode},
         {"illegal opcode trap", testIllegalOpcodeTraps},
+        {"C API contains illegal opcode errors", testCAPIContainsIllegalOpcodeErrors},
         {"VIA timer and interrupt enable", testVIATimerAndInterruptEnable},
         {"VIA data direction and CA1 edge", testVIADataDirectionsAndEdges},
         {"CRTC frame timing", testCRTCFrameTiming},
+        {"CRTC one-line vertical adjustment", testCRTCOneLineVerticalAdjust},
+        {"CRTC two-line vertical adjustment", testCRTCTwoLineVerticalAdjust},
         {"SN76489 register protocol and rendering", testSoundRegisterProtocolAndRendering},
         {"BBC memory map and ROM selection", testBBCMemoryMapAndROMSelection},
         {"BBC bitmap frame rendering", testBBCBitmapFrameRendering},
@@ -529,6 +614,7 @@ int main() {
         {"8271 sector read protocol", test8271SectorReadProtocol},
         {"BBC 8271 memory map", testBBCFDCMemoryMap},
         {"clean-room teletext rendering", testCleanRoomTeletextRendering},
+        {"teletext control cells use active background", testTeletextControlCellsUseActiveBackground},
     };
 
     unsigned failed = 0;

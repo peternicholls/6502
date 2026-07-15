@@ -10,6 +10,9 @@ No operating-system, BASIC, filing-system, game or character ROM is included.
 The demo deliberately loads user-supplied ROMs and media through the platform
 document picker.
 
+The current development version is **0.1.0**. Public releases use Semantic
+Versioning and `vMAJOR.MINOR.PATCH` Git tags.
+
 ## What works now
 
 - All 151 documented NMOS MOS 6502 opcodes and addressing modes.
@@ -81,6 +84,12 @@ Add `--trace` for an instruction trace. Add other sideways ROMs with another
 `--rom BANK FILE` pair. The core itself accepts SSD/DSD images; the Swift demo
 currently exposes mounting through its file importer.
 
+Inspect the installed runtime version with:
+
+```sh
+.build/beeb-headless --version
+```
+
 ## Build on Apple platforms
 
 Open `Package.swift` in Xcode. `BeebKit` is the reusable product and `BeebDemo`
@@ -114,6 +123,17 @@ This is a booting development core, not yet a preservation-grade emulator.
 
 See [docs/STATUS.md](docs/STATUS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for the detailed hand-off.
+
+## Releases and compatibility
+
+The version is exposed to C and Swift hosts as well as the command-line tool.
+Changes are recorded in [CHANGELOG.md](CHANGELOG.md); the release procedure and
+compatibility policy are documented in [docs/RELEASING.md](docs/RELEASING.md).
+Run `make check-version` before tagging a release.
+
+Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Continuous
+integration builds the warning-clean C++ core on Linux and the complete Swift
+package on macOS.
 
 ## Licence and references
 

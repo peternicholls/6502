@@ -39,7 +39,7 @@ bool CRTC6845::displayEnabled() const noexcept {
 
 void CRTC6845::endScanline() {
     if (inVerticalAdjust_) {
-        if (++verticalAdjust_ > registers_[5]) {
+        if (++verticalAdjust_ >= registers_[5]) {
             inVerticalAdjust_ = false;
             verticalAdjust_ = 0;
             characterRow_ = 0;

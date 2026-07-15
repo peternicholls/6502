@@ -12,7 +12,7 @@
 | Interrupt/stack quirks | IRQ/NMI, BRK/RTI, JSR/RTS, pushed status, NMOS D preservation | Green |
 | Basic BBC boot | OS 1.20 + BASIC II smoke test reaches the BASIC idle loop and renders startup | Green smoke test |
 | Core build | GCC 13, C++20, warnings promoted to errors | Green |
-| Swift package | Files and C module boundary prepared | Needs first Xcode build |
+| Swift package | BeebKit tests and full package build on Apple Swift 6.2 | Green |
 
 ## Hardware fidelity
 

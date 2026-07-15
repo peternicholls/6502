@@ -4,10 +4,10 @@ import UniformTypeIdentifiers
 
 #if os(macOS)
 import AppKit
-private typealias PlatformImage = NSImage
+typealias PlatformImage = NSImage
 #else
 import UIKit
-private typealias PlatformImage = UIImage
+typealias PlatformImage = UIImage
 #endif
 
 @MainActor
@@ -67,7 +67,7 @@ final class EmulatorModel: ObservableObject {
     private func stepFrame() {
         guard let machine else { return }
         do {
-            _ = machine.runToNextFrame()
+            _ = try machine.runToNextFrame()
             if let frame = machine.videoFrame() { screen = platformImage(frame) }
             let cpu = machine.cpuState
             status = String(format: "PC %04X   %,llu cycles", cpu.programCounter, cpu.cycles)

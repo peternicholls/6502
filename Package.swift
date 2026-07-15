@@ -20,6 +20,11 @@ let package = Package(
         ),
         .target(name: "BeebKit", dependencies: ["BeebCore"]),
         .executableTarget(name: "BeebDemo", dependencies: ["BeebKit"]),
+        .testTarget(
+            name: "BeebKitTests",
+            dependencies: ["BeebKit"],
+            path: "Tests/BeebKitTests"
+        ),
     ],
     cxxLanguageStandard: .cxx20
 )

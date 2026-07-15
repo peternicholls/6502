@@ -20,16 +20,20 @@ public struct BeebVideoFrame: Sendable {
 
 public enum BeebError: LocalizedError {
     case coreCreationFailed
+    case coreFailure(String)
     case invalidOSROM
     case invalidSidewaysROM
     case invalidDiscImage
+    case invalidDrive
 
     public var errorDescription: String? {
         switch self {
         case .coreCreationFailed: return "The emulator core could not be created."
+        case let .coreFailure(message): return "The emulator core failed: \(message)"
         case .invalidOSROM: return "A BBC Model B OS ROM must be exactly 16 KiB."
         case .invalidSidewaysROM: return "A sideways ROM must be no larger than 16 KiB."
         case .invalidDiscImage: return "The disc is not a valid 40/80-track SSD or DSD image."
+        case .invalidDrive: return "The drive number must be 0 or 1."
         }
     }
 }
@@ -46,24 +50,37 @@ public final class BeebMachine: @unchecked Sendable {
     deinit { beeb_destroy(handle) }
 
     public func loadOSROM(_ data: Data) throws {
-        let loaded = data.withUnsafeBytes { bytes in
-            beeb_load_os_rom(handle, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
+        let (loaded, coreError) = lock.withLock {
+            let loaded = data.withUnsafeBytes { bytes in
+                beeb_load_os_rom(handle, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
+            }
+            return (loaded, coreErrorDescription())
         }
+        if let coreError { throw BeebError.coreFailure(coreError) }
         guard loaded != 0 else { throw BeebError.invalidOSROM }
     }
 
     public func loadSidewaysROM(_ data: Data, bank: UInt8) throws {
-        let loaded = data.withUnsafeBytes { bytes in
-            beeb_load_sideways_rom(handle, bank, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
+        let (loaded, coreError) = lock.withLock {
+            let loaded = data.withUnsafeBytes { bytes in
+                beeb_load_sideways_rom(handle, bank, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count)
+            }
+            return (loaded, coreErrorDescription())
         }
+        if let coreError { throw BeebError.coreFailure(coreError) }
         guard loaded != 0 else { throw BeebError.invalidSidewaysROM }
     }
 
     public func mountDisc(_ data: Data, drive: Int = 0, doubleSided: Bool, writable: Bool = false) throws {
-        let loaded = data.withUnsafeBytes { bytes in
-            beeb_mount_disc(handle, UInt32(drive), bytes.bindMemory(to: UInt8.self).baseAddress,
-                            bytes.count, doubleSided ? 1 : 0, writable ? 1 : 0)
+        guard (0...1).contains(drive) else { throw BeebError.invalidDrive }
+        let (loaded, coreError) = lock.withLock {
+            let loaded = data.withUnsafeBytes { bytes in
+                beeb_mount_disc(handle, UInt32(drive), bytes.bindMemory(to: UInt8.self).baseAddress,
+                                bytes.count, doubleSided ? 1 : 0, writable ? 1 : 0)
+            }
+            return (loaded, coreErrorDescription())
         }
+        if let coreError { throw BeebError.coreFailure(coreError) }
         guard loaded != 0 else { throw BeebError.invalidDiscImage }
     }
 
@@ -72,13 +89,23 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     @discardableResult
-    public func run(cycles: UInt64) -> UInt64 {
-        lock.withLock { beeb_run_cycles(handle, cycles) }
+    public func run(cycles: UInt64) throws -> UInt64 {
+        let (executed, coreError) = lock.withLock {
+            let executed = beeb_run_cycles(handle, cycles)
+            return (executed, coreErrorDescription())
+        }
+        if let coreError { throw BeebError.coreFailure(coreError) }
+        return executed
     }
 
     @discardableResult
-    public func runToNextFrame(maximumCycles: UInt64 = 100_000) -> Bool {
-        lock.withLock { beeb_run_until_frame(handle, maximumCycles) != 0 }
+    public func runToNextFrame(maximumCycles: UInt64 = 100_000) throws -> Bool {
+        let (result, coreError) = lock.withLock {
+            let result = beeb_run_until_frame(handle, maximumCycles)
+            return (result, coreErrorDescription())
+        }
+        if let coreError { throw BeebError.coreFailure(coreError) }
+        return result > 0
     }
 
     public var cpuState: BeebCPUState {
@@ -104,6 +131,7 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     public func renderAudio(frames: Int, sampleRate: Double) -> [Float] {
+        guard frames > 0, sampleRate.isFinite, sampleRate > 0 else { return [] }
         lock.withLock {
             var output = Array(repeating: Float.zero, count: frames)
             output.withUnsafeMutableBufferPointer {
@@ -119,6 +147,11 @@ public final class BeebMachine: @unchecked Sendable {
 
     public func setBreak(pressed: Bool) {
         lock.withLock { beeb_set_break(handle, pressed ? 1 : 0) }
+    }
+
+    private func coreErrorDescription() -> String? {
+        guard let error = beeb_last_error(handle), error.pointee != 0 else { return nil }
+        return String(cString: error)
     }
 }
 

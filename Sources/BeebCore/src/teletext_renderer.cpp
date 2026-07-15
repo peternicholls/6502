@@ -85,6 +85,13 @@ TeletextBitmap TeletextRenderer::render(std::span<const std::uint8_t> ram,
         for (unsigned columnIndex = 0; columnIndex < columns; ++columnIndex) {
             const auto address = 0x7C00u | ((start + row * columns + columnIndex) & 0x03FFu);
             const auto character = address < ram.size() ? ram[address] & 0x7F : 0x20;
+            const auto fg = colour(foreground);
+            const auto bg = colour(background);
+            const auto originX = columnIndex * cellWidth;
+            const auto originY = row * cellHeight;
+            for (unsigned y = 0; y < cellHeight; ++y) {
+                for (unsigned x = 0; x < cellWidth; ++x) pixel(bitmap, originX + x, originY + y, bg);
+            }
             if (character < 0x20) {
                 if (character >= 0x01 && character <= 0x07) { foreground = character; graphics = false; }
                 else if (character == 0x08) flash = true;
@@ -97,14 +104,7 @@ TeletextBitmap TeletextRenderer::render(std::span<const std::uint8_t> ram,
                 continue;
             }
 
-            const auto fg = colour(foreground);
-            const auto bg = colour(background);
             const bool visible = !flash || ((frameNumber / 25) & 1) == 0;
-            const auto originX = columnIndex * cellWidth;
-            const auto originY = row * cellHeight;
-            for (unsigned y = 0; y < cellHeight; ++y) {
-                for (unsigned x = 0; x < cellWidth; ++x) pixel(bitmap, originX + x, originY + y, bg);
-            }
             if (!visible) continue;
 
             if (graphics) {

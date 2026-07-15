@@ -1,5 +1,6 @@
 #include "beeb/cpu6502.hpp"
 #include "beeb/machine.hpp"
+#include "beeb/version.h"
 
 #include <array>
 #include <charconv>
@@ -141,6 +142,7 @@ int runBBC(const std::string& osPath, const std::vector<std::pair<unsigned, std:
 
 void usage() {
     std::cout <<
+        "beeb-headless --version\n"
         "beeb-headless --os MOS.rom [--rom BANK ROM] [--cycles N] [--frame output.ppm] [--trace]\n"
         "beeb-headless --functional 6502_functional_test.bin [--pc 0x0400]\n"
         "              [--success 0x3469] [--max-instructions N] [--trace]\n";
@@ -177,6 +179,10 @@ int main(int argc, char** argv) {
                 const auto bank = static_cast<unsigned>(number(next()));
                 roms.emplace_back(bank, next());
             } else if (argument == "--trace") trace = true;
+            else if (argument == "--version") {
+                std::cout << "Beeb6502 " BEEB_VERSION_STRING "\n";
+                return 0;
+            }
             else if (argument == "--help" || argument == "-h") { usage(); return 0; }
             else throw std::runtime_error("unknown option " + std::string(argument));
         }

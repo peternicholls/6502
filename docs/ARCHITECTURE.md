@@ -9,6 +9,12 @@ through explicit load methods. Video and audio leave as plain buffers.
 The C ABI in `beeb_c.h` is the stable cross-language seam. `BeebKit` owns the
 Swift lifetime and locking wrapper. `BeebDemo` owns document import and UI.
 
+No C++ exception may cross the C ABI. Fallible entry points translate failures
+into sentinel return values and retain a per-machine diagnostic for the host to
+read immediately. `BeebKit` converts those diagnostics into `BeebError` values.
+The Swift wrapper serializes every read and mutation of core state with one
+lock, which is the basis for its `Sendable` conformance.
+
 ```mermaid
 flowchart TD
     Host["SwiftUI · Files · Metal · AVAudioEngine"] --> Kit[BeebKit]
@@ -68,3 +74,10 @@ accident.
 SSD/DSD handling copies the user image into deterministic core state. Writable
 media changes the in-memory copy; a future host API should explicitly export a
 modified image rather than silently writing the source file.
+
+## Version boundary
+
+`beeb/version.h` is the compiled version source for C, C++ and Swift hosts.
+`VERSION` is the release-tooling source, and `make check-version` prevents it
+from drifting from the binary or changelog. Releases use Semantic Versioning;
+see `docs/RELEASING.md` for the synchronization and tagging procedure.
