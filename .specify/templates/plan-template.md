@@ -33,6 +33,10 @@
 **Code Documentation**: [language-appropriate browsable generators, source
 comments/guides affected, documentation debt impact, and validation command]
 
+**Git Checkpoints**: [How every verified task is committed before the next task
+and how the final task commit or a separate phase-closing commit records each
+phase boundary]
+
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
 **Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
@@ -70,6 +74,9 @@ comments/guides affected, documentation debt impact, and validation command]
       below with the simpler alternative that was rejected.
 - [ ] New or changed code does not increase recorded documentation debt, and
       generated documentation remains a reproducible build artifact.
+- [ ] Every task has a focused verification and commit checkpoint before the
+      next task, and every phase boundary will be committed without requiring
+      empty duplicate commits.
 
 ## Project Structure
 

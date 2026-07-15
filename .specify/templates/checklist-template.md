@@ -42,6 +42,13 @@ validates, or explain why a principle is not applicable]
 - [ ] CHKXXX Browsable generation, link/markup validation, and documentation
       debt impact have measurable acceptance criteria
 
+## Git Execution
+
+- [ ] CHKXXX Every task names focused verification and is committed before the
+      next task begins
+- [ ] CHKXXX Every phase boundary has a non-empty commit plan, or its final task
+      commit explicitly records phase completion
+
 ## Notes
 
 - Check items off as completed: `[x]`

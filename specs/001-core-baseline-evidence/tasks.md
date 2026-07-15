@@ -18,7 +18,11 @@ than committed.
 IDs encode the intended dependency order; `[P]` means different files and no
 unfinished dependency.
 
-**Git**: Commit after each task and phase.
+**Git**: Commit every task after its focused verification succeeds and before
+starting the next task. The final task commit in each phase should explicitly
+record phase completion and serves as the phase checkpoint. If phase-level
+artifacts remain after that task, commit them separately before the next phase;
+do not create an empty duplicate commit.
 
 ## Phase 1: Setup and Baseline Record
 

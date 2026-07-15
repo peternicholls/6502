@@ -1,19 +1,15 @@
 <!--
 Sync Impact Report
-- Version: 1.0.0 -> 1.1.0
-- Added principles: Product/Core Strand Separation; Deterministic Portable Core;
-  Evidence-Led Fidelity; Test-First Delivery; Safe, Versioned Boundaries;
-  User-Owned Content and Legal Clarity; Accessible Vertical Value and Simplicity;
-  Code Documentation Is Maintained Knowledge
-- Added sections: none
-- Updated templates: plan-template.md, spec-template.md, tasks-template.md,
-  checklist-template.md
-- Updated guidance: specs/README.md, docs/CORE_ROADMAP.md, CHANGELOG.md
-- Migration: C0 establishes the documentation generator, initial public-surface
-  coverage and debt baseline; all later coding features apply the documentation
-  impact and validation gates
-- Deferred items: unchanged internal documentation debt may be recorded by C0,
-  but new or changed surfaces cannot increase it
+- Version: 1.1.0 -> 1.2.0
+- Added principles: none
+- Modified sections: Specification and Delivery Workflow; Governance
+- Updated templates: plan-template.md, tasks-template.md, checklist-template.md
+- Updated guidance: AGENTS.md, specs/README.md, active C0 plan and tasks,
+  CHANGELOG.md
+- Migration: all active and future tasks use verified per-task commits and a
+  committed phase boundary before subsequent work; existing history is not
+  rewritten and empty duplicate phase commits are not required
+- Deferred items: none
 -->
 
 # Beeb Constitution
@@ -162,12 +158,18 @@ same slice.
    coding tasks with documentation source and generated-output validation.
    Run `/speckit-analyze` before implementation when multiple artifacts or
    strands are involved.
-6. Implementation MUST use focused verification while iterating, then run the
+6. Each task MUST be verified and committed before work begins on another task.
+   Each phase MUST have its completion changes committed before the next phase
+   begins. The final task commit MAY serve as the phase checkpoint when it
+   explicitly records phase completion; an empty duplicate commit MUST NOT be
+   created. Commits MUST keep task scope reviewable, preserve unrelated user
+   changes, and follow the repository Lore commit format.
+7. Implementation MUST use focused verification while iterating, then run the
    affected repository gates: `make test`, `make sanitize`, `swift test`, and
    `swift build` as applicable. Coding changes MUST also run the documentation
    generation and link/markup quality gates. All changes MUST pass
    `git diff --check`.
-7. Completion MUST update affected status, architecture, roadmap, release, or
+8. Completion MUST update affected status, architecture, roadmap, release, or
    user documentation. A feature is complete only when its acceptance evidence
    passes and no known limitation is presented as delivered behavior.
 
@@ -189,4 +191,8 @@ or materially expanded obligation, and PATCH for clarification without changed
 intent. Every plan and implementation review MUST verify compliance; unresolved
 violations block implementation or release.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15
+The per-task and per-phase commit requirement applies prospectively to active
+and future work. Amendments do not require rewriting compliant historical
+commits or creating empty commits solely to mark a phase.
+
+**Version**: 1.2.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15

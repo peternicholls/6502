@@ -2,7 +2,8 @@
 
 **Constitution scope**: Product/core separation, deterministic portable core,
 evidence-led fidelity, test-first delivery, safe public boundaries, lawful
-fixtures, useful browsable code documentation, and simple vertical delivery.
+fixtures, useful browsable code documentation, verified task/phase Git
+checkpoints, and simple vertical delivery.
 
 **Purpose**: Validate specification completeness and quality before proceeding
 to planning
@@ -42,3 +43,6 @@ to planning
 - Validation iteration 2: the code-documentation story, requirements, debt
   boundary, enforcement rule, edge cases, and measurable outcomes are complete;
   all 16 items continue to pass.
+- Validation iteration 3: the project-wide per-task and per-phase Git checkpoint
+  rule is represented in the active plan and tasks; specification quality
+  remains unchanged and all 16 items continue to pass.

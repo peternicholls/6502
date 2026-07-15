@@ -47,6 +47,12 @@ failure for C/C++; DocC for Swift; `docs/code/` conceptual Markdown; one
 `make docs` entry point producing `.build/docs/index.html`; a tracked debt
 inventory and changed-surface ratchet validated by `make docs-check`
 
+**Git Checkpoints**: After each task's focused checks pass, commit that task in
+Lore format before starting the next task. The last task in a phase explicitly
+records phase completion and normally serves as the phase checkpoint; make a
+separate phase-closing commit only when phase-level artifacts remain, never as
+an empty marker.
+
 **Target Platform**: Portable core and evidence verification on current Linux
 and macOS CI hosts; Swift and DocC portions on the current macOS Swift host
 
@@ -99,6 +105,8 @@ representative CPU, machine, timing, host-boundary, evidence, and testing guides
       runtime abstraction or dependency is introduced.
 - [x] Generated evidence and documentation stay under `.build/`; changed code
       cannot increase tracked documentation debt.
+- [x] Every task is a verified commit checkpoint, and each phase ends in a
+      non-empty commit before subsequent phase work begins.
 
 **Post-design re-check**: Passed. The contracts keep reference updates separate,
 the model makes provenance and validity explicit, the quickstart exercises each

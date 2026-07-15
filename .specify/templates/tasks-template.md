@@ -18,6 +18,11 @@ public contracts, non-obvious behavior, and conceptual guides, or record a
 concrete `N/A`. Documentation source changes belong with the code they explain;
 the final phase MUST generate and validate the browsable documentation.
 
+**Git**: Commit every task after its focused verification succeeds and before
+starting the next task. Commit phase-completion changes before the next phase;
+the final task commit may serve as that phase checkpoint when its Lore message
+explicitly records phase completion. Never create an empty duplicate commit.
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -270,6 +275,9 @@ With multiple developers:
 - Cover ownership, errors, threading, versioning, user content, recovery, and accessibility where applicable
 - Document affected public contracts and complex invariants at the useful level;
   avoid comments that restate self-evident code
-- Commit after each task or logical group
+- Commit every verified task before starting another task
+- At each phase checkpoint, confirm all phase changes are committed; let the
+  final task commit close the phase when it explicitly says so, without an
+  empty duplicate commit
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

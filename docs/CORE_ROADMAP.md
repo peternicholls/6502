@@ -426,8 +426,9 @@ A candidate slice is **sprint-ready** only when:
 - public-contract, non-obvious-behavior and conceptual documentation impact is
   explicit, with a generated-documentation validation task or a concrete N/A;
 - the plan passes every Constitution Check; and
-- `tasks.md` is dependency-ordered and contains no unresolved critical
-  analysis finding.
+- `tasks.md` is dependency-ordered, gives every task a verified commit
+  checkpoint before the next task, records each phase boundary before the next
+  phase, and contains no unresolved critical analysis finding.
 
 A phase may move to **Complete** only when every exit-evidence item is linked to
 passing tests, traces or measurements, affected C and Swift boundary tests pass,
