@@ -108,10 +108,11 @@ not change.
 - [x] T012 [US1] Add `verify-c0` and `test-c0` targets to `Makefile`, ensuring
   normal verification can write only under `.build/c0/` and never update
   `Tests/Fixtures/C0/`
-- [ ] T013 [US1] Fix only contract defects exposed by T009/T010 in
+- [x] T013 [US1] Fix only contract defects exposed by T009/T010 in
   `Sources/BeebCore/src/beeb_c.cpp`, `Sources/BeebKit/BeebMachine.swift`, or
   `Sources/BeebKit/BeebVersion.swift`; if no defect exists, record that the
   expanded tests passed without production changes
+  - Outcome: C++ 27/27 and Swift 7/7 pass; no production fix was required.
 - [ ] T014 [US1] Add Linux and macOS execution of
   `Tests/C0/test-baseline-verifier.sh` to `.github/workflows/ci.yml`, proving the
   orchestration contract without enabling the full aggregate job before later
