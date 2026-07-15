@@ -10,7 +10,8 @@ else
 SANITIZERS ?= address,undefined
 endif
 
-.PHONY: all test sanitize check-version demo-rom test-c0 verify-c0 clean
+.PHONY: all test sanitize check-version demo-rom test-c0 verify-c0 \
+	verify-c0-references update-c0-reference clean
 
 all: $(BUILD_DIR)/beeb-headless
 
@@ -58,6 +59,14 @@ test-c0:
 
 verify-c0:
 	scripts/verify-c0.sh
+
+verify-c0-references:
+	scripts/verify-c0-references.sh
+
+update-c0-reference:
+	@test -n "$(REFERENCE)" || { echo "REFERENCE is required" >&2; exit 2; }
+	@test -n "$(REASON)" || { echo "REASON is required" >&2; exit 2; }
+	scripts/update-c0-reference.sh --reference "$(REFERENCE)" --reason "$(REASON)"
 
 clean:
 	rm -rf $(BUILD_DIR)

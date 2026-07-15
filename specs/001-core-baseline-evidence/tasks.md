@@ -160,7 +160,7 @@ normal verification reports but never replaces it.
   in `scripts/update-c0-reference.sh` according to
   `contracts/evidence-reference.md`; make T017 pass and do not expose it through
   `verify-c0`
-- [ ] T021 [US2] Add `verify-c0-references` and explicitly named
+- [x] T021 [US2] Add `verify-c0-references` and explicitly named
   `update-c0-reference` targets to `Makefile`; require the reference ID and
   rationale at the update boundary
 - [ ] T022 [US2] Wire fixture provenance, boot state, bitmap, and Mode 7 groups
