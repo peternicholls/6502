@@ -248,7 +248,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
   `Sources/BeebCore/include/beeb/*.hpp`, and add concise rationale links beside
   representative CPU, machine/device timing, state-transition, and buffer code
   in `Sources/BeebCore/src/*.cpp`; do not annotate self-evident helpers
-- [ ] T034 [P] [US4] Document the public Swift wrapper in
+- [x] T034 [P] [US4] Document the public Swift wrapper in
   `Sources/BeebKit/BeebMachine.swift` and `Sources/BeebKit/BeebVersion.swift`,
   including ownership, actor/thread expectations, errors, and C-buffer copying
 - [ ] T035 [P] [US4] Add the DocC module landing page to
