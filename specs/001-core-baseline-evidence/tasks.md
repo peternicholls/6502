@@ -197,7 +197,7 @@ interruption produce an invalid result.
 - [x] T025 [US3] Implement release-build sampling, portable environment capture,
   strict validity derivation, and structured output in `scripts/measure-c0.sh`
   according to `contracts/measurement-record.md`; make T024 pass
-- [ ] T026 [US3] Add `measure-c0` and an internal measurement-record validation
+- [x] T026 [US3] Add `measure-c0` and an internal measurement-record validation
   target to `Makefile`; keep variable performance outside `verify-c0` success
 - [ ] T027 [US3] Run at least five canonical workload samples on a recorded
   environment and add the valid comparison record plus interpretation limits to

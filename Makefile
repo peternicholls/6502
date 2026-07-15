@@ -11,7 +11,8 @@ SANITIZERS ?= address,undefined
 endif
 
 .PHONY: all test sanitize check-version demo-rom test-c0 verify-c0 \
-	verify-c0-references update-c0-reference clean
+	verify-c0-references update-c0-reference measure-c0 \
+	validate-c0-measurement clean
 
 all: $(BUILD_DIR)/beeb-headless
 
@@ -67,6 +68,13 @@ update-c0-reference:
 	@test -n "$(REFERENCE)" || { echo "REFERENCE is required" >&2; exit 2; }
 	@test -n "$(REASON)" || { echo "REASON is required" >&2; exit 2; }
 	scripts/update-c0-reference.sh --reference "$(REFERENCE)" --reason "$(REASON)"
+
+measure-c0:
+	scripts/measure-c0.sh --samples "$(or $(SAMPLES),5)" \
+		--output "$(or $(OUTPUT),.build/c0/measurements/latest.txt)"
+
+validate-c0-measurement:
+	Tests/C0/test-measurement-record.sh
 
 clean:
 	rm -rf $(BUILD_DIR)
