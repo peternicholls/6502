@@ -12,11 +12,15 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <future>
 #include <iostream>
+#include <latch>
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
@@ -792,6 +796,140 @@ void testC1ReplayDeterministicLedger() {
     }
 }
 
+struct C1CapturedReplay {
+    beeb::CPUState cpu;
+    beeb::SafePoint safePoint;
+    std::vector<beeb::LedgerEntry> ledger;
+};
+
+C1CapturedReplay captureC1ConcurrentLedger() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    loadNOPFixture(runtime);
+
+    constexpr unsigned callerCount = 12;
+    std::latch ready(callerCount);
+    std::latch release(1);
+    std::vector<std::future<beeb::RuntimeStatus>> calls;
+    calls.reserve(callerCount);
+    for (unsigned index = 0; index < callerCount; ++index) {
+        calls.emplace_back(std::async(std::launch::async, [&runtime, &ready, &release, index] {
+            ready.count_down();
+            release.wait();
+            switch (index % 3) {
+            case 0: return runtime.start();
+            case 1: return runtime.pause();
+            default: return runtime.state().status;
+            }
+        }));
+    }
+    ready.wait();
+    release.count_down();
+    for (auto& call : calls) checkRuntimeOK(call.get());
+    checkRuntimeOK(runtime.pause());
+
+    const auto cpu = runtimeValue(runtime.cpuState());
+    const auto safePoint = runtimeValue(runtime.safePoint());
+    return {cpu, safePoint, runtime.ledger()};
+}
+
+struct C1ReplayOutcome {
+    beeb::CPUState cpu;
+    beeb::SafePoint safePoint;
+
+    friend bool operator==(const C1ReplayOutcome&, const C1ReplayOutcome&) = default;
+};
+
+C1ReplayOutcome replayC1Ledger(const std::vector<beeb::LedgerEntry>& ledger) {
+    beeb::BBCMicro machine;
+    auto state = beeb::RuntimeState::paused;
+    auto previousSequence = std::uint64_t{0};
+    auto previousAcceptance = std::uint64_t{0};
+    beeb::SafePoint finalSafePoint{};
+    const auto os = makeNOPOSROM();
+
+    for (const auto& entry : ledger) {
+        CHECK(entry.sequence > previousSequence);
+        previousSequence = entry.sequence;
+        CHECK(entry.safePoint.ledgerSequence == entry.sequence);
+        CHECK(entry.status == beeb::RuntimeStatusCode::ok);
+
+        if (entry.event == beeb::LedgerEventKind::executionSlice) {
+            CHECK(state == beeb::RuntimeState::running);
+            CHECK_EQ(entry.requestedCycles, beeb::MachineRuntime::executionSliceCycles);
+            CHECK_EQ(machine.runFor(entry.requestedCycles), entry.actualCycles);
+        } else {
+            CHECK(entry.acceptanceSequence > previousAcceptance);
+            previousAcceptance = entry.acceptanceSequence;
+            switch (entry.command) {
+            case beeb::RuntimeCommandKind::loadOSROM:
+                CHECK(entry.payloadDigest != 0);
+                CHECK(machine.loadOSROM(os));
+                break;
+            case beeb::RuntimeCommandKind::reset:
+                machine.reset();
+                state = beeb::RuntimeState::paused;
+                break;
+            case beeb::RuntimeCommandKind::start:
+                state = beeb::RuntimeState::running;
+                break;
+            case beeb::RuntimeCommandKind::pause:
+                state = beeb::RuntimeState::paused;
+                break;
+            case beeb::RuntimeCommandKind::runtimeState:
+                CHECK_EQ(entry.resultDigest, static_cast<std::uint64_t>(state) + 1);
+                break;
+            case beeb::RuntimeCommandKind::cpuState:
+            case beeb::RuntimeCommandKind::safePoint:
+                CHECK(entry.resultDigest != 0);
+                break;
+            default:
+                throw TestFailure("unexpected command in C1 concurrent replay ledger");
+            }
+        }
+
+        CHECK_EQ(machine.cpu().state().cycles, entry.safePoint.cpuCycles);
+        CHECK_EQ(machine.frame().number, entry.safePoint.frameNumber);
+        CHECK(state == entry.safePoint.state);
+        finalSafePoint = entry.safePoint;
+    }
+    return {machine.cpu().state(), finalSafePoint};
+}
+
+void writeC1ReplayEvidence(const C1CapturedReplay& capture) {
+    const auto* directory = std::getenv("BEEB_C1_EVIDENCE_DIR");
+    if (!directory || *directory == '\0') return;
+    std::filesystem::create_directories(directory);
+    std::ofstream output(std::filesystem::path(directory) / "accepted-ledger.txt");
+    CHECK(output.good());
+    output << "sequence event command acceptance requested actual payload result status "
+              "cpu_cycles frame state\n";
+    for (const auto& entry : capture.ledger) {
+        output << entry.sequence << ' '
+               << static_cast<unsigned>(entry.event) << ' '
+               << static_cast<unsigned>(entry.command) << ' '
+               << entry.acceptanceSequence << ' '
+               << entry.requestedCycles << ' '
+               << entry.actualCycles << ' '
+               << entry.payloadDigest << ' '
+               << entry.resultDigest << ' '
+               << static_cast<unsigned>(entry.status) << ' '
+               << entry.safePoint.cpuCycles << ' '
+               << entry.safePoint.frameNumber << ' '
+               << static_cast<unsigned>(entry.safePoint.state) << '\n';
+    }
+}
+
+void testC1ReplayCapturedConcurrentLedgerExactly() {
+    const auto capture = captureC1ConcurrentLedger();
+    CHECK(!capture.ledger.empty());
+    writeC1ReplayEvidence(capture);
+
+    const C1ReplayOutcome expected{capture.cpu, capture.safePoint};
+    for (unsigned repetition = 0; repetition < 10; ++repetition) {
+        CHECK(replayC1Ledger(capture.ledger) == expected);
+    }
+}
+
 void testC1RuntimeFixedExecutionSlices() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     loadNOPFixture(runtime);
@@ -979,6 +1117,7 @@ int main(int argc, char** argv) {
         {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
         {"C1 contract: structured status isolation", testC1RuntimeContractStructuredStatusIsolation},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
+        {"C1 replay: captured concurrent ledger replays exactly", testC1ReplayCapturedConcurrentLedgerExactly},
         {"C1 contract: fixed execution slices share ledger order", testC1RuntimeFixedExecutionSlices},
         {"C1 lifecycle: accepted pause completes within one slice", testC1PauseCompletesWithinOneAcceptedSlice},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},

@@ -11,6 +11,7 @@
 #include <mutex>
 #include <new>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -79,6 +80,54 @@ using CompletionValue = std::variant<
     std::vector<float>,
     SafePoint,
     RuntimeFault>;
+
+std::uint64_t hashString(const std::string& value) noexcept {
+    return hashBytes(std::span(
+        reinterpret_cast<const std::uint8_t*>(value.data()), value.size()));
+}
+
+std::uint64_t completionDigest(const CompletionValue& value) noexcept {
+    return std::visit([](const auto& result) -> std::uint64_t {
+        using Result = std::decay_t<decltype(result)>;
+        if constexpr (std::is_same_v<Result, std::monostate>) {
+            return 0;
+        } else if constexpr (std::is_same_v<Result, RuntimeState>) {
+            return static_cast<std::uint64_t>(result) + 1;
+        } else if constexpr (std::is_same_v<Result, std::uint64_t>) {
+            return mix(1, result);
+        } else if constexpr (std::is_same_v<Result, bool>) {
+            return result ? 2 : 1;
+        } else if constexpr (std::is_same_v<Result, CPUState>) {
+            auto digest = mix(result.a, result.x);
+            digest = mix(digest, result.y);
+            digest = mix(digest, result.sp);
+            digest = mix(digest, result.p);
+            digest = mix(digest, result.pc);
+            return mix(digest, result.cycles);
+        } else if constexpr (std::is_same_v<Result, OwnedFrame>) {
+            auto digest = mix(result.available ? 1 : 0, result.width);
+            digest = mix(digest, result.height);
+            digest = mix(digest, result.number);
+            return mix(digest, hashBytes(result.rgba));
+        } else if constexpr (std::is_same_v<Result, std::vector<float>>) {
+            std::uint64_t digest = result.size();
+            for (const auto sample : result) {
+                digest = mix(digest, std::bit_cast<std::uint32_t>(sample));
+            }
+            return digest;
+        } else if constexpr (std::is_same_v<Result, SafePoint>) {
+            auto digest = mix(result.cpuCycles, result.frameNumber);
+            digest = mix(digest, static_cast<std::uint64_t>(result.state));
+            return mix(digest, result.ledgerSequence);
+        } else if constexpr (std::is_same_v<Result, RuntimeFault>) {
+            auto digest = mix(result.available ? 1 : 0, hashString(result.message));
+            digest = mix(digest, result.safePoint.cpuCycles);
+            digest = mix(digest, result.safePoint.frameNumber);
+            digest = mix(digest, static_cast<std::uint64_t>(result.safePoint.state));
+            return mix(digest, result.safePoint.ledgerSequence);
+        }
+    }, value);
+}
 
 struct Completion {
     RuntimeStatus status;
@@ -323,7 +372,7 @@ private:
                 const auto safePoint = currentSafePoint(sequence);
                 appendLedger({sequence, shutdownAcceptanceSequence_,
                               LedgerEventKind::command, RuntimeCommandKind::shutdown,
-                              0, 0, 0, RuntimeStatusCode::ok, safePoint});
+                              0, 0, 0, 0, RuntimeStatusCode::ok, safePoint});
                 {
                     std::lock_guard lock(mutex_);
                     shutdownMarkerReady_ = false;
@@ -366,7 +415,8 @@ private:
         appendLedger({sequence, request.acceptanceSequence,
                       LedgerEventKind::command, request.kind,
                       requestedCycles(request), actualCycles(completion),
-                      request.payloadDigest, completion.status.code, safePoint});
+                      request.payloadDigest, completionDigest(completion.value),
+                      completion.status.code, safePoint});
 
         try {
             request.completion.set_value(std::move(completion));
@@ -574,7 +624,8 @@ private:
         const auto safePoint = currentSafePoint(sequence);
         appendLedger({sequence, 0, LedgerEventKind::executionSlice,
                       RuntimeCommandKind::runCycles,
-                      MachineRuntime::executionSliceCycles, actual, 0, code, safePoint});
+                      MachineRuntime::executionSliceCycles, actual, 0,
+                      mix(1, actual), code, safePoint});
     }
 
     SafePoint currentSafePoint(std::uint64_t ledgerSequence) const {

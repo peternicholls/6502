@@ -118,6 +118,7 @@ struct LedgerEntry {
     std::uint64_t requestedCycles = 0;
     std::uint64_t actualCycles = 0;
     std::uint64_t payloadDigest = 0;
+    std::uint64_t resultDigest = 0;
     RuntimeStatusCode status = RuntimeStatusCode::ok;
     SafePoint safePoint;
 
