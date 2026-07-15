@@ -31,7 +31,7 @@
 
 **Independent Test**: Reset, loads, inputs, and observations around run/pause complete FIFO at safe points with owned values and atomic failure.
 
-- [ ] T013 [US2] Add failing reset/load/input/query FIFO, atomic-invalid-input, and no-auto-resume tests in `Tests/test_main.cpp`.
+- [x] T013 [US2] Add failing reset/load/input/query FIFO, atomic-invalid-input, and no-auto-resume tests in `Tests/test_main.cpp`.
 - [ ] T014 [US2] Route reset, OS/sideways ROM, and disc transactions with copied payloads through `Sources/BeebCore/src/runtime.cpp`. Verify focused and existing media tests.
 - [ ] T015 [US2] Route keyboard/BREAK mutations through the FIFO in `Sources/BeebCore/src/runtime.cpp`. Verify ordered input/reset tests and sanitizer.
 - [ ] T016 [US2] Route CPU state, frame, and audio observations through owner commands and return owned values in `Sources/BeebCore/include/beeb/runtime.hpp` and `Sources/BeebCore/src/runtime.cpp`. Verify consistency/lifetime and C0 frame tests.

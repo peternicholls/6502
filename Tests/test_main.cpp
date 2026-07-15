@@ -1010,6 +1010,105 @@ void testC1PauseCompletesWithinOneAcceptedSlice() {
     CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
 }
 
+void waitForC1Acceptance(beeb::MachineRuntime& runtime, std::uint64_t expected) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (runtime.acceptedCommandCount() < expected &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+    CHECK_EQ(runtime.acceptedCommandCount(), expected);
+}
+
+void testC1TransactionsFIFOAndNoAutoResume() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    const auto os = makeNOPOSROM();
+    loadNOPFixture(runtime);
+    checkRuntimeOK(runtime.start());
+
+    auto nextAcceptance = runtime.acceptedCommandCount() + 1;
+    auto reset = std::async(std::launch::async, [&runtime] { return runtime.reset(); });
+    waitForC1Acceptance(runtime, nextAcceptance++);
+    auto load = std::async(std::launch::async, [&runtime, &os] {
+        return runtime.loadOSROM(os);
+    });
+    waitForC1Acceptance(runtime, nextAcceptance++);
+    auto input = std::async(std::launch::async, [&runtime] {
+        return runtime.setKey(1, 2, true);
+    });
+    waitForC1Acceptance(runtime, nextAcceptance++);
+    auto stateBetween = std::async(std::launch::async, [&runtime] { return runtime.state(); });
+    waitForC1Acceptance(runtime, nextAcceptance++);
+    auto start = std::async(std::launch::async, [&runtime] { return runtime.start(); });
+    waitForC1Acceptance(runtime, nextAcceptance);
+
+    const auto resetStatus = reset.get();
+    const auto loadStatus = load.get();
+    const auto inputStatus = input.get();
+    const auto betweenResult = stateBetween.get();
+    const auto startStatus = start.get();
+    checkRuntimeOK(resetStatus);
+    checkRuntimeOK(loadStatus);
+    checkRuntimeOK(inputStatus);
+    CHECK(runtimeValue(betweenResult) == beeb::RuntimeState::paused);
+    checkRuntimeOK(startStatus);
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::running);
+    checkRuntimeOK(runtime.pause());
+
+    const auto ledger = runtime.ledger();
+    const std::array acceptanceOrder{
+        resetStatus.acceptanceSequence,
+        loadStatus.acceptanceSequence,
+        inputStatus.acceptanceSequence,
+        betweenResult.status.acceptanceSequence,
+        startStatus.acceptanceSequence,
+    };
+    std::vector<beeb::RuntimeCommandKind> acceptedCommands;
+    for (const auto& entry : ledger) {
+        if (entry.event != beeb::LedgerEventKind::command) continue;
+        if (std::find(acceptanceOrder.begin(), acceptanceOrder.end(),
+                      entry.acceptanceSequence) != acceptanceOrder.end()) {
+            acceptedCommands.push_back(entry.command);
+        }
+    }
+    const std::vector expectedCommands{
+        beeb::RuntimeCommandKind::reset,
+        beeb::RuntimeCommandKind::loadOSROM,
+        beeb::RuntimeCommandKind::setKey,
+        beeb::RuntimeCommandKind::runtimeState,
+        beeb::RuntimeCommandKind::start,
+    };
+    CHECK(acceptedCommands == expectedCommands);
+}
+
+void testC1TransactionsRejectAtomicallyAndCopyInput() {
+    beeb::MachineRuntime runtime;
+    auto source = makeNOPOSROM();
+    checkRuntimeOK(runtime.loadOSROM(source));
+    checkRuntimeOK(runtime.reset());
+
+    std::vector<std::uint8_t> invalid(source.begin(), source.end() - 1);
+    invalid[0] = 0x02;
+    const auto rejected = runtime.loadOSROM(invalid);
+    CHECK(rejected.code == beeb::RuntimeStatusCode::invalidArgument);
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.runFor(2)) >= 2);
+
+    const auto beforeCopy = runtime.acceptedCommandCount();
+    auto copiedLoad = std::async(std::launch::async, [&runtime, &source] {
+        return runtime.loadOSROM(source);
+    });
+    waitForC1Acceptance(runtime, beforeCopy + 1);
+    source[0] = 0x02;
+    checkRuntimeOK(copiedLoad.get());
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.runFor(2)) >= 2);
+
+    checkRuntimeOK(runtime.start());
+    CHECK(runtime.setKey(16, 0, true).code == beeb::RuntimeStatusCode::invalidArgument);
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::running);
+    checkRuntimeOK(runtime.pause());
+}
+
 void testC1RaceMixedCommands() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     loadNOPFixture(runtime);
@@ -1120,6 +1219,8 @@ int main(int argc, char** argv) {
         {"C1 replay: captured concurrent ledger replays exactly", testC1ReplayCapturedConcurrentLedgerExactly},
         {"C1 contract: fixed execution slices share ledger order", testC1RuntimeFixedExecutionSlices},
         {"C1 lifecycle: accepted pause completes within one slice", testC1PauseCompletesWithinOneAcceptedSlice},
+        {"C1 transactions: FIFO reset load query and explicit resume", testC1TransactionsFIFOAndNoAutoResume},
+        {"C1 transactions: invalid input is atomic and payload is copied", testC1TransactionsRejectAtomicallyAndCopyInput},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };
