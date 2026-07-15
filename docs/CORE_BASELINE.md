@@ -158,6 +158,37 @@ disabled in CI, regenerates ten candidates, updates only the named reference
 and its derived manifest fields, and prints the fixture diff for review. A
 mismatch never authorizes replacement by itself.
 
+## Descriptive throughput comparison
+
+The initial C0 comparison record was captured from clean revision
+`9a59d3679e238083edc7f3cb01defe04549b96a9` with:
+
+- workload: `cleanroom-mode7-100k`;
+- host: Apple M2 Ultra, arm64, Darwin 25.5.0;
+- compiler: Apple clang 17.0.0 (`clang-1700.6.4.2`);
+- build mode: release (`-O2` through the repository Makefile);
+- requested cycles per sample: 100,000;
+- actual completed-instruction cycles per sample: 100,002.
+
+| Sample | Elapsed nanoseconds | Emulated cycles/second |
+| ---: | ---: | ---: |
+| 1 | 7,932,000 | 12,607,413 |
+| 2 | 6,877,000 | 14,541,515 |
+| 3 | 7,334,000 | 13,635,397 |
+| 4 | 8,029,000 | 12,455,100 |
+| 5 | 7,812,000 | 12,801,075 |
+
+- median: 12,801,075 emulated cycles/second;
+- range: 12,455,100–14,541,515 emulated cycles/second.
+
+The valid raw record remains a generated artifact at
+`.build/c0/measurements/2026-07-15-apple-m2-ultra.txt`. The values above are a
+descriptive comparison baseline only. They are not a product guarantee, release
+threshold, latency target, or evidence of hardware compatibility. Later work
+must compare the same workload and record its revision, host, compiler, build
+mode, individual samples, median, and range; unlike environments are not
+directly comparable.
+
 ## Interpretation
 
 This record distinguishes the known starting behavior from C0 exit evidence.
