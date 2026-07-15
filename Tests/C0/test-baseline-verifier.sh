@@ -53,6 +53,7 @@ c0_capture one-failure "${verifier}" --profile portable --groups "${one_failure}
     --output-dir "${C0_TEST_TMP}/run-one-failure"
 c0_expect_failure one-failure
 c0_assert_contains "${C0_TEST_TMP}/one-failure.stdout" "bravo fail"
+c0_assert_contains "${C0_TEST_TMP}/one-failure.stdout" "diagnosis=bravo failed"
 c0_assert_contains "${C0_TEST_TMP}/one-failure.stdout" "charlie pass"
 test -f "${C0_TEST_TMP}/run-one-failure/charlie.log"
 summary_order="$(grep -E '^(alpha|bravo|charlie) ' "${C0_TEST_TMP}/one-failure.stdout" | cut -d' ' -f1 | paste -sd, -)"

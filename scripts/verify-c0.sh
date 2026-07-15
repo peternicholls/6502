@@ -194,7 +194,18 @@ done <"${group_source}"
 overall="pass"
 printf 'C0 baseline profile=%s revision=%s\n' "${profile}" "${revision}"
 while IFS=$'\t' read -r id result log_path; do
-    printf '%s %s detail=%s\n' "${id}" "${result}" "${log_path}"
+    diagnosis=""
+    case "${result}" in
+        fail*|unexpected-skip*)
+            diagnosis="$(sed -n '/[^[:space:]]/ { s/[[:space:]]\+/ /g; p; q; }' "${log_path}")"
+            ;;
+    esac
+    if [[ -n "${diagnosis}" ]]; then
+        printf '%s %s detail=%s diagnosis=%s\n' \
+            "${id}" "${result}" "${log_path}" "${diagnosis}"
+    else
+        printf '%s %s detail=%s\n' "${id}" "${result}" "${log_path}"
+    fi
     case "${result}" in
         pass|not-applicable) ;;
         *) overall="fail" ;;

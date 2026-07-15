@@ -303,7 +303,7 @@ evidence without claiming undelivered fidelity.
   `make verify-c0` jobs to `.github/workflows/ci.yml` now that every required
   group exists; retain the direct test, sanitizer, Swift, and docs jobs so the
   aggregate result cannot hide detailed failures
-- [ ] T047 Confirm generated `.build/c0/` and `.build/docs/` outputs are
+- [x] T047 Confirm generated `.build/c0/` and `.build/docs/` outputs are
   untracked, approved references changed only through the reviewed flow, no
   proprietary bytes exist, no unresolved documentation warnings or critical
   Spec Kit findings remain, and the implementation matches all four contracts

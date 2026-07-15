@@ -31,9 +31,8 @@
 | `cleanroom-boot` | required | required | exact approved state |
 | `bitmap-reference` | required | required | byte-exact PPM |
 | `mode7-reference` | required | required | byte-exact PPM |
-| `cpp-docs` | required | required | Doxygen coverage/markup/link gate |
-| `swift-docs` | N/A | required | DocC warning/link gate |
-| `docs-landing` | partial | required | generated links resolve for built sites |
+| `cpp-documentation` | required | required | Doxygen coverage/markup/link and portable landing gate |
+| `swift-documentation` | N/A | required | DocC warning/link and complete landing gate |
 
 ## Failure contract
 

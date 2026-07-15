@@ -24,6 +24,7 @@ contains:
 - `requested_cycles`
 - `actual_cycles`
 - `bytes`
+- `review_note`
 - `sha256`
 
 The human README describes limitations and review history that would be
