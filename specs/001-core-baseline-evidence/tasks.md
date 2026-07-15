@@ -231,7 +231,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] Add a reviewed exact compatible release of the official
+- [x] T029 [US4] Add a reviewed exact compatible release of the official
   `swiftlang/swift-docc-plugin` as a documentation-only dependency in
   `Package.swift` and `Package.resolved`; verify normal `swift build` adds no
   runtime product dependency
