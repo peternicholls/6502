@@ -293,7 +293,7 @@ evidence without claiming undelivered fidelity.
 - [x] T043 [P] Add the delivered aggregate verifier, lawful references,
   comparison baseline, and browsable documentation system to `CHANGELOG.md`
   without changing the release version
-- [ ] T044 Validate every command and expected failure in
+- [x] T044 Validate every command and expected failure in
   `specs/001-core-baseline-evidence/quickstart.md`; correct the guide or
   implementation wherever actual behavior differs
 - [ ] T045 Run `make test`, `make sanitize`, `swift test`, `swift build`,

@@ -3,7 +3,7 @@
 This is the executable acceptance path the implementation must make valid. Run
 from the repository root on the feature branch.
 
-## 1. Confirm the pre-change baseline
+## 1. Confirm the behavioral baseline
 
 ```bash
 make test
@@ -12,9 +12,9 @@ swift test
 swift build
 ```
 
-Expected planning baseline: 26 C++ tests, 23 sanitizer-profile tests, and four
-Swift tests pass. If that changes before implementation, record the new baseline
-and reconcile `docs/STATUS.md` before approving references.
+Expected C0 result: 27 C++ tests, 24 sanitizer quick-profile tests, and seven
+Swift XCTest cases pass, and the package builds. The pre-C0 observation was
+26/23/four; that historical comparison remains in `docs/CORE_BASELINE.md`.
 
 ## 2. Run all C0 evidence
 
@@ -45,14 +45,24 @@ Reference replacement is never part of normal verification. For an intentional
 future behavior change, a maintainer uses the explicit update flow and reason:
 
 ```bash
-scripts/update-c0-reference.sh --reference <id> --reason "<review rationale>"
+scripts/update-c0-reference.sh --reference bitmap-reference \
+  --reason "intentional bitmap behavior change"
 git diff -- Tests/Fixtures/C0
+```
+
+Valid IDs are `bitmap-reference`, `mode7-reference`, and `mode7-state`. The
+command intentionally changes tracked evidence. The safe updater contract and
+its expected failures are validated without modifying approved files with:
+
+```bash
+Tests/C0/test-reference-update.sh
 ```
 
 ## 4. Record comparison performance
 
 ```bash
 make measure-c0
+Tests/C0/test-measurement-record.sh
 ```
 
 Expected: a record under `.build/c0/measurements/` contains at least five raw
@@ -66,7 +76,7 @@ produce invalid records.
 ```bash
 make docs
 make docs-check
-open .build/docs/index.html
+test -f .build/docs/index.html
 ```
 
 Expected on macOS: the landing page links to C/C++ and C ABI Doxygen output,
@@ -87,6 +97,9 @@ Then run `Tests/C0/test-documentation.sh`, which uses a temporary fixture to
 prove that an undocumented changed public symbol, invalid markup, broken link,
 and increased debt each fail without modifying production source.
 
+Open `.build/docs/index.html` in a browser for the required representative-page
+review; that manual presentation step is intentionally not a headless gate.
+
 ## 6. Final repository gates
 
 ```bash
@@ -96,6 +109,7 @@ swift test
 swift build
 make verify-c0
 make docs-check
+make test-c0
 git diff --check
 ```
 
