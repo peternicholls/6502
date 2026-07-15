@@ -42,6 +42,30 @@ C++, provenance, exact-reference, and Doxygen groups pass, while the two
 Swift-specific groups are explicitly not applicable. CI retains both direct
 jobs and complete portable/macOS aggregate jobs.
 
+## C1 pre-release candidate evidence
+
+The clean detached candidate at revision
+`64e8ef6db48c09565b2c99d2def2a5493bba2191` passed the complete local macOS gate
+on 2026-07-15. This checkpoint deliberately precedes the 0.2.0 version and final
+roadmap synchronization tasks; the completion candidate is rerun after those
+changes rather than treating this intermediate revision as the release.
+
+| Command | Exact result |
+| --- | --- |
+| `make test` | 42/42 tests passed, including C 0.2, runtime replay, 10,000-command, and shutdown overlap cases |
+| `make sanitize` | 37/37 quick tests passed under UndefinedBehaviorSanitizer |
+| `make thread-sanitize` | N/A: the local Apple-clang ThreadSanitizer probe is not executable on this host |
+| `swift test` | 7/7 XCTest cases passed, including task-group lifecycle/input/observation concurrency |
+| `swift build` | Complete package and demo build passed |
+| `make verify-c0` | All 11 macOS groups passed; exact state, bitmap, and Mode 7 references remained unchanged |
+| `make test-c1` | All six aggregate groups passed; the injected-failure runner proved later groups are not masked |
+| `make docs-check` | Strict Doxygen and Swift-DocC macOS profile passed |
+| `git status --short` / `git diff --check` | No output in the detached candidate |
+
+ThreadSanitizer is not counted as a pass. The normal mixed-command and bounded
+shutdown races ran in both `make test` and `make test-c1`; supported CI must
+still execute the real ThreadSanitizer binary.
+
 Approved evidence is clean-room and byte exact:
 
 | Observation | SHA-256 | Verified scope |
