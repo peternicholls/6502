@@ -1,0 +1,60 @@
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+## Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
+
+# Code coverage
+*.xccovreport
+*.xccovarchive
+
+## Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+.swiftpm/
+
+## CocoaPods
+Pods/
+
+## Carthage
+Carthage/Build/
+Carthage/Checkouts/
+
+## fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Bot/Agent Infrastructure
+logs/*.log
+logs/**/*.log
+scripts/bots/venv-bots/
+scripts/agents/venv-agents/
+*.pyc
+__pycache__/
+!**/.gitkeep
+
+## Misc
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
