@@ -171,6 +171,10 @@ public:
     /// Returns opt-in diagnostic history; normal runtimes return an empty vector.
     [[nodiscard]] std::vector<LedgerEntry> ledger() const;
 
+    /// Returns the number of commands accepted by this runtime for test diagnostics.
+    /// This value never reads machine state and is not a persisted replay format.
+    [[nodiscard]] std::uint64_t acceptedCommandCount() const noexcept;
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;

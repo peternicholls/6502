@@ -226,6 +226,15 @@ public:
         return ledger_;
     }
 
+    std::uint64_t acceptedCommandCount() const noexcept {
+        try {
+            std::lock_guard lock(mutex_);
+            return nextAcceptanceSequence_ - 1;
+        } catch (...) {
+            return 0;
+        }
+    }
+
 private:
     mutable std::mutex mutex_;
     std::condition_variable workAvailable_;
@@ -712,6 +721,10 @@ RuntimeStatus MachineRuntime::shutdown() noexcept {
 
 std::vector<LedgerEntry> MachineRuntime::ledger() const {
     return impl_->ledger();
+}
+
+std::uint64_t MachineRuntime::acceptedCommandCount() const noexcept {
+    return impl_->acceptedCommandCount();
 }
 
 } // namespace beeb
