@@ -189,6 +189,40 @@ must compare the same workload and record its revision, host, compiler, build
 mode, individual samples, median, and range; unlike environments are not
 directly comparable.
 
+## Browsable code-documentation evidence
+
+The complete macOS profile passed at clean implementation revision
+`4d0b9bc368da8b700f35f9fd68c70f0aac2f7213` with:
+
+```bash
+make docs-check DOCS_PROFILE=macos
+```
+
+The generated site was reviewed from `.build/docs/index.html`. The unified
+landing linked both destinations, and the following representative pages were
+present, readable, and consistent with the implementation:
+
+| Surface | Reviewed generated page | Contract confirmed |
+| --- | --- | --- |
+| CPU | `cpp/classbeeb_1_1_c_p_u6502.html` | Instruction-level transition, cycle result, bus timing, illegal-opcode error |
+| Machine | `cpp/classbeeb_1_1_b_b_c_micro.html` | Aggregate ownership, serialization requirement, media copies, frame lifetime |
+| C ABI | `cpp/beeb__c_8h.html` | Opaque ownership, null/error behavior, input copies, borrowed-frame invalidation |
+| Swift | `swift/documentation/beebkit/beebmachine/index.html` | Locked access, `Sendable` basis, thrown errors, C-buffer copy into `Data` |
+| Timing guide | `cpp/md_docs_2code_2timing-model.html` | 2 MHz reference, VIA/CRTC conversion, remainder and frame-transition model |
+| Evidence guide | `cpp/md_docs_2code_2evidence-and-testing.html` | Tool/runtime separation, exact references, lawful fixtures, read-only verification |
+
+Generator environment:
+
+- Doxygen `1.17.0`, with configured warnings promoted to failure;
+- official `swiftlang/swift-docc-plugin` `1.5.0`, pinned exactly in
+  `Package.resolved`;
+- Apple Swift `6.2.4` (`swiftlang-6.2.4.1.4`);
+- DocC bundled with Xcode `26.3` build `17C519` (the bundled executable does not
+  expose a standalone `--version` option).
+
+The tracked documentation-debt baseline is zero. Generated HTML remains ignored
+and reproducible; source comments and `docs/code/` guides are authoritative.
+
 ## Interpretation
 
 This record distinguishes the known starting behavior from C0 exit evidence.

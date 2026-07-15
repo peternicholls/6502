@@ -1,5 +1,8 @@
 #pragma once
 
+/// @file
+/// Stable, exception-safe C ABI for owning and driving one emulator core.
+
 #include "beeb/version.h"
 
 #include <stddef.h>
@@ -30,6 +33,7 @@ typedef struct beeb_cpu_state {
 ///
 /// The process-owned, null-terminated string remains valid for the lifetime of
 /// the loaded library and must not be freed.
+/// @return Borrowed semantic-version string.
 const char* beeb_version_string(void);
 
 /// Creates an emulator instance with no ROM or disc loaded.

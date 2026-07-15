@@ -267,7 +267,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
   `.github/workflows/ci.yml`, and add both documentation groups to
   `scripts/verify-c0.sh`; make the Spec Kit template-enforcement cases in T028
   pass against `.specify/templates/`
-- [ ] T039 [US4] Run `make docs-check`, inspect representative CPU, machine, C
+- [x] T039 [US4] Run `make docs-check`, inspect representative CPU, machine, C
   ABI, Swift, timing, and evidence pages from `.build/docs/index.html`, and
   record the review and generator versions in `docs/CORE_BASELINE.md`
 

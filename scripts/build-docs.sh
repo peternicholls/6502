@@ -213,7 +213,7 @@ validate_public_headers() {
 }
 
 validate_changed_complex_code() {
-    local entry path rationale
+    local entry path rationale diff_text
     while IFS= read -r entry || [[ -n "${entry}" ]]; do
         [[ -z "${entry}" || "${entry}" == \#* ]] && continue
         path="${entry%%|*}"
@@ -226,6 +226,22 @@ validate_changed_complex_code() {
             *) continue ;;
         esac
         if [[ "${rationale}" == N/A:* ]]; then
+            continue
+        fi
+        diff_text=""
+        if git -C "${source_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            diff_text="$(git -C "${source_root}" diff --unified=0 HEAD -- "${path}")"
+        fi
+        if [[ -n "${diff_text}" ]] && awk '
+            /^\+\+\+|^---/ { next }
+            /^[+-]/ {
+                line = substr($0, 2)
+                sub(/^[[:space:]]*/, "", line)
+                if (line == "" || line ~ /^(\/\/|\/\*|\*|\*\/)/) next
+                code_changed = 1
+            }
+            END { exit code_changed }
+        ' <<<"${diff_text}"; then
             continue
         fi
         if [[ -f "${source_root}/${path}" ]] && \
