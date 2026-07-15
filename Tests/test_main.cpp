@@ -1167,6 +1167,52 @@ void testC1MediaTransactionsCopyAndRejectAtomically() {
              c1PayloadDigest(runtime, secondDiscStatus.acceptanceSequence));
 }
 
+void testC1InputAndBreakSerializeWithReset() {
+    beeb::MachineRuntime runtime({.enableLedger = true});
+    auto os = makeNOPOSROM();
+    os[0] = 0xA9; os[1] = 0x7F;                // LDA #$7F
+    os[2] = 0x8D; os[3] = 0x43; os[4] = 0xFE; // STA $FE43 (VIA DDRA)
+    os[5] = 0xA9; os[6] = 0x21;                // column 1, row 2
+    os[7] = 0x8D; os[8] = 0x41; os[9] = 0xFE; // STA $FE41 (VIA ORA)
+    os[10] = 0xAD; os[11] = 0x41; os[12] = 0xFE; // LDA $FE41
+    checkRuntimeOK(runtime.loadOSROM(os));
+    checkRuntimeOK(runtime.reset());
+
+    const auto keyDown = runtime.setKey(1, 2, true);
+    checkRuntimeOK(keyDown);
+    CHECK(runtimeValue(runtime.runFor(16)) >= 16);
+    CHECK_EQ(runtimeValue(runtime.cpuState()).a, 0xA1);
+
+    const auto breakDown = runtime.setBreak(true);
+    checkRuntimeOK(breakDown);
+    const auto afterBreak = runtimeValue(runtime.cpuState());
+    CHECK_EQ(afterBreak.pc, 0xC000);
+    CHECK_EQ(afterBreak.cycles, 7);
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+
+    checkRuntimeOK(runtime.setBreak(false));
+    checkRuntimeOK(runtime.setKey(1, 2, false));
+    CHECK(runtimeValue(runtime.runFor(16)) >= 16);
+    CHECK_EQ(runtimeValue(runtime.cpuState()).a, 0x21);
+
+    const std::array expectedKinds{
+        beeb::RuntimeCommandKind::setKey,
+        beeb::RuntimeCommandKind::setBreak,
+        beeb::RuntimeCommandKind::setBreak,
+        beeb::RuntimeCommandKind::setKey,
+    };
+    std::vector<beeb::RuntimeCommandKind> observedKinds;
+    for (const auto& entry : runtime.ledger()) {
+        if (entry.event == beeb::LedgerEventKind::command &&
+            (entry.command == beeb::RuntimeCommandKind::setKey ||
+             entry.command == beeb::RuntimeCommandKind::setBreak)) {
+            observedKinds.push_back(entry.command);
+        }
+    }
+    CHECK_EQ(observedKinds.size(), expectedKinds.size());
+    CHECK(std::equal(expectedKinds.begin(), expectedKinds.end(), observedKinds.begin()));
+}
+
 void testC1RaceMixedCommands() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     loadNOPFixture(runtime);
@@ -1280,6 +1326,7 @@ int main(int argc, char** argv) {
         {"C1 transactions: FIFO reset load query and explicit resume", testC1TransactionsFIFOAndNoAutoResume},
         {"C1 transactions: invalid input is atomic and payload is copied", testC1TransactionsRejectAtomicallyAndCopyInput},
         {"C1 transactions: media payloads are copied and reject atomically", testC1MediaTransactionsCopyAndRejectAtomically},
+        {"C1 input: keyboard and BREAK serialize with reset", testC1InputAndBreakSerializeWithReset},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };
