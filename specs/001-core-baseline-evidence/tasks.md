@@ -281,7 +281,7 @@ enforces the same standard for every later Spec Kit coding feature.
 **Purpose**: Reconcile all stories, current project authorities, and full exit
 evidence without claiming undelivered fidelity.
 
-- [ ] T040 [P] Update `docs/ARCHITECTURE.md` with the evidence-tool boundary,
+- [x] T040 [P] Update `docs/ARCHITECTURE.md` with the evidence-tool boundary,
   generated-documentation architecture, comment/guide ownership, and the rule
   that neither tooling path enters the runtime core
 - [ ] T041 [P] Update `docs/STATUS.md` with only verified C0 commands, exact
