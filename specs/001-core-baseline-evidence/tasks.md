@@ -33,7 +33,7 @@ shared paths that do not implement story behavior.
   profiles, known limitations, source revision, and exact research-only
   clean-room signatures in `docs/CORE_BASELINE.md`; label them pre-C0 evidence,
   not approved references
-- [ ] T002 Add ignored generated C0 and documentation output conventions for
+- [x] T002 Add ignored generated C0 and documentation output conventions for
   `.build/c0/` and `.build/docs/` to `.gitignore` only if the existing `.build/`
   rule does not already cover them; prove no tracked reference path is ignored
 
