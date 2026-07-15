@@ -328,99 +328,180 @@ void testIllegalOpcodeTraps() {
     CHECK(threw);
 }
 
-void testCAPIContainsIllegalOpcodeErrors() {
-    beeb_machine* machine = beeb_create();
-    CHECK(machine != nullptr);
-
-    std::array<std::uint8_t, 0x4000> os{};
-    os.fill(0xEA);
-    os[0] = 0x02; // unsupported opcode at the reset address
-    os[0x3FFC] = 0x00;
-    os[0x3FFD] = 0xC0;
-    CHECK_EQ(beeb_load_os_rom(machine, os.data(), os.size()), 1);
-    beeb_reset(machine);
-
-    CHECK_EQ(beeb_run_cycles(machine, 1), 0);
-    CHECK(std::string(beeb_last_error(machine)).find("unsupported NMOS 6502 opcode $02") != std::string::npos);
-
-    beeb_reset(machine);
-    CHECK(std::string(beeb_last_error(machine)).empty());
-    CHECK_EQ(beeb_run_until_frame(machine, 1), -1);
-    CHECK(std::string(beeb_last_error(machine)).find("unsupported NMOS 6502 opcode $02") != std::string::npos);
-
-    beeb_destroy(machine);
+void checkCStatus(const beeb_status& status, beeb_status_code expected) {
+    CHECK(status.code == expected);
+    CHECK(status.message[BEEB_STATUS_MESSAGE_CAPACITY - 1] == '\0');
+    if (expected == BEEB_STATUS_OK) CHECK(status.message[0] == '\0');
 }
 
-void testCAPIBoundaryFailuresAreRecoverable() {
-    CHECK(std::string(beeb_version_string()) == "0.1.0");
-    CHECK(beeb_last_error(nullptr) == nullptr);
-    beeb_destroy(nullptr);
-    beeb_reset(nullptr);
-    CHECK_EQ(beeb_run_cycles(nullptr, 1), 0);
-    CHECK_EQ(beeb_run_until_frame(nullptr, 1), -1);
-    const auto nullState = beeb_get_cpu_state(nullptr);
-    CHECK_EQ(nullState.pc, 0);
-    CHECK_EQ(nullState.cycles, 0);
-    CHECK(beeb_get_frame_rgba(nullptr, nullptr, nullptr, nullptr) == nullptr);
-    beeb_render_audio(nullptr, nullptr, 1, 44'100.0);
-    beeb_set_key(nullptr, 0, 0, 1);
-    beeb_set_break(nullptr, 1);
-
-    beeb_machine* machine = beeb_create();
+beeb_machine* createCMachine() {
+    beeb_machine* machine = nullptr;
+    checkCStatus(beeb_create(&machine), BEEB_STATUS_OK);
     CHECK(machine != nullptr);
-    CHECK(std::string(beeb_last_error(machine)).empty());
+    return machine;
+}
 
-    CHECK_EQ(beeb_load_os_rom(machine, nullptr, 0), 0);
-    CHECK(std::string(beeb_last_error(machine)) == "OS ROM data is null");
+void testCAPI02StatusOutParametersAndNullability() {
+    CHECK(std::string(beeb_version_string()) == "0.1.0");
+    checkCStatus(beeb_create(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_destroy(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_runtime_state runtimeState = BEEB_RUNTIME_STATE_FAULTED;
+    checkCStatus(
+        beeb_get_runtime_state(nullptr, &runtimeState), BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(runtimeState == BEEB_RUNTIME_STATE_FAULTED);
+    checkCStatus(beeb_get_runtime_state(nullptr, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_start(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_pause(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_reset(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+
+    std::uint64_t actualCycles = 77;
+    checkCStatus(
+        beeb_run_cycles(nullptr, 1, &actualCycles), BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK_EQ(actualCycles, 77);
+    checkCStatus(beeb_run_cycles(nullptr, 1, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+    int completedFrame = 7;
+    checkCStatus(beeb_run_until_frame(nullptr, 1, &completedFrame),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK_EQ(completedFrame, 7);
+
+    beeb_cpu_state untouchedState{};
+    untouchedState.pc = 0x1234;
+    untouchedState.cycles = 99;
+    checkCStatus(beeb_get_cpu_state(nullptr, &untouchedState),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK_EQ(untouchedState.pc, 0x1234);
+    CHECK_EQ(untouchedState.cycles, 99);
+    checkCStatus(beeb_get_cpu_state(nullptr, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_frame untouchedFrame{};
+    untouchedFrame.available = 1;
+    untouchedFrame.width = 99;
+    checkCStatus(beeb_get_frame(nullptr, &untouchedFrame), BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK_EQ(untouchedFrame.available, 1);
+    CHECK_EQ(untouchedFrame.width, 99);
+    checkCStatus(beeb_frame_release(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+
+    float sample = 42.0f;
+    checkCStatus(beeb_render_audio(nullptr, &sample, 1, 48'000.0),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(sample == 42.0f);
+    checkCStatus(beeb_set_key(nullptr, 0, 0, 1), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_set_break(nullptr, 1), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_load_os_rom(nullptr, nullptr, 0), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_load_sideways_rom(nullptr, 0, nullptr, 0),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_mount_disc(nullptr, 0, nullptr, 0, 0, 0),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+
+    auto* machine = createCMachine();
+    const auto missingROM = beeb_load_os_rom(machine, nullptr, 0);
+    checkCStatus(missingROM, BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(std::string(missingROM.message) == "OS ROM data is null");
+    const auto staleStatus = missingROM;
 
     std::array<std::uint8_t, 0x4000> os{};
     os.fill(0xEA);
     os[0x3FFC] = 0x00;
     os[0x3FFD] = 0xC0;
-    CHECK_EQ(beeb_load_os_rom(machine, os.data(), os.size() - 1), 0);
-    CHECK(std::string(beeb_last_error(machine)) == "OS ROM must be exactly 16384 bytes");
-    CHECK_EQ(beeb_load_os_rom(machine, os.data(), os.size()), 1);
-    CHECK(std::string(beeb_last_error(machine)).empty());
+    checkCStatus(beeb_load_os_rom(machine, os.data(), os.size()), BEEB_STATUS_OK);
+    CHECK(staleStatus.code == BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(std::string(staleStatus.message) == "OS ROM data is null");
+    checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
 
-    CHECK_EQ(beeb_load_sideways_rom(machine, 0, nullptr, 0), 0);
-    CHECK(std::string(beeb_last_error(machine)) == "sideways ROM data is null");
-    CHECK_EQ(beeb_load_sideways_rom(machine, 16, os.data(), os.size()), 0);
-    CHECK(std::string(beeb_last_error(machine)) == "invalid sideways ROM bank or size");
-    CHECK_EQ(beeb_load_sideways_rom(machine, 0, os.data(), os.size()), 1);
-    CHECK(std::string(beeb_last_error(machine)).empty());
+    actualCycles = 0;
+    checkCStatus(beeb_run_cycles(machine, 1, &actualCycles), BEEB_STATUS_OK);
+    CHECK(actualCycles >= 1);
+    beeb_cpu_state state{};
+    checkCStatus(beeb_get_cpu_state(machine, &state), BEEB_STATUS_OK);
+    CHECK(state.pc >= 0xC001);
+    checkCStatus(beeb_get_cpu_state(machine, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
-    CHECK_EQ(beeb_mount_disc(machine, 0, nullptr, 0, 0, 0), 0);
-    CHECK(std::string(beeb_last_error(machine)) == "disc image data is null");
-    const std::array<std::uint8_t, 1> invalidDisc{0};
-    CHECK_EQ(beeb_mount_disc(machine, 2, invalidDisc.data(), invalidDisc.size(), 0, 0), 0);
-    CHECK(std::string(beeb_last_error(machine)) == "invalid drive or disc image");
+    beeb_frame frame{};
+    checkCStatus(beeb_get_frame(machine, &frame), BEEB_STATUS_OK);
+    CHECK_EQ(frame.available, 0);
+    CHECK(frame.rgba == nullptr);
+    CHECK_EQ(frame.rgba_size, 0);
+    checkCStatus(beeb_frame_release(&frame), BEEB_STATUS_OK);
 
-    beeb_reset(machine);
-    CHECK(std::string(beeb_last_error(machine)).empty());
-    const auto state = beeb_get_cpu_state(machine);
-    CHECK_EQ(state.pc, 0xC000);
-    std::uint32_t width = 99;
-    std::uint32_t height = 99;
-    std::uint64_t number = 99;
-    CHECK(beeb_get_frame_rgba(machine, &width, &height, &number) == nullptr);
-    CHECK_EQ(width, 0);
-    CHECK_EQ(height, 0);
-    CHECK_EQ(number, 0);
+    sample = 42.0f;
+    checkCStatus(beeb_render_audio(machine, nullptr, 1, 48'000.0),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_render_audio(machine, &sample, 1, 0.0),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(sample == 42.0f);
+    checkCStatus(beeb_render_audio(machine, &sample, 1, 48'000.0), BEEB_STATUS_OK);
+    checkCStatus(beeb_set_key(machine, 16, 0, 1), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_set_key(machine, 1, 2, 1), BEEB_STATUS_OK);
+    checkCStatus(beeb_set_break(machine, 1), BEEB_STATUS_OK);
+    checkCStatus(beeb_set_break(machine, 0), BEEB_STATUS_OK);
+    checkCStatus(beeb_destroy(machine), BEEB_STATUS_OK);
+}
 
-    beeb_render_audio(machine, nullptr, 1, 44'100.0);
-    CHECK(std::string(beeb_last_error(machine)) == "audio output buffer is null");
-    float sample = 0.0f;
-    beeb_render_audio(machine, &sample, 1, 0.0);
-    CHECK(std::string(beeb_last_error(machine)) == "audio sample rate must be finite and positive");
-    beeb_render_audio(machine, &sample, 1, 44'100.0);
-    CHECK(std::string(beeb_last_error(machine)).empty());
+void testCAPI02FaultAndRecovery() {
+    auto* machine = createCMachine();
+    std::array<std::uint8_t, 0x4000> os{};
+    os.fill(0xEA);
+    os[0] = 0x02;
+    os[0x3FFC] = 0x00;
+    os[0x3FFD] = 0xC0;
+    checkCStatus(beeb_load_os_rom(machine, os.data(), os.size()), BEEB_STATUS_OK);
+    checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
 
-    beeb_set_key(machine, 255, 255, 1);
-    CHECK(std::string(beeb_last_error(machine)).empty());
-    beeb_set_break(machine, 1);
-    beeb_set_break(machine, 0);
-    CHECK(std::string(beeb_last_error(machine)).empty());
-    beeb_destroy(machine);
+    std::uint64_t actualCycles = 99;
+    const auto execution = beeb_run_cycles(machine, 1, &actualCycles);
+    checkCStatus(execution, BEEB_STATUS_EXECUTION_FAILED);
+    CHECK_EQ(actualCycles, 99);
+    CHECK(std::string(execution.message).find("unsupported NMOS 6502 opcode $02") !=
+          std::string::npos);
+
+    beeb_runtime_state state = BEEB_RUNTIME_STATE_PAUSED;
+    checkCStatus(beeb_get_runtime_state(machine, &state), BEEB_STATUS_OK);
+    CHECK(state == BEEB_RUNTIME_STATE_FAULTED);
+    beeb_fault_detail fault{};
+    checkCStatus(beeb_get_fault(machine, &fault), BEEB_STATUS_OK);
+    CHECK_EQ(fault.available, 1);
+    CHECK(std::string(fault.message) == std::string(execution.message));
+    CHECK(fault.safe_point.state == BEEB_RUNTIME_STATE_FAULTED);
+    checkCStatus(beeb_start(machine), BEEB_STATUS_INVALID_STATE);
+
+    beeb_cpu_state cpu{};
+    checkCStatus(beeb_get_cpu_state(machine, &cpu), BEEB_STATUS_OK);
+    checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
+    checkCStatus(beeb_get_runtime_state(machine, &state), BEEB_STATUS_OK);
+    CHECK(state == BEEB_RUNTIME_STATE_PAUSED);
+    checkCStatus(beeb_get_fault(machine, &fault), BEEB_STATUS_OK);
+    CHECK_EQ(fault.available, 0);
+    CHECK(fault.message[0] == '\0');
+    checkCStatus(beeb_destroy(machine), BEEB_STATUS_OK);
+}
+
+void testCAPI02DestroyWaitsForCallsAlreadyInside() {
+    auto* machine = createCMachine();
+    std::array<std::uint8_t, 0x4000> os{};
+    os.fill(0xEA);
+    os[0] = 0x4C;
+    os[1] = 0x00;
+    os[2] = 0xC0;
+    os[0x3FFC] = 0x00;
+    os[0x3FFD] = 0xC0;
+    checkCStatus(beeb_load_os_rom(machine, os.data(), os.size()), BEEB_STATUS_OK);
+    checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
+
+    std::latch entered(1);
+    auto run = std::async(std::launch::async, [&] {
+        entered.count_down();
+        std::uint64_t actual = 0;
+        const auto status = beeb_run_cycles(machine, 50'000'000, &actual);
+        return std::pair{status, actual};
+    });
+    entered.wait();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    const auto destroyed = beeb_destroy(machine);
+    const auto [runStatus, actual] = run.get();
+    checkCStatus(runStatus, BEEB_STATUS_OK);
+    CHECK(actual >= 50'000'000);
+    checkCStatus(destroyed, BEEB_STATUS_OK);
 }
 
 void testVIATimerAndInterruptEnable() {
@@ -1428,8 +1509,9 @@ int main(int argc, char** argv) {
         {"NMOS decimal flag vectors", testNMOSDecimalFlagVectors},
         {"all 151 official opcodes decode", testAllOfficialOpcodesDecode},
         {"illegal opcode trap", testIllegalOpcodeTraps},
-        {"C API contains illegal opcode errors", testCAPIContainsIllegalOpcodeErrors},
-        {"C API boundary failures are recoverable", testCAPIBoundaryFailuresAreRecoverable},
+        {"C 0.2: status out-parameters and nullability", testCAPI02StatusOutParametersAndNullability},
+        {"C 0.2: fault detail and reset recovery", testCAPI02FaultAndRecovery},
+        {"C 0.2: destroy waits for calls already inside", testCAPI02DestroyWaitsForCallsAlreadyInside},
         {"VIA timer and interrupt enable", testVIATimerAndInterruptEnable},
         {"VIA data direction and CA1 edge", testVIADataDirectionsAndEdges},
         {"CRTC frame timing", testCRTCFrameTiming},

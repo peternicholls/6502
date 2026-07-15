@@ -42,7 +42,7 @@
 
 **Independent Test**: Every fallible C operation returns its own stable status and Swift preserves typed recovery, including fault/reset and shutdown overlap.
 
-- [ ] T019 [US3] Add failing C 0.2 status, out-parameter, nullability, stale-diagnostic, fault, and destroy-overlap tests in `Tests/test_main.cpp`.
+- [x] T019 [US3] Add failing C 0.2 status, out-parameter, nullability, stale-diagnostic, fault, and destroy-overlap tests in `Tests/test_main.cpp`.
 - [ ] T020 [US3] Replace 0.1 sentinel declarations with structured 0.2 contracts in `Sources/BeebCore/include/beeb_c.h`, including migration notes. Verify C11/C++ header compilation.
 - [ ] T021 [US3] Implement exception-safe C adapters and operation-scoped diagnostics over `MachineRuntime` in `Sources/BeebCore/src/beeb_c.cpp`. Verify C tests, `make test`, and sanitizer.
 - [ ] T022 [US3] Migrate `Tools/beeb-headless/main.cpp`, `Tools/beeb-evidence/main.cpp`, and examples to 0.2. Verify builds, C0 evidence, and no old API usage via `rg`.
