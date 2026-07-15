@@ -156,7 +156,7 @@ normal verification reports but never replaces it.
   `.build/c0/candidate/`; only after T016's determinism/provenance portions pass,
   add `approved-state.txt`, `bitmap.ppm`, `mode7.ppm`, and complete derived fields
   in `Tests/Fixtures/C0/manifest.txt`
-- [ ] T020 [US2] Implement the separately invoked reviewed replacement workflow
+- [x] T020 [US2] Implement the separately invoked reviewed replacement workflow
   in `scripts/update-c0-reference.sh` according to
   `contracts/evidence-reference.md`; make T017 pass and do not expose it through
   `verify-c0`
