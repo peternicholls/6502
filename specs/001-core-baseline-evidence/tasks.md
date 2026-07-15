@@ -258,7 +258,7 @@ public docs, malformed markup, broken links, and debt growth each fail.
 - [x] T036 [US4] Add the contributor standard, good/bad examples, required-detail
   matrix, local/CI commands, N/A rule, and debt-repayment workflow to
   `docs/CODE_DOCUMENTATION.md`
-- [ ] T037 [US4] Classify every public header surface as covered or internal-only
+- [x] T037 [US4] Classify every public header surface as covered or internal-only
   and record only reviewed unchanged internal gaps with triggers in
   `Tests/Fixtures/C0/documentation-debt.txt`; make every T028 quality and ratchet
   case pass without expanding the baseline

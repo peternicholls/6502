@@ -130,6 +130,7 @@ validate_public_headers() {
     while IFS= read -r -d '' header; do
         relative="${header#"${source_root}/"}"
         awk -v path="${relative}" '
+            BEGIN { public_surface = 1 }
             function reset_doc() {
                 documented = 0
                 in_block = 0
@@ -151,9 +152,30 @@ validate_public_headers() {
             }
             /^[[:space:]]*#/ { reset_doc(); next }
             /^[[:space:]]*$/ { next }
-            /^[[:space:]]*(template|\[\[)/ { next }
+            /^[[:space:]]*template/ { next }
+            /^[[:space:]]*\[\[/ { reset_doc(); next }
+            /^[[:space:]]*class[[:space:]].*\{/ {
+                public_surface = 0
+                reset_doc()
+                next
+            }
+            /^[[:space:]]*struct[[:space:]].*\{/ {
+                public_surface = 1
+                reset_doc()
+                next
+            }
+            /^[[:space:]]*public[[:space:]]*:/ {
+                public_surface = 1
+                reset_doc()
+                next
+            }
+            /^[[:space:]]*(private|protected)[[:space:]]*:/ {
+                public_surface = 0
+                reset_doc()
+                next
+            }
             /^[[:space:]]*[[:alnum:]_~].*\([^;{}]*\)[^;{}]*;[[:space:]]*$/ {
-                if (!documented) {
+                if (public_surface && !documented) {
                     printf "missing public documentation: %s:%d\n", path, NR > "/dev/stderr"
                     failed = 1
                 }
@@ -162,7 +184,7 @@ validate_public_headers() {
                 sub(/\).*/, "", arguments)
                 for (parameter in param_docs) {
                     pattern = "(^|[^[:alnum:]_])" parameter "([^[:alnum:]_]|$)"
-                    if (arguments !~ pattern) {
+                    if (public_surface && arguments !~ pattern) {
                         printf "argument '\''%s'\'' of command @param is not found in the argument list\n", parameter > "/dev/stderr"
                         failed = 1
                     }
