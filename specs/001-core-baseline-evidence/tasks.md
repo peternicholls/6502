@@ -101,7 +101,7 @@ not change.
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement exhaustive profile-aware orchestration and stable
+- [x] T011 [US1] Implement exhaustive profile-aware orchestration and stable
   summary output in `scripts/verify-c0.sh` according to
   `contracts/baseline-verification.md`; make T008 pass while continuing after
   group failures
