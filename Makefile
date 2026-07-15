@@ -3,6 +3,7 @@ CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
 BUILD_DIR = .build/cpp
+C0_PROFILE ?=
 DOCS_PROFILE ?= auto
 VERSION := $(strip $(shell sed -n '1p' VERSION))
 ifeq ($(shell uname -s),Darwin)
@@ -60,7 +61,7 @@ test-c0:
 	done
 
 verify-c0:
-	scripts/verify-c0.sh
+	scripts/verify-c0.sh $(if $(C0_PROFILE),--profile "$(C0_PROFILE)")
 
 verify-c0-references:
 	scripts/verify-c0-references.sh

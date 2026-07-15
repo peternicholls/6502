@@ -299,7 +299,7 @@ evidence without claiming undelivered fidelity.
 - [x] T045 Run `make test`, `make sanitize`, `swift test`, `swift build`,
   `make verify-c0`, `make docs-check`, all `Tests/C0/test-*.sh`, and
   `git diff --check`; preserve concise logs and exact exit status as C0 evidence
-- [ ] T046 Add Linux portable-profile and macOS complete-profile
+- [x] T046 Add Linux portable-profile and macOS complete-profile
   `make verify-c0` jobs to `.github/workflows/ci.yml` now that every required
   group exists; retain the direct test, sanitizer, Swift, and docs jobs so the
   aggregate result cannot hide detailed failures
