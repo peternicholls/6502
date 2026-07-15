@@ -2,7 +2,10 @@ CXX ?= g++
 CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
+C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
 BUILD_DIR = .build/cpp
+C0_PROFILE ?=
+DOCS_PROFILE ?= auto
 VERSION := $(strip $(shell sed -n '1p' VERSION))
 ifeq ($(shell uname -s),Darwin)
 SANITIZERS ?= undefined
@@ -10,7 +13,9 @@ else
 SANITIZERS ?= address,undefined
 endif
 
-.PHONY: all test sanitize check-version demo-rom clean
+.PHONY: all test sanitize check-version demo-rom test-c0 verify-c0 \
+	verify-c0-references update-c0-reference measure-c0 \
+	validate-c0-measurement docs docs-check clean
 
 all: $(BUILD_DIR)/beeb-headless
 
@@ -21,6 +26,9 @@ $(BUILD_DIR)/beeb-tests: $(CORE_SOURCES) Tests/test_main.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD_DIR)/beeb-headless: $(CORE_SOURCES) Tools/beeb-headless/main.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
+
+$(BUILD_DIR)/beeb-evidence: $(CORE_SOURCES) Tools/beeb-evidence/main.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD_DIR)/make-demo-rom: Tools/make-demo-rom/main.cpp | $(BUILD_DIR)
@@ -46,6 +54,38 @@ sanitize: | $(BUILD_DIR)
 		-fsanitize=$(SANITIZERS) -fno-omit-frame-pointer $(INCLUDES) \
 		$(CORE_SOURCES) Tests/test_main.cpp -o $(BUILD_DIR)/beeb-tests-sanitize
 	$(BUILD_DIR)/beeb-tests-sanitize --quick
+
+test-c0:
+	@status=0; \
+	for test_script in $(C0_TEST_SCRIPTS); do \
+		echo "$$test_script"; \
+		"$$test_script" || status=$$?; \
+	done; \
+	exit $$status
+
+verify-c0:
+	scripts/verify-c0.sh $(if $(C0_PROFILE),--profile "$(C0_PROFILE)")
+
+verify-c0-references:
+	scripts/verify-c0-references.sh
+
+update-c0-reference:
+	@test -n "$(REFERENCE)" || { echo "REFERENCE is required" >&2; exit 2; }
+	@test -n "$(REASON)" || { echo "REASON is required" >&2; exit 2; }
+	scripts/update-c0-reference.sh --reference "$(REFERENCE)" --reason "$(REASON)"
+
+measure-c0:
+	scripts/measure-c0.sh --samples "$(or $(SAMPLES),5)" \
+		--output "$(or $(OUTPUT),.build/c0/measurements/latest.txt)"
+
+validate-c0-measurement:
+	Tests/C0/test-measurement-record.sh
+
+docs:
+	scripts/build-docs.sh --profile "$(DOCS_PROFILE)"
+
+docs-check:
+	scripts/build-docs.sh --profile "$(DOCS_PROFILE)" --check
 
 clean:
 	rm -rf $(BUILD_DIR)

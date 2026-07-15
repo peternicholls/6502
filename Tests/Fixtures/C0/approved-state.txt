@@ -1,0 +1,13 @@
+schema=beeb-c0-evidence-v1
+workload=mode7
+requested_cycles=100000
+actual_cycles=100002
+pc=$C0AF
+a=$00
+x=$1E
+y=$00
+sp=$FF
+p=$26
+frame_number=12
+frame_width=480
+frame_height=500

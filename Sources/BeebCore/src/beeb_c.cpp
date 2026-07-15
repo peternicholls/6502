@@ -16,10 +16,12 @@ constexpr std::size_t errorCapacity = 256;
 
 } // namespace
 
+/// @cond INTERNAL
 struct beeb_machine {
     beeb::BBCMicro value;
     std::array<char, errorCapacity> lastError{};
 };
+/// @endcond
 
 namespace {
 
@@ -136,6 +138,8 @@ beeb_cpu_state beeb_get_cpu_state(const beeb_machine* machine) {
 }
 
 const uint8_t* beeb_get_frame_rgba(const beeb_machine* machine, uint32_t* width, uint32_t* height, uint64_t* number) {
+    // C0-DOC-RATIONALE: docs/code/host-boundary.md owns the borrowed-buffer
+    // lifetime rule; higher-level wrappers copy before releasing their lock.
     if (!machine) return nullptr;
     const auto& frame = machine->value.frame();
     if (width) *width = frame.width;

@@ -10,20 +10,46 @@
 
 namespace beeb {
 
+/// Command, status, transfer, and timing model of the Intel 8271 FDC.
 class Intel8271 {
 public:
+    /// Observer invoked when the controller asserts its NMI condition.
     using NMICallback = std::function<void()>;
 
+    /// Clears command and transfer state while retaining mounted images.
     void reset();
+    /// Replaces the callback used to signal a controller NMI.
+    /// @param callback Observer to own, or an empty function to disable it.
     void setNMICallback(NMICallback callback) { nmi_ = std::move(callback); }
+    /// Validates, copies, and mounts an image in drive 0 or 1.
+    /// @param drive Drive number; values above one fail.
+    /// @param bytes Complete image bytes; the span is not retained.
+    /// @param layout SSD or DSD byte ordering.
+    /// @param writable Whether controller writes may modify the private image.
+    /// @return Whether the drive and image were valid.
     bool mount(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout, bool writable = false);
+    /// Returns one of the two mounted image slots.
+    /// @param drive Drive selector; values are reduced modulo two.
+    /// @return Borrowed drive image valid for this controller's lifetime.
     [[nodiscard]] const DiscImage& disc(unsigned drive) const { return drives_[drive % 2]; }
 
+    /// Reads an 8271 host register, applying its documented read side effects.
+    /// @param reg Register offset; the implementation decodes the low bits.
+    /// @return Host-visible register value.
     std::uint8_t read(std::uint8_t reg);
+    /// Writes an 8271 host register and may begin or feed a command.
+    /// @param reg Register offset.
+    /// @param value Value presented by the host.
     void write(std::uint8_t reg, std::uint8_t value);
+    /// Advances command latency and byte-transfer timing.
+    /// @param cpuCycles Elapsed cycles on the BBC Micro 2 MHz CPU timebase.
     void tick(std::uint32_t cpuCycles);
 
+    /// Returns the current host-visible status register.
+    /// @return Status bit field.
     [[nodiscard]] std::uint8_t status() const noexcept { return status_; }
+    /// Returns the current host-visible command result.
+    /// @return Result byte.
     [[nodiscard]] std::uint8_t result() const noexcept { return result_; }
 
 private:

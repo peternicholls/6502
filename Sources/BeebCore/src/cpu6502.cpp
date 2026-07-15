@@ -205,6 +205,8 @@ std::uint32_t CPU6502::interrupt(std::uint16_t vector) {
 }
 
 std::uint32_t CPU6502::finish(std::uint32_t cycles) {
+    // C0-DOC-RATIONALE: docs/code/timing-model.md defines why device time is
+    // advanced once, after each instruction-level state transition.
     cycles_ += cycles;
     bus_.tick(cycles);
     return cycles;

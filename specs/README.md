@@ -42,5 +42,18 @@ Each feature directory may contain `spec.md`, `plan.md`, `research.md`,
 checklists. Keep decisions in the feature artifacts; update the project-level
 status, architecture, roadmaps, and changelog when delivery changes them.
 
+Every coding feature must treat code documentation as part of the changed
+contract. Its specification states the affected public surfaces, non-obvious
+behavior and conceptual guides (or a concrete `N/A`); its plan selects the
+language-appropriate browsable output and debt impact; and its tasks update the
+documentation with the code and validate the generated result. Do not add
+comments that only repeat what the code already says.
+
+Implementation uses committed checkpoints as part of task completion. Verify
+and commit each task before beginning another task, and commit phase-completion
+changes before entering the next phase. A phase's final task commit may satisfy
+both requirements when its Lore message explicitly records the phase boundary;
+do not manufacture an empty second commit.
+
 The governing quality and architecture rules are in
 [the project constitution](../.specify/memory/constitution.md).

@@ -11,6 +11,13 @@ let package = Package(
         .library(name: "BeebKit", targets: ["BeebKit"]),
         .executable(name: "BeebDemo", targets: ["BeebDemo"]),
     ],
+    dependencies: [
+        // Command plugin only: this does not enter any runtime target graph.
+        .package(
+            url: "https://github.com/swiftlang/swift-docc-plugin.git",
+            exact: "1.5.0"
+        ),
+    ],
     targets: [
         .target(
             name: "BeebCore",

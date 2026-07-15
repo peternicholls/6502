@@ -46,8 +46,8 @@ host-agnostic boundary in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Phase | Status | Product trace | Depends on | May overlap |
 | --- | --- | --- | --- | --- |
-| C0 — Baseline evidence | Ready | Machine foundation | Current verified core | Compatibility fixture research |
-| C1 — Runtime ownership | Queued | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
+| C0 — Baseline evidence | Complete | Machine foundation | Current verified core | Compatibility fixture research |
+| C1 — Runtime ownership | Ready | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
 | C2 — Bounded output contracts | Queued | Horizon 1: continuous video and audio | C1 | C3 implementation |
 | C3 — Session continuity | Queued | Horizon 1: background and restore | C1 safe-point contract | C2 implementation |
 | C4 — Bus-cycle timing | Queued | Compatibility and timing fidelity | C1; C3 snapshot invariant | Pull-based compatibility fixtures |
@@ -61,7 +61,7 @@ Machine critical path.
 
 ## Phase C0 — baseline evidence
 
-**Status:** Ready
+**Status:** Complete
 
 **Outcome:** Lock the observable foundation before changing execution and
 buffer ownership.
@@ -83,24 +83,42 @@ runtime.
 ### Exit evidence
 
 - `make test`, `make sanitize`, `swift test` and `swift build` pass on their
-  supported hosts.
+  supported hosts ([clean exit gate record](CORE_BASELINE.md#c0-exit-gate-evidence)).
 - A redistributable boot fixture reaches a named deterministic state with an
-  exact cycle count or state signature.
+  exact cycle count or state signature
+  ([approved clean-room evidence](CORE_BASELINE.md#approved-clean-room-evidence)).
 - Representative bitmap and Mode 7 output has provenance-recorded golden
-  evidence.
+  evidence ([exact identities and limitations](STATUS.md#c0-foundation-evidence)).
 - Current emulation throughput is measured reproducibly and recorded as a
-  comparison baseline, not presented as a product guarantee.
-- The C and Swift version/error boundary remains covered by automated tests.
+  comparison baseline, not presented as a product guarantee
+  ([measurement context](CORE_BASELINE.md#descriptive-throughput-comparison)).
+- The C and Swift version/error boundary remains covered by automated tests
+  ([verified commands and counts](STATUS.md#c0-foundation-evidence)).
+- A single documented flow generates browsable C/C++, C boundary, Swift, and
+  conceptual documentation; supported public surfaces are covered and the
+  initial internal documentation-debt inventory is recorded
+  ([rendered-page review](CORE_BASELINE.md#browsable-code-documentation-evidence)).
+- Documentation validation rejects invalid markup, broken internal links, and
+  undocumented new or changed public contracts without requiring low-value
+  commentary on self-evident code
+  ([quality-gate evidence](STATUS.md#c0-foundation-evidence)).
+
+The transition gate was rerun successfully on clean revision
+`4a87ba3624146403fd9f663118101db60321576c`: all 11 macOS aggregate groups,
+all focused C0 contract scripts, and `git diff --check` passed. C0 changes no
+hardware-fidelity status; it makes that status reproducible and safe to evolve.
 
 ### Non-goals
 
 - Increasing hardware fidelity or restructuring the CPU.
 - Adding a new benchmark dependency when the existing harness can record the
   required measurements.
+- Attempting to annotate every unchanged private helper or tracking generated
+  documentation output as an authoritative source.
 
 ## Phase C1 — runtime ownership and recoverable boundaries
 
-**Status:** Queued
+**Status:** Ready
 
 **Outcome:** Make machine execution a single owned state machine with explicit
 commands and recoverable public failures.
@@ -415,14 +433,19 @@ A candidate slice is **sprint-ready** only when:
 - the first failing regression or evidence task is identified;
 - ownership, lifetime, threading, compatibility and fixture provenance are
   explicit where applicable;
+- public-contract, non-obvious-behavior and conceptual documentation impact is
+  explicit, with a generated-documentation validation task or a concrete N/A;
 - the plan passes every Constitution Check; and
-- `tasks.md` is dependency-ordered and contains no unresolved critical
-  analysis finding.
+- `tasks.md` is dependency-ordered, gives every task a verified commit
+  checkpoint before the next task, records each phase boundary before the next
+  phase, and contains no unresolved critical analysis finding.
 
 A phase may move to **Complete** only when every exit-evidence item is linked to
 passing tests, traces or measurements, affected C and Swift boundary tests pass,
 sanitizers are green, and `STATUS.md`, architecture and changelog documentation
-reflect the delivered boundary.
+reflect the delivered boundary. Coding phases must also generate browsable code
+documentation without invalid markup, broken internal links, or increased
+documentation debt.
 
 ## Core non-goals
 

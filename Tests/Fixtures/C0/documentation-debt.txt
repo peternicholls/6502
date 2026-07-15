@@ -1,0 +1,24 @@
+baseline_count=0
+
+# Public-header coverage inventory. COVERED means strict Doxygen generation
+# includes the supported declarations and their caller-facing contracts.
+# INTERNAL means the file/declarations are build or implementation details and
+# are deliberately excluded rather than counted as documentation debt.
+#
+# COVERED|Sources/BeebCore/include/beeb_c.h|Supported C ABI
+# COVERED|Sources/BeebCore/include/beeb/bus.hpp|C++ bus and timing boundary
+# COVERED|Sources/BeebCore/include/beeb/cpu6502.hpp|C++ CPU state and execution API
+# COVERED|Sources/BeebCore/include/beeb/crtc6845.hpp|C++ CRTC API
+# COVERED|Sources/BeebCore/include/beeb/disc_image.hpp|C++ disc-image API
+# COVERED|Sources/BeebCore/include/beeb/intel8271.hpp|C++ disc-controller API
+# COVERED|Sources/BeebCore/include/beeb/machine.hpp|C++ aggregate machine API
+# COVERED|Sources/BeebCore/include/beeb/sn76489.hpp|C++ sound API
+# COVERED|Sources/BeebCore/include/beeb/teletext_renderer.hpp|C++ Mode 7 API
+# COVERED|Sources/BeebCore/include/beeb/via6522.hpp|C++ VIA API
+# COVERED|Sources/BeebCore/include/beeb/video_ula.hpp|C++ Video ULA API
+# COVERED|Sources/BeebCore/include/beeb/version.h|Public version macros
+# INTERNAL|Sources/BeebCore/include/module.modulemap|SwiftPM Clang module wiring
+# INTERNAL|private sections in public headers|Excluded by EXTRACT_PRIVATE=NO
+
+# Debt entries, if separately approved, use:
+# DEBT-NNN|path-or-symbol|severity|repayment trigger|target phase

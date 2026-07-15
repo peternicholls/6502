@@ -9,17 +9,24 @@
 
 namespace beeb {
 
+/// Owned result of rendering one Mode 7 frame.
 struct TeletextBitmap {
-    std::uint32_t width = 0;
-    std::uint32_t height = 0;
-    std::vector<std::uint8_t> rgba;
+    std::uint32_t width = 0;  ///< Pixel width.
+    std::uint32_t height = 0; ///< Pixel height.
+    std::vector<std::uint8_t> rgba; ///< Packed 8-bit RGBA pixels.
 };
 
-// A clean-room, readable Mode 7 renderer. It models the SAA5050 control-code
-// state and mosaics, but deliberately uses an original 5x7 host font rather
-// than embedding Acorn/Mullard character-ROM data.
+/// Clean-room Mode 7 renderer with no proprietary character-ROM bytes.
+///
+/// It models SAA5050-style control state and mosaics while using an original
+/// 5x7 host font. Instances hold no mutable frame state and can be reused.
 class TeletextRenderer {
 public:
+    /// Renders the CRTC-selected display from a RAM snapshot.
+    /// @param ram Machine RAM containing Mode 7 character cells.
+    /// @param crtc Current display geometry and start address.
+    /// @param frameNumber Frame identity used for flash phase.
+    /// @return An independently owned RGBA bitmap.
     TeletextBitmap render(std::span<const std::uint8_t> ram, const CRTC6845& crtc,
                           std::uint64_t frameNumber) const;
 

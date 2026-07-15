@@ -35,6 +35,20 @@ validates, or explain why a principle is not applicable]
 - [ ] CHK005 Item with specific criteria
 - [ ] CHK006 Final item in this category
 
+## Code Documentation *(for coding features)*
+
+- [ ] CHKXXX Public-contract and non-obvious-behavior documentation impact is
+      specified, or a concrete N/A rationale is present
+- [ ] CHKXXX Browsable generation, link/markup validation, and documentation
+      debt impact have measurable acceptance criteria
+
+## Git Execution
+
+- [ ] CHKXXX Every task names focused verification and is committed before the
+      next task begins
+- [ ] CHKXXX Every phase boundary has a non-empty commit plan, or its final task
+      commit explicitly records phase completion
+
 ## Notes
 
 - Check items off as completed: `[x]`

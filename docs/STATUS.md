@@ -17,6 +17,49 @@ is governed separately by the [product strand](product/README.md).
 | Basic BBC boot | OS 1.20 + BASIC II smoke test reaches the BASIC idle loop and renders startup | Green smoke test |
 | Core build | GCC 13, C++20, warnings promoted to errors | Green |
 | Swift package | BeebKit tests and full package build on Apple Swift 6.2 | Green |
+| C0 aggregate evidence | `make verify-c0`: all 11 macOS groups; explicit portable profile passes with Swift groups N/A | Green |
+| Lawful exact references | Ten identical clean-room runs; exact CPU state plus 320×200 bitmap and 480×500 Mode 7 PPMs | Green |
+| Code documentation | Strict Doxygen + DocC site, link/markup/public-surface checks, zero debt | Green |
+
+## C0 foundation evidence
+
+The clean macOS exit run and its exact command statuses are recorded in
+[CORE_BASELINE.md](CORE_BASELINE.md#c0-exit-gate-evidence). The supported local
+commands are:
+
+```bash
+make test             # 27/27
+make sanitize         # 24/24 quick profile
+swift test            # 7/7 XCTest cases
+swift build
+make verify-c0        # 11/11 macOS evidence groups
+make docs-check       # complete Doxygen and DocC profile
+make test-c0          # all six focused contract scripts
+```
+
+The portable aggregate profile is `make verify-c0 C0_PROFILE=portable`; its C,
+C++, provenance, exact-reference, and Doxygen groups pass, while the two
+Swift-specific groups are explicitly not applicable. CI retains both direct
+jobs and complete portable/macOS aggregate jobs.
+
+Approved evidence is clean-room and byte exact:
+
+| Observation | SHA-256 | Verified scope |
+| --- | --- | --- |
+| Mode 7 CPU/frame state | `f13c6b64ec7ed26bd392800061d4ed869fb9d2c9a2e907d3d22533280ca3180a` | Registers, 100,002-cycle execution delta, frame 12 at 480×500 |
+| Bitmap frame | `5882cedf1a0939ab8e77144fd73bc713ae13a5b2e2faece7110c5fb40faf4f00` | Complete 320×200 PPM for the named bitmap workload |
+| Mode 7 frame | `c4c9884af9187ab1178f63480962b6921b98a87e1e674371c40904d505fcc994` | Complete 480×500 PPM for the named clean-room Mode 7 workload |
+
+The documentation gate covers all 12 exported C/C++/C ABI header surfaces, all
+public `BeebKit` symbols, and four focused conceptual guides. The module map and
+private header sections are classified internal-only; the tracked debt baseline
+is zero. Generated output remains ignored under `.build/docs/`.
+
+The descriptive throughput comparison used five 100,000-cycle Mode 7 samples
+on an Apple M2 Ultra with Apple clang 17.0.0 and the release `-O2` Make build.
+Median throughput was 12,801,075 emulated cycles/second, with a
+12,455,100–14,541,515 range. This is comparison context only—not a compatibility,
+latency, release, or product-performance guarantee.
 
 ## Hardware fidelity
 
@@ -36,10 +79,15 @@ is governed separately by the [product strand](product/README.md).
 
 ## Current core focus
 
-The next delivery phase is C0 baseline evidence, followed by C1 runtime
-ownership. Bounded output contracts and session continuity then unlock the
-active Machine horizon. Bus-cycle implementation follows the runtime safe-point
-and snapshot-invariant decisions so it cannot accidentally invalidate public
-session state. The [core roadmap](CORE_ROADMAP.md) owns technical sequence; the
-tables above own verified hardware-fidelity status. A phase is not Active until
-an approved Spec Kit feature enters implementation.
+C0 baseline evidence is complete. C1 runtime ownership is the next default
+feature source; it must define the single execution owner, recoverable command
+boundaries, and completed-instruction safe point before bounded output or
+snapshot work depends on them. Bounded output contracts and session continuity
+then unlock the active Machine horizon. Bus-cycle implementation follows the
+runtime safe-point and snapshot-invariant decisions so it cannot accidentally
+invalidate public session state.
+
+The [core roadmap](CORE_ROADMAP.md) owns technical sequence; the tables above
+own verified hardware-fidelity status. The C0 evidence does not close any gap in
+the hardware-fidelity table. A phase is not Active until an approved Spec Kit
+feature enters implementation.

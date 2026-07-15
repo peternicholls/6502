@@ -13,12 +13,30 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 - A documented release checklist and version-consistency check.
 - Separate product and emulator documentation strands, with canonical vision,
   roadmaps, a legacy decision register and an explicit authority hierarchy.
+- A profile-aware `make verify-c0` baseline that reports every behavioral,
+  sanitizer, version, boundary, provenance, exact-reference, and documentation
+  group without masking later failures.
+- Lawful clean-room Mode 7 and bitmap workloads with provenance, exact CPU/frame
+  references, ten-run acceptance, and a separately guarded update flow.
+- A reproducible five-sample throughput comparison baseline with explicit host,
+  compiler, build mode, workload, median, and range context.
+- Browsable Doxygen and Swift-DocC output behind one generated landing page,
+  with strict markup/link/public-contract checks and a zero documentation-debt
+  baseline.
 
 ### Changed
 
 - Reworked the emulator roadmap into dependency-aware delivery phases with
   explicit product traceability, Spec Kit feature slices, parallelism rules and
   measurable entry and exit evidence.
+- Added a governed code-documentation strategy to C0 and every later coding
+  phase: language-native browsable output, useful contract and invariant
+  guidance, generated-doc validation, and a non-increasing debt rule.
+- Required verified, Lore-formatted commits after every task and at every phase
+  boundary before subsequent project work begins.
+- Expanded C, C++, and Swift public contracts with ownership, lifetime, error,
+  concurrency, timing, and borrowed-buffer guidance plus focused architecture,
+  timing, host-boundary, and evidence guides.
 
 ## [0.1.0] - 2026-07-15
 

@@ -56,9 +56,19 @@ void writeFile(const std::string& path, const std::array<std::uint8_t, 0x4000>& 
 
 int main(int argc, char** argv) {
     try {
-        if (argc != 2) {
-            std::cerr << "usage: make-demo-rom OUTPUT.rom\n";
+        std::string workload = "mode7";
+        std::string outputPath;
+        if (argc == 2) {
+            outputPath = argv[1];
+        } else if (argc == 4 && std::string_view(argv[1]) == "--workload") {
+            workload = argv[2];
+            outputPath = argv[3];
+        } else {
+            std::cerr << "usage: make-demo-rom [--workload bitmap|mode7] OUTPUT.rom\n";
             return 1;
+        }
+        if (workload != "bitmap" && workload != "mode7") {
+            throw std::runtime_error("unknown workload: " + workload);
         }
 
         ROMBuilder b;
@@ -67,6 +77,48 @@ int main(int argc, char** argv) {
         b.byte(0xD8); // CLD
         b.ldxImmediate(0xFF);
         b.byte(0x9A); // TXS
+
+        if (workload == "bitmap") {
+            constexpr std::array<std::pair<std::uint8_t, std::uint8_t>, 12> crtc{
+                std::pair{std::uint8_t{0},std::uint8_t{63}}, {1,40}, {2,51}, {3,0x24},
+                {4,30}, {5,2}, {6,25}, {7,28}, {8,0}, {9,7}, {12,0x06}, {13,0}
+            };
+            for (const auto& [reg, value] : crtc) {
+                b.ldaImmediate(reg); b.staAbsolute(0xFE00);
+                b.ldaImmediate(value); b.staAbsolute(0xFE01);
+            }
+            b.ldaImmediate(0x1C); // one bit per pixel, 2 MHz CRTC
+            b.staAbsolute(0xFE20);
+
+            b.ldxImmediate(0);
+            b.ldaImmediate(0xAA);
+            const auto firstFill = b.position();
+            for (std::uint16_t page = 0x3000; page < 0x4000; page += 0x0100) {
+                b.staAbsoluteX(page);
+            }
+            b.byte(0xE8); // INX
+            const auto firstFillBranch = b.branch(0xD0); // BNE
+            b.patchBranch(firstFillBranch, firstFill);
+
+            b.ldxImmediate(0);
+            b.ldaImmediate(0x55);
+            const auto secondFill = b.position();
+            for (std::uint16_t page = 0x4000; page < 0x5000; page += 0x0100) {
+                b.staAbsoluteX(page);
+            }
+            b.byte(0xE8); // INX
+            const auto secondFillBranch = b.branch(0xD0); // BNE
+            b.patchBranch(secondFillBranch, secondFill);
+
+            const auto idle = b.address();
+            b.jump(idle);
+            b.patchWord(0x3FFA, idle);
+            b.patchWord(0x3FFC, reset);
+            b.patchWord(0x3FFE, idle);
+            writeFile(outputPath, b.rom());
+            std::cout << "wrote 16384-byte clean-room bitmap ROM to " << outputPath << '\n';
+            return 0;
+        }
 
         // A conventional 40-column Mode 7 CRTC setup.
         constexpr std::array<std::pair<std::uint8_t, std::uint8_t>, 12> crtc{
@@ -124,8 +176,8 @@ int main(int argc, char** argv) {
         b.patchWord(0x3FFA, static_cast<std::uint16_t>(0xC000 + idle));
         b.patchWord(0x3FFC, reset);
         b.patchWord(0x3FFE, static_cast<std::uint16_t>(0xC000 + idle));
-        writeFile(argv[1], b.rom());
-        std::cout << "wrote 16384-byte clean-room demo ROM to " << argv[1] << '\n';
+        writeFile(outputPath, b.rom());
+        std::cout << "wrote 16384-byte clean-room demo ROM to " << outputPath << '\n';
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "error: " << error.what() << '\n';

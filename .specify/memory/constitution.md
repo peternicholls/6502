@@ -1,13 +1,14 @@
 <!--
 Sync Impact Report
-- Version: initial constitution -> 1.0.0
-- Added principles: Product/Core Strand Separation; Deterministic Portable Core;
-  Evidence-Led Fidelity; Test-First Delivery; Safe, Versioned Boundaries;
-  User-Owned Content and Legal Clarity; Accessible Vertical Value and Simplicity
-- Added sections: Technical and Product Constraints; Specification and Delivery Workflow
-- Updated templates: plan-template.md, spec-template.md, tasks-template.md,
-  checklist-template.md
-- Added guidance: specs/README.md
+- Version: 1.1.0 -> 1.2.0
+- Added principles: none
+- Modified sections: Specification and Delivery Workflow; Governance
+- Updated templates: plan-template.md, tasks-template.md, checklist-template.md
+- Updated guidance: AGENTS.md, specs/README.md, active C0 plan and tasks,
+  CHANGELOG.md
+- Migration: all active and future tasks use verified per-task commits and a
+  committed phase boundary before subsequent work; existing history is not
+  rewritten and empty duplicate phase commits are not required
 - Deferred items: none
 -->
 
@@ -92,6 +93,21 @@ abstractions, and layers require a current concrete need and MUST be rejected
 when an existing pattern or smaller design suffices. This keeps foundational
 work connected to a usable, inclusive product.
 
+### VIII. Code Documentation Is Maintained Knowledge
+
+Supported public C++, C, and Swift contracts MUST document their purpose and,
+where applicable, parameters, results, ownership, lifetime, nullability,
+failure behavior, threading expectations, side effects, and invariants.
+Non-obvious hardware behavior, timing decisions, state transitions, and buffer
+rules MUST explain the rationale and observable consequences near the code or
+link to an authoritative conceptual guide. Comments MUST NOT merely restate
+names, types, or self-evident control flow. Cross-component concepts MUST have
+browsable guides, and generated API documentation MUST be reproducible from
+tracked source. New or changed public and complex code MUST pass documentation
+generation and MUST NOT increase recorded documentation debt. Documentation is
+part of the contract: when behavior changes, its explanation changes in the
+same slice.
+
 ## Technical and Product Constraints
 
 - The supported foundation is a dependency-light C++20 core, a stable C ABI,
@@ -102,6 +118,10 @@ work connected to a usable, inclusive product.
   Makefile. A new third-party dependency requires an explicit specification and
   plan justification, including why existing code or platform APIs are
   insufficient.
+- Code documentation MUST use language-appropriate generators that produce
+  cross-referenced browsable output. Generated output is a build artifact, not
+  an authoritative tracked source. Documentation tooling MUST remain build-time
+  only and MUST NOT enter the emulator runtime dependency graph.
 - Current documentation is split into two authorities: `docs/product/` for the
   wider Machine, Media, and Editor vision, and the core roadmap, architecture,
   references, and status documents under `docs/` for emulator delivery. Files
@@ -127,17 +147,29 @@ work connected to a usable, inclusive product.
    success criteria, edge and failure cases, recovery behavior, evidence needed
    for fidelity claims, content/legal implications, and accessibility coverage
    for user-facing work (or a concrete `N/A` rationale).
+   Every coding specification MUST also state which public contracts,
+   non-obvious behavior, and conceptual guides change, or give a concrete
+   documentation `N/A` rationale.
 4. `/speckit-plan` MUST pass every Constitution Check before Phase 0 research
    and MUST repeat that check after design. Any exception belongs in Complexity
    Tracking with a rejected simpler alternative.
 5. `/speckit-tasks` MUST put failing tests or other required evidence before
-   implementation tasks and preserve user-story independence. Run
-   `/speckit-analyze` before implementation when multiple artifacts or strands
-   are involved.
-6. Implementation MUST use focused verification while iterating, then run the
+   implementation tasks, preserve user-story independence, and pair affected
+   coding tasks with documentation source and generated-output validation.
+   Run `/speckit-analyze` before implementation when multiple artifacts or
+   strands are involved.
+6. Each task MUST be verified and committed before work begins on another task.
+   Each phase MUST have its completion changes committed before the next phase
+   begins. The final task commit MAY serve as the phase checkpoint when it
+   explicitly records phase completion; an empty duplicate commit MUST NOT be
+   created. Commits MUST keep task scope reviewable, preserve unrelated user
+   changes, and follow the repository Lore commit format.
+7. Implementation MUST use focused verification while iterating, then run the
    affected repository gates: `make test`, `make sanitize`, `swift test`, and
-   `swift build` as applicable. All changes MUST pass `git diff --check`.
-7. Completion MUST update affected status, architecture, roadmap, release, or
+   `swift build` as applicable. Coding changes MUST also run the documentation
+   generation and link/markup quality gates. All changes MUST pass
+   `git diff --check`.
+8. Completion MUST update affected status, architecture, roadmap, release, or
    user documentation. A feature is complete only when its acceptance evidence
    passes and no known limitation is presented as delivered behavior.
 
@@ -159,4 +191,8 @@ or materially expanded obligation, and PATCH for clarification without changed
 intent. Every plan and implementation review MUST verify compliance; unresolved
 violations block implementation or release.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15
+The per-task and per-phase commit requirement applies prospectively to active
+and future work. Amendments do not require rewriting compliant historical
+commits or creating empty commits solely to mark a phase.
+
+**Version**: 1.2.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15
