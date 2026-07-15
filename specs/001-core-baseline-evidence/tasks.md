@@ -50,10 +50,11 @@ identity before story implementations. These tasks block all user stories.
 - [x] T003 Add strict temporary-directory, command-capture, expected-failure,
   and no-mutation helpers to `Tests/C0/testlib.sh`; keep diagnostics plain-text
   and verify the helper cleans only its own temporary directory
-- [ ] T004 [P] Add `beeb-c0-evidence-v1` CLI usage/error contract tests to
+- [x] T004 [P] Add `beeb-c0-evidence-v1` CLI usage/error contract tests to
   `Tests/C0/test-fixture-evidence.sh` for missing workload, invalid cycle count,
   unwritable output, and unknown output kind; run them and record the expected
   pre-implementation failures in the task notes
+  - Red evidence: exits `1` with `missing C0 evidence executable` before T006.
 - [ ] T005 [P] Add named bitmap and Mode 7 workload contract coverage for
   `Tools/make-demo-rom/main.cpp` in `Tests/C0/test-demo-rom.sh` before generator
   changes; observe the missing-workload failure
