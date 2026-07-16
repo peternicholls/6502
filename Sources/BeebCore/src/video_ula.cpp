@@ -2,6 +2,11 @@
 
 namespace beeb {
 
+// BBC ULA palette values are active-low physical colours; bit 3 requests flash and
+// is XORed at the frame phase. Serializer control selects 4/2/1 logical bits per pixel;
+// unsupported/default control remains deterministic at one bit per pixel. See
+// docs/REFERENCES.md for the ULA mode table.
+
 void VideoULA::reset() {
     control_ = 0;
     for (std::uint8_t logical = 0; logical < palette_.size(); ++logical) {

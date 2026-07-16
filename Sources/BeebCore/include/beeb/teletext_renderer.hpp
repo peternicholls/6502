@@ -20,6 +20,8 @@ struct TeletextBitmap {
 ///
 /// It models SAA5050-style control state and mosaics while using an original
 /// 5x7 host font. Instances hold no mutable frame state and can be reused.
+/// Rendering is synchronous and safe for concurrent calls because output state
+/// is returned by value.
 class TeletextRenderer {
   public:
     /// Renders the CRTC-selected display from a RAM snapshot.

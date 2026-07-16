@@ -4,6 +4,11 @@
 
 namespace beeb {
 
+// Register aliases and side effects follow the 6522 programming model: port accesses
+// clear their IFR sources, IER bit 7 selects set/clear polarity, PB7 may mirror T1,
+// and timer underflow either reloads or stops. CA1/CB1 set IFR only on the PCR-selected
+// edge, preserving the software-visible interrupt/port behavior (docs/REFERENCES.md).
+
 void VIA6522::reset() {
     orb_ = ora_ = ddrb_ = ddra_ = 0;
     t1Counter_ = t1Latch_ = t2Counter_ = 0xFFFF;

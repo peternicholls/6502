@@ -58,6 +58,9 @@ std::uint16_t CPU6502::read16ZeroPage(std::uint8_t address) {
 }
 
 std::uint16_t CPU6502::read16JMPBug(std::uint16_t address) {
+    // NMOS 6502 indirect JMP wraps the high-byte fetch within the same page. This
+    // observable quirk follows the Visual6502 transistor-level trace and is retained
+    // for compatibility with the hardware evidence vectors (docs/code/timing-model.md).
     const auto lo = read(address);
     const auto next = static_cast<std::uint16_t>((address & 0xFF00) | ((address + 1) & 0x00FF));
     const auto hi = read(next);
@@ -150,6 +153,9 @@ void CPU6502::adc(std::uint8_t value) {
 }
 
 void CPU6502::sbc(std::uint8_t value) {
+    // NMOS decimal SBC exposes binary N/V/Z/C flags while the accumulator receives
+    // the BCD-adjusted result; the decimal-vector fixture is the authority for this
+    // deliberately non-intuitive split.
     const auto borrow = flag(Carry) ? 0u : 1u;
     const auto binaryWide = static_cast<unsigned>(a_) - value - borrow;
     const auto binary = static_cast<std::uint8_t>(binaryWide);
@@ -201,6 +207,8 @@ std::uint8_t CPU6502::ror(std::uint8_t value) {
 }
 
 std::uint32_t CPU6502::branch(bool condition) {
+    // Taken branches consume one extra cycle, and a page crossing consumes another;
+    // callers rely on the returned count to advance all BBC devices in lockstep.
     const auto offset = static_cast<std::int8_t>(fetch8());
     if (!condition) return 2;
     const auto oldPC = pc_;
@@ -268,7 +276,9 @@ std::uint32_t CPU6502::step() {
     const auto readOp = [&](std::uint16_t addr) { return read(addr); };
     const auto rmw = [&](std::uint16_t addr, auto operation) {
         const auto old = read(addr);
-        write(addr, old); // NMOS read-modify-write dummy write
+        // NMOS RMW instructions put the unmodified value on the bus before the final
+        // write; peripherals can observe that dummy write, so it is not an optimization.
+        write(addr, old);
         write(addr, operation(old));
     };
 

@@ -4,12 +4,16 @@ import UniformTypeIdentifiers
 
 #if os(macOS)
 import AppKit
+/// Native image type selected for the macOS build.
 typealias PlatformImage = NSImage
 #else
 import UIKit
+/// Native image type selected for the UIKit build.
 typealias PlatformImage = UIImage
 #endif
 
+/// Main-actor UI model owning the optional machine and 50 Hz display timer.
+/// It translates imported user files and runtime errors into view state.
 @MainActor
 final class EmulatorModel: ObservableObject {
     @Published var screen: PlatformImage?
@@ -95,6 +99,8 @@ final class EmulatorModel: ObservableObject {
     }
 }
 
+/// Root SwiftUI view that binds user actions to `EmulatorModel` and renders
+/// the latest owned frame plus import controls.
 struct ContentView: View {
     @StateObject private var model = EmulatorModel()
 
@@ -132,6 +138,7 @@ struct ContentView: View {
 }
 
 @main
+/// Application root owning the single-window scene for the demo.
 struct BeebDemoApp: App {
     var body: some Scene { WindowGroup { ContentView() }.defaultSize(width: 900, height: 700) }
 }

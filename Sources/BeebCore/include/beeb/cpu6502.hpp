@@ -90,7 +90,13 @@ class CPU6502 {
     void setTraceCallback(TraceCallback callback) { trace_ = std::move(callback); }
 
   private:
-    // TODO: Document the private interface and implementation for CPU6502 maintainers.
+    // The bus is borrowed, never owned, and must outlive this processor. The
+    // helpers below are grouped by the hardware boundary they preserve:
+    // fetch/read/write are bus cycles; addressing helpers report page crossing
+    // so dispatch can apply conditional penalties; push/pull and setNZ/compare
+    // maintain stack/flag invariants; adc/sbc and shifts implement NMOS ALU
+    // flags. branch and interrupt model extra bus cycles, while finish() is the
+    // single timing boundary that advances the bus and committed cycle count.
     Bus& bus_;
     std::uint8_t a_ = 0;
     std::uint8_t x_ = 0;

@@ -4,6 +4,8 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/testlib.sh"
 
 c1_tsan_supported() {
+    # Link-time support is insufficient: some hosts build TSan binaries whose
+    # runtime cannot start, so the probe must execute before the C1 lane runs.
     local probe_source="${c1_build_dir}/tsan-probe.cpp"
     local probe_binary="${c1_build_dir}/tsan-probe"
     mkdir -p "${c1_build_dir}"

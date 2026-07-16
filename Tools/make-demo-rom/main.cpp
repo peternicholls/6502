@@ -10,6 +10,14 @@
 
 namespace {
 
+/// Clean-room builder for deterministic fixed-size C000-origin 16 KiB demo
+/// ROMs. The cursor is the next byte offset, address() is C000 + cursor, and
+/// patch offsets name operand bytes returned by branch(). Writes are bounds
+/// checked; rom() borrows storage valid while this builder lives.
+/// Builds the fixed 16 KiB C000 clean-room ROM used by deterministic evidence workloads.
+/// `cursor_` is a ROM offset and `address()` is C000+cursor_; patch offsets returned by
+/// branch/address helpers are offsets into the same buffer, with bounds checked by at().
+/// The returned array is owned by the builder and remains valid until it is destroyed.
 class ROMBuilder {
   public:
     ROMBuilder() { rom_.fill(0xEA); }
@@ -102,6 +110,9 @@ int main(int argc, char** argv) {
             throw std::runtime_error("unknown workload: " + workload);
         }
 
+        // Both workloads install vectors, program the CRTC/ULA, fill a known screen region,
+        // then park in an idle loop. This shape makes reset placement, branch patches, and
+        // rendered output stable across evidence runs; see docs/code/evidence-and-testing.md.
         ROMBuilder b;
         const auto reset = b.address();
         b.byte(0x78); // SEI
@@ -162,7 +173,8 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        // A conventional 40-column Mode 7 CRTC setup.
+        // The 40-column Mode 7 table exercises modeled teletext timing; following clear/copy
+        // loops create stable control-code and glyph evidence before the idle trap.
         constexpr std::array<std::pair<std::uint8_t, std::uint8_t>, 12> crtc{
             std::pair{std::uint8_t{0}, std::uint8_t{63}},
             {1, 40},

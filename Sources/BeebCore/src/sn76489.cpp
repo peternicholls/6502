@@ -6,6 +6,11 @@
 
 namespace beeb {
 
+// The write path implements the SN76489 latch/data protocol. Tone divisors and noise
+// rates are in chip-clock units; zero divisors are coerced to one, latch writes reset
+// the 15-bit LFSR, and the fixed amplitude table/mix scale provide deterministic audible
+// output while remaining an explicitly approximate model (see docs/REFERENCES.md).
+
 void SN76489::reset() {
     tone_ = {1, 1, 1};
     volume_ = {15, 15, 15, 15};

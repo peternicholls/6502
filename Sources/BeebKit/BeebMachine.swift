@@ -309,6 +309,12 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Changes one keyboard-matrix bit in FIFO order.
+    /// - Parameters:
+    ///   - column: Matrix column in the inclusive range `0...15`.
+    ///   - row: Matrix row in the inclusive range `0...15`.
+    ///   - pressed: `true` presses the key; `false` releases it.
+    /// The request is serialized by the runtime owner and does not change
+    /// lifecycle state.
     /// - Throws: ``BeebError/invalidKey`` or a typed core status.
     public func setKey(column: UInt8, row: UInt8, pressed: Bool) throws {
         guard column < 16, row < 16 else { throw BeebError.invalidKey }
@@ -316,6 +322,8 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Changes BREAK state without inventing a lifecycle transition.
+    /// - Parameter pressed: `true` asserts BREAK; `false` releases it.
+    /// The request is FIFO-serialized and never starts, pauses, or resets the machine.
     /// - Throws: ``BeebError/coreStatus(_:_:)`` for runtime failures.
     public func setBreak(pressed: Bool) throws {
         try Self.check(beeb_set_break(handle, pressed ? 1 : 0))

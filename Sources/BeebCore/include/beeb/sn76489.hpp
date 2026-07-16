@@ -7,6 +7,8 @@
 namespace beeb {
 
 /// Deterministic SN76489 register and mono waveform model.
+/// The owning machine serializes writes, reset, and rendering; no background
+/// callbacks occur, so rendering is synchronous and reusable.
 class SN76489 {
   public:
     /// Restores register, phase, and noise-generator defaults.

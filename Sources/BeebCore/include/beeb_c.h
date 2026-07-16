@@ -108,47 +108,54 @@ const char* beeb_version_string(void);
 
 /// Creates a paused runtime with no ROM or disc loaded.
 /// @param out_machine Required output, written only on success.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` when output is null;
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` if allocation fails.
 beeb_status beeb_create(beeb_machine** out_machine);
 
 /// Stops acceptance, drains accepted commands, joins, and releases a runtime.
 /// @param machine Live token from `beeb_create()`; null is invalid.
-/// @return Shutdown status; the token is invalid when this call returns.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for null/already
+/// destroyed tokens. Concurrent destroy calls share one shutdown result.
 beeb_status beeb_destroy(beeb_machine* machine);
 
 /// Reads lifecycle state from one FIFO safe point.
 /// @param machine Live runtime token.
 /// @param out_state Required output, written only on success.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_UNAVAILABLE` while shutting down.
 beeb_status beeb_get_runtime_state(beeb_machine* machine, beeb_runtime_state* out_state);
 
 /// Starts sustained deterministic execution; running is an idempotent success.
 /// @param machine Live runtime token.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_STATE` when faulted or
+/// paused/running transition rules reject the command.
 beeb_status beeb_start(beeb_machine* machine);
 
 /// Pauses at a safe point; paused is an idempotent success.
 /// @param machine Live runtime token.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_STATE` when the transition
+/// is not legal, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_pause(beeb_machine* machine);
 
 /// Resets CPU and devices, clears a fault, retains media, and finishes paused.
 /// @param machine Live runtime token.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_reset(beeb_machine* machine);
 
 /// Executes whole instructions while paused until the cycle budget is met.
 /// @param machine Live runtime token.
 /// @param cycles Minimum CPU-cycle budget; zero performs no work.
 /// @param out_actual_cycles Required output, written only on success.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for bad output, or
+/// `BEEB_STATUS_INVALID_STATE` unless paused.
 beeb_status beeb_run_cycles(beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles);
 
 /// Executes while paused until a frame completes or the budget is met.
 /// @param machine Live runtime token.
 /// @param maximum_cycles Maximum CPU-cycle budget.
 /// @param out_completed Required output receiving non-zero when a frame completed.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for bad input, or
+/// `BEEB_STATUS_INVALID_STATE` when execution is not paused, or
+/// `BEEB_STATUS_EXECUTION_FAILED` if the emulated CPU faults.
 beeb_status beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles,
                                  int* out_completed);
 
@@ -156,15 +163,18 @@ beeb_status beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles,
 /// @param machine Live runtime token.
 /// @param bytes Required readable source; copied during the call.
 /// @param count Byte count, which must be exactly 16,384.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for a null or
+/// incorrectly sized image, or `BEEB_STATUS_INVALID_STATE` if media setup is
+/// rejected by the current lifecycle.
 beeb_status beeb_load_os_rom(beeb_machine* machine, const uint8_t* bytes, size_t count);
 
 /// Copies and installs one sideways-ROM bank.
 /// @param machine Live runtime token.
 /// @param bank Bank in the inclusive range 0...15.
 /// @param bytes Required readable source; copied during the call.
-/// @param count Byte count in the inclusive range 0...16,384.
-/// @return Operation-scoped status.
+/// @param count Byte count in the inclusive range 1...16,384.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for a bad bank,
+/// pointer, or size.
 beeb_status beeb_load_sideways_rom(beeb_machine* machine, uint8_t bank, const uint8_t* bytes,
                                    size_t count);
 
@@ -175,27 +185,30 @@ beeb_status beeb_load_sideways_rom(beeb_machine* machine, uint8_t bank, const ui
 /// @param count Complete image byte count.
 /// @param double_sided Non-zero for interleaved DSD, zero for SSD.
 /// @param writable Non-zero to permit writes to the private copy.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad geometry,
+/// drive, pointer, or size.
 beeb_status beeb_mount_disc(beeb_machine* machine, unsigned drive, const uint8_t* bytes,
                             size_t count, int double_sided, int writable);
 
 /// Copies CPU registers and cycle count from one safe point.
 /// @param machine Live runtime token.
 /// @param out_state Required output, written only on success.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output.
 beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state);
 
 /// Copies the latest frame into caller-owned storage.
 /// @param machine Live runtime token.
 /// @param out_frame Required output, written only on success and subsequently
 /// released with `beeb_frame_release()`.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output or
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` when frame storage cannot be allocated.
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame);
 
 /// Releases one frame value and clears all of its fields.
 /// @param frame Required frame previously initialized to zero or returned by
 /// `beeb_get_frame()`; null is invalid.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for an invalid
+/// frame pointer/value.
 beeb_status beeb_frame_release(beeb_frame* frame);
 
 /// Renders mono audio synchronously without advancing CPU time.
@@ -203,7 +216,8 @@ beeb_status beeb_frame_release(beeb_frame* frame);
 /// @param mono Required writable storage for `frames` samples when frames is nonzero.
 /// @param frames Number of samples; zero is permitted with a non-null pointer.
 /// @param sample_rate Finite positive sample rate in hertz.
-/// @return Operation-scoped status; the buffer is written only on success.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for invalid rate,
+/// frame count, or buffer; the buffer is written only on success.
 beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
                               double sample_rate);
 
@@ -212,25 +226,25 @@ beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
 /// @param column Matrix column in the inclusive range 0...15.
 /// @param row Matrix row in the inclusive range 0...15.
 /// @param pressed Non-zero to press, zero to release.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for coordinates.
 beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed);
 
 /// Changes BREAK state in FIFO order without inventing a lifecycle transition.
 /// @param machine Live runtime token.
 /// @param pressed Non-zero to press, zero to release.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_set_break(beeb_machine* machine, int pressed);
 
 /// Reads the current safe-point identity in FIFO order.
 /// @param machine Live runtime token.
 /// @param out_safe_point Required output, written only on success.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output.
 beeb_status beeb_get_safe_point(beeb_machine* machine, beeb_safe_point* out_safe_point);
 
 /// Reads retained execution-fault detail; absence is a successful value.
 /// @param machine Live runtime token.
 /// @param out_fault Required output, written only on success.
-/// @return Operation-scoped status.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output.
 beeb_status beeb_get_fault(beeb_machine* machine, beeb_fault_detail* out_fault);
 
 #ifdef __cplusplus

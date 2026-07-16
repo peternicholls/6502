@@ -86,6 +86,10 @@ beeb_safe_point translateSafePoint(const beeb::SafePoint& point) noexcept {
 }
 
 /// Shared runtime state retained until destruction and every entered call complete.
+/// The host-boundary contract (docs/code/host-boundary.md) requires registry admission
+/// before state locking, stable opaque tokens that are never dereferenced, admitted-call
+/// retention, and first-destroy ownership. Later destroyers wait for the owner's result;
+/// calls arriving after destruction starts are rejected as unavailable.
 struct HandleState final {
     std::mutex mutex;
     std::condition_variable callsFinished;
@@ -98,6 +102,7 @@ struct HandleState final {
 };
 
 /// Serializes raw-token admission and removal without dereferencing the token.
+/// Keep this lock before `HandleState::mutex` everywhere to preserve the documented order.
 std::mutex registryMutex;
 /// Retains each live state independently of its opaque allocation lifetime.
 std::unordered_map<beeb_machine*, std::shared_ptr<HandleState>> registry;
@@ -209,6 +214,8 @@ beeb_status beeb_create(beeb_machine** out_machine) {
 }
 
 beeb_status beeb_destroy(beeb_machine* machine) {
+    // Destruction is a single-owner transaction: one caller marks the state, waits for
+    // admitted calls, shuts down, removes the token, and publishes the shared result.
     if (!machine) return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "machine handle is null");
     try {
         std::shared_ptr<HandleState> state;

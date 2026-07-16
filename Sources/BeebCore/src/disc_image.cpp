@@ -6,6 +6,9 @@
 namespace beeb {
 
 bool DiscImage::load(std::span<const std::uint8_t> bytes, Layout layout, bool writable) {
+    // DFS sector images are ten 256-byte sectors per track-side. SSD has one side;
+    // DSD interleaves both sides for each track, with 40..80 physical tracks accepted.
+    // This geometry is the format invariant documented in docs/REFERENCES.md.
     constexpr std::size_t trackSideBytes = 10 * 256;
     const unsigned sides = layout == Layout::DSD ? 2u : 1u;
     if (bytes.empty() || bytes.size() % (trackSideBytes * sides) != 0) return false;
@@ -22,7 +25,8 @@ bool DiscImage::load(std::span<const std::uint8_t> bytes, Layout layout, bool wr
 std::size_t DiscImage::sectorOffset(unsigned track, unsigned side, unsigned sector) const {
     if (track >= tracks_ || side >= sides_ || sector >= 10)
         return std::numeric_limits<std::size_t>::max();
-    // DSD files interleave side 0 and side 1 for each physical track.
+    // DSD files interleave side 0 and side 1 for each physical track; retaining that
+    // offset is what makes evidence images addressable by drive/track/side/sector.
     return ((static_cast<std::size_t>(track) * sides_ + side) * 10 + sector) * 256;
 }
 

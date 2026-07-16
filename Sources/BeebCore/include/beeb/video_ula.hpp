@@ -6,6 +6,8 @@
 namespace beeb {
 
 /// BBC Micro Video ULA control and logical-to-physical palette model.
+/// The machine's single owner serializes register writes and palette queries;
+/// this value type performs no internal synchronization.
 class VideoULA {
   public:
     /// Restores the control register and default logical palette.

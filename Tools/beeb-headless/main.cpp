@@ -34,6 +34,8 @@ struct MachineDeleter final {
     }
 };
 
+/// Owning C-handle alias for one headless runtime; destruction releases exactly
+/// the adopted handle through beeb_destroy.
 using Machine = std::unique_ptr<beeb_machine, MachineDeleter>;
 
 /// Releases the caller-owned C frame after output or error handling completes.
@@ -99,6 +101,9 @@ void printState(const beeb_cpu_state& s) {
               << static_cast<unsigned>(s.p) << std::dec << " cycles=" << s.cycles << '\n';
 }
 
+/// Side-effect-free 64 KiB adapter for functional CPU images. It intentionally
+/// advances no devices; tests supply already materialized memory and observe
+/// only CPU reads/writes.
 class FlatBus final : public beeb::Bus {
   public:
     std::array<std::uint8_t, 65536> memory{};

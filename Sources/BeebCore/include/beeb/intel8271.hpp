@@ -11,6 +11,10 @@
 namespace beeb {
 
 /// Command, status, transfer, and timing model of the Intel 8271 FDC.
+/// One emulated machine owns each instance and serializes host-register writes
+/// with ticking. The owned NMI callback runs synchronously on that caller's
+/// thread; callback exceptions propagate and the callable remains installed
+/// until replaced or destruction.
 class Intel8271 {
   public:
     /// Observer invoked when the controller asserts its NMI condition.
@@ -54,6 +58,7 @@ class Intel8271 {
     [[nodiscard]] std::uint8_t result() const noexcept { return result_; }
 
   private:
+    /// Host-visible readiness and interrupt indications maintained by commands.
     enum Status : std::uint8_t {
         Busy = 0x80,
         CommandFull = 0x40,
@@ -62,6 +67,7 @@ class Intel8271 {
         NMI = 0x08,
         NeedData = 0x04,
     };
+    /// Mutually exclusive sector-stream phase; None means no transfer active.
     enum class Transfer { None, Read, Write };
 
     std::array<DiscImage, 2> drives_;

@@ -61,6 +61,19 @@ c0_assert_contains "${C0_TEST_TMP}/undocumented.stderr" \
     "missing public documentation: include/example.hpp:2"
 c0_pass "undocumented public declaration is rejected"
 
+undocumented_internal="${C0_TEST_TMP}/undocumented-internal"
+cp -R "${fixture}" "${undocumented_internal}"
+printf '%s\n' '#include <cstdint>' 'struct InternalFixture { std::uint8_t value = 0; };' \
+    >"${undocumented_internal}/src/internal.cpp"
+c0_capture undocumented-internal "${builder}" --profile portable --check \
+    --source-root "${undocumented_internal}" --output-dir "${C0_TEST_TMP}/docs-undocumented-internal" \
+    --debt-baseline "${undocumented_internal}/documentation-debt.txt" \
+    --changed-files "${undocumented_internal}/changed-files.txt"
+c0_expect_failure undocumented-internal
+c0_assert_contains "${C0_TEST_TMP}/undocumented-internal.stderr" \
+    "missing named-abstraction documentation: src/internal.cpp:2"
+c0_pass "undocumented internal named abstraction is rejected"
+
 invalid_markup="${C0_TEST_TMP}/invalid-markup"
 cp -R "${fixture}" "${invalid_markup}"
 printf '%s\n' \

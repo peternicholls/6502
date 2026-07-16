@@ -30,6 +30,8 @@
 
 namespace {
 
+/// Deterministic fake bus that captures device ticks and every write for assertions
+/// about NMOS bus-visible behavior; reads come from a complete 64 KiB backing store.
 class RAMBus final : public beeb::Bus {
   public:
     std::array<std::uint8_t, 65536> memory{};
@@ -44,6 +46,7 @@ class RAMBus final : public beeb::Bus {
     void tick(std::uint32_t cycles) override { ticks += cycles; }
 };
 
+/// Assertion boundary used by the registry runner to report one failing fixture cleanly.
 struct TestFailure : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
@@ -68,6 +71,7 @@ struct TestFailure : std::runtime_error {
         }                                                                                          \
     } while (false)
 
+/// Name/callable pair forming the test registry consumed by the command-line runner.
 using Test = std::pair<std::string, std::function<void()>>;
 
 beeb::CPU6502 makeCPU(RAMBus& bus, std::uint16_t pc = 0x0200) {
@@ -279,6 +283,9 @@ void testValidBCDArithmeticExhaustive() {
 }
 
 void testNMOSDecimalFlagVectors() {
+    // These vectors preserve the difficult NMOS decimal datapath provenance: unlike
+    // CMOS BCD expectations, N/V/Z reflect internal binary/intermediate values.
+    /// One NMOS decimal ADC/SBC input and its expected accumulator/flag outcome.
     struct Vector {
         std::uint8_t opcode, a, value;
         bool carryIn;
@@ -911,6 +918,7 @@ void testC1RuntimeContractStructuredStatusIsolation() {
     CHECK(runtimeValue(runtime.frame()).available == false);
 }
 
+/// Complete deterministic replay signature: CPU state, safe point, and owned ledger.
 struct C1ReplaySignature {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
@@ -938,6 +946,8 @@ void testC1ReplayDeterministicLedger() {
     }
 }
 
+/// Snapshot captured after concurrent command admission; fields are compared with
+/// sequential replay to prove ordering and payload determinism.
 struct C1CapturedReplay {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
@@ -978,6 +988,7 @@ C1CapturedReplay captureC1ConcurrentLedger() {
     return {cpu, safePoint, runtime.ledger()};
 }
 
+/// Final CPU/safe-point pair produced by replaying a captured ledger on a fresh machine.
 struct C1ReplayOutcome {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;

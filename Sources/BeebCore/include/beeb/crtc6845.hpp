@@ -6,6 +6,8 @@
 namespace beeb {
 
 /// Character-clock timing and register model of the MC6845-compatible CRTC.
+/// Instances are single-owner state machines; callers must serialize reset,
+/// register access, and ticking when reusing one instance.
 class CRTC6845 {
   public:
     /// Restores registers, counters, and frame notification state.

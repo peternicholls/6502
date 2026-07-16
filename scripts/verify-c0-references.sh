@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export LC_ALL=C
+# Manifest discovery and ordering must be locale-stable across verification
+# hosts so provenance comparisons remain deterministic.
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 runs=1

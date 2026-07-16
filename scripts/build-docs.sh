@@ -107,6 +107,8 @@ if [[ -z "${debt_baseline}" ]]; then
 fi
 if [[ -z "${changed_files}" ]]; then
     changed_files="$(mktemp "${TMPDIR:-/tmp}/beeb-docs-changed.XXXXXX")"
+    # This trap owns the process-created changed-files inventory. A later trap
+    # may add Doxygen cleanup, but must preserve this file's lifetime cleanup.
     trap 'rm -f -- "${changed_files}" "${doxygen_config:-}"' EXIT
     if git -C "${source_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         if [[ -n "${docs_base}" ]]; then
@@ -238,6 +240,10 @@ validate_public_headers() {
 }
 
 validate_changed_complex_code() {
+    # A changed implementation needs either an explicit path-scoped N/A
+    # decision or a rationale marker accepted by docs/CODE_DOCUMENTATION.md;
+    # the diff-status test below intentionally treats comment-only changes as
+    # documentation work rather than silently waiving the gate.
     local entry path rationale diff_text
     while IFS= read -r entry || [[ -n "${entry}" ]]; do
         [[ -z "${entry}" || "${entry}" == \#* ]] && continue
@@ -282,8 +288,47 @@ validate_changed_complex_code() {
     done <"${changed_files}"
 }
 
+validate_internal_named_abstractions() {
+    local path root
+    local -a scan_roots=()
+    for root in "${source_root}/Sources" "${source_root}/Tools" "${source_root}/Tests"; do
+        [[ -d "${root}" ]] && scan_roots+=("${root}")
+    done
+    if ((${#scan_roots[@]} == 0)); then
+        scan_roots=("${source_root}")
+    fi
+    while IFS= read -r -d '' path; do
+        awk -v path="${path#"${source_root}/"}" '
+            function clear_doc() { documented = 0; in_block = 0 }
+            /^[[:space:]]*\/\/\// { documented = 1; next }
+            /^[[:space:]]*\/\*\*/ { documented = 1; in_block = 1; next }
+            in_block {
+                if ($0 ~ /\*\//) in_block = 0
+                next
+            }
+            /^[[:space:]]*(class|struct|enum([[:space:]]+class)?)[[:space:]]+[A-Za-z_][A-Za-z0-9_:]*/ {
+                if (!documented) {
+                    match($0, /^[[:space:]]*(class|struct|enum([[:space:]]+class)?)[[:space:]]+[A-Za-z_][A-Za-z0-9_:]*/)
+                    declaration = substr($0, RSTART, RLENGTH)
+                    sub(/^[[:space:]]*/, "", declaration)
+                    printf "missing named-abstraction documentation: %s:%d: %s\n", path, NR, declaration > "/dev/stderr"
+                    failed = 1
+                }
+                clear_doc()
+                next
+            }
+            /^[[:space:]]*$/ { next }
+            { clear_doc() }
+            END { exit failed }
+        ' "${path}" || return 1
+    done < <(find "${scan_roots[@]}" -type f \
+        \( -name '*.h' -o -name '*.hpp' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.swift' \) \
+        -print0 2>/dev/null || true)
+}
+
 validate_debt
 validate_public_headers
+validate_internal_named_abstractions
 validate_changed_complex_code
 
 command -v doxygen >/dev/null 2>&1 || {
@@ -295,6 +340,8 @@ rm -rf -- "${output_dir}"
 mkdir -p "${output_dir}"
 doxygen_config="$(mktemp "${TMPDIR:-/tmp}/beeb-doxygen.XXXXXX")"
 if [[ -z "${changed_files:-}" || "${changed_files}" != "${TMPDIR:-/tmp}"/beeb-docs-changed.* ]]; then
+    # The caller supplied the changed-files inventory, so only the generated
+    # Doxygen configuration belongs to this later cleanup trap.
     trap 'rm -f -- "${doxygen_config:-}"' EXIT
 fi
 

@@ -11,6 +11,8 @@ namespace beeb {
 ///
 /// Loading copies the supplied bytes. Returned spans borrow this object's
 /// storage and remain valid until the next successful load or destruction.
+/// The image is not synchronized; one owner must serialize loads and sector
+/// access (readers may reuse it only when no load is in flight).
 class DiscImage {
   public:
     /// On-disk ordering of the image's sides.

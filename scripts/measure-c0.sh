@@ -114,6 +114,8 @@ valid_samples=0
 if [[ -z "${invalid_reason}" ]]; then
     for sample in $(seq 1 "${samples}"); do
         sample_output="${work_dir}/sample-${sample}.txt"
+        # Preserve an output record for interrupted or incomplete samples;
+        # statuses 130/143 are classified below instead of losing evidence.
         set +e
         if [[ -n "${sample_command}" ]]; then
             "${sample_command}" "${sample}" >"${sample_output}" 2>"${work_dir}/sample-${sample}.stderr"

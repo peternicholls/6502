@@ -169,6 +169,8 @@ run_group() {
         return
     fi
 
+    # Keep running later groups and retain every failure/interruption in the
+    # aggregate result instead of aborting at the first non-zero command.
     set +e
     if [[ "${command_path}" == "@internal" ]]; then
         run_internal "${id}" >"${log_path}" 2>&1

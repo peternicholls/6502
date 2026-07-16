@@ -17,13 +17,19 @@ namespace {
 // Documentation rationale: docs/code/host-boundary.md owns structured status,
 // runtime-handle, and caller-owned frame rules shared by command-line hosts.
 
+/// One evidence artifact request; kind and path are parsed as a validated pair
+/// so state and frame outputs cannot be confused at serialization time.
 struct Output {
+    // Each output pairs one canonical schema (state or RGB PPM frame) with one path.
+    /// Output formats accepted by the evidence serializer.
     enum class Kind { State, Frame };
     Kind kind;
     std::string path;
 };
 
+/// Fully validated CLI configuration consumed by the evidence capture run.
 struct Options {
+    // parseOptions validates this complete configuration before any C handle is created.
     std::string romPath;
     std::string workload;
     std::uint64_t requestedCycles = 0;
@@ -43,6 +49,8 @@ struct MachineDeleter final {
     }
 };
 
+/// Owning C-handle alias: adopts the handle returned by beeb_create and always
+/// releases it through beeb_destroy when the unique pointer leaves scope.
 using Machine = std::unique_ptr<beeb_machine, MachineDeleter>;
 
 /// Retains one caller-owned frame through all requested evidence writes.
@@ -123,6 +131,7 @@ Options parseOptions(int argc, char** argv) {
 void writeState(const std::string& path, const Options& options, const beeb_cpu_state& state,
                 std::uint64_t actualCycles, std::uint32_t width, std::uint32_t height,
                 std::uint64_t frameNumber) {
+    // evidence-and-testing.md defines the v1 field set and ordering used for comparisons.
     std::ofstream output(path);
     if (!output) throw std::runtime_error("cannot write state output: " + path);
     output << "schema=beeb-c0-evidence-v1\n"
@@ -144,6 +153,7 @@ void writeState(const std::string& path, const Options& options, const beeb_cpu_
 
 void writeFrame(const std::string& path, const std::uint8_t* rgba, std::uint32_t width,
                 std::uint32_t height) {
+    // PPM P6 intentionally drops the source alpha byte: evidence compares RGB pixels only.
     if (!rgba || width == 0 || height == 0) throw std::runtime_error("no frame is available");
     std::ofstream output(path, std::ios::binary);
     if (!output) throw std::runtime_error("cannot write frame output: " + path);

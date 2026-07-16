@@ -5,6 +5,11 @@
 
 namespace beeb {
 
+// The 8271 model preserves the host-visible command protocol: register reads/writes
+// mutate status and result bits, SPECIFY consumes its extended parameter tail, and
+// sector transfers expose NeedData/NMI before each byte. A fixed 64 CPU-cycle cadence
+// keeps replay deterministic; it is an aggregate model rather than analogue FDC timing.
+
 void Intel8271::reset() {
     special_.fill(0);
     currentTrack_.fill(0);

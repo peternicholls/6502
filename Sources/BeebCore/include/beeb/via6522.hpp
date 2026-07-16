@@ -6,6 +6,9 @@
 namespace beeb {
 
 /// Register, timer, edge, and interrupt model of the MOS 6522 VIA.
+/// A machine owns and serializes each instance. Input/output callbacks are
+/// owned by the VIA, invoked synchronously on the mutating caller's thread,
+/// and callback exceptions propagate; no background thread invokes them.
 class VIA6522 {
   public:
     /// Provider for the external logic level on an eight-bit port.

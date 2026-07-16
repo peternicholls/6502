@@ -5,6 +5,11 @@
 
 namespace beeb {
 
+// Mode 7 rendering is a clean-room approximation: repository-authored 5x7 glyphs and
+// the evidence guide define the supported subset. Screen addresses wrap in the 1 KiB
+// page; control codes update state for the rest of the row, flash is frame-paced, and
+// mosaics/scaling are deterministic. Unimplemented C0 controls are intentionally omitted.
+
 std::array<std::uint8_t, 4> TeletextRenderer::colour(std::uint8_t c) {
     return {static_cast<std::uint8_t>((c & 1) ? 255 : 0),
             static_cast<std::uint8_t>((c & 2) ? 255 : 0),

@@ -2,6 +2,8 @@ import Foundation
 import XCTest
 @testable import BeebKit
 
+/// Validates the Swift wrapper's typed errors, lifecycle/concurrency contract,
+/// and owned CPU/video observations against the C runtime boundary.
 final class BeebMachineTests: XCTestCase {
     private func validOSROM() -> Data {
         var bytes = [UInt8](repeating: 0xEA, count: 16 * 1024)

@@ -7,6 +7,10 @@
 namespace beeb {
 
 BBCMicro::BBCMicro() : cpu_(*this) {
+    // This wiring is the BBC Model B collaboration boundary: System VIA owns keyboard
+    // scanning and IC32/sound outputs, the FDC can raise NMI, and all devices advance
+    // from CPU cycles through tick(). Address decoding below intentionally preserves
+    // mirrored I/O, open-bus reads, ROM selection, and ignored ROM writes.
     ram_.fill(0);
     osROM_.fill(0xFF);
     for (auto& bank : sidewaysROM_)
@@ -183,6 +187,9 @@ std::array<std::uint8_t, 4> BBCMicro::rgbaForColour(std::uint8_t colour) {
 void BBCMicro::renderFrame() {
     // C0-DOC-RATIONALE: docs/code/evidence-and-testing.md explains why the
     // complete RGBA buffer is the exact frame-evidence boundary.
+    // The bitmap path follows BBC MA addressing: CRTC display start selects the base,
+    // raster/bitplane packing follows ULA mode, and screen addresses wrap in 0x8000 RAM.
+    // Frame evidence compares the resulting RGBA buffer; see docs/code/evidence-and-testing.md.
     if (videoULA_.teletext()) {
         auto teletext = teletextRenderer_.render(ram_, crtc_, crtc_.frameNumber());
         frame_.width = teletext.width;
