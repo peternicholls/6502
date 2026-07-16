@@ -1173,6 +1173,70 @@ void testC1MachineDigestCoversRollbackState() {
     CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), initial);
 }
 
+void testC1AllocationFailuresRemainRecoverable() {
+    using Point = beeb::RuntimeAllocationFailurePoint;
+    using Code = beeb::RuntimeStatusCode;
+    const auto runtimeWithFailure = [](Point point) {
+        return std::make_unique<beeb::MachineRuntime>(
+            beeb::MachineRuntimeOptions{.enableLedger = true, .failAllocationAt = point});
+    };
+
+    for (const auto point : {Point::request, Point::queue, Point::ledger}) {
+        auto runtime = runtimeWithFailure(point);
+        const auto failed = runtime->state();
+        CHECK(failed.status.code == Code::resourceExhausted);
+        CHECK(!failed.value.has_value());
+        CHECK(runtimeValue(runtime->state()) == beeb::RuntimeState::paused);
+    }
+
+    {
+        auto runtime = runtimeWithFailure(Point::frame);
+        const auto failed = runtime->frame();
+        CHECK(failed.status.code == Code::resourceExhausted);
+        CHECK(!failed.value.has_value());
+        CHECK(runtime->cpuState().status.code == Code::ok);
+    }
+    {
+        auto runtime = runtimeWithFailure(Point::audio);
+        const auto failed = runtime->renderAudio(1, 48'000);
+        CHECK(failed.status.code == Code::resourceExhausted);
+        CHECK(!failed.value.has_value());
+        CHECK(runtime->cpuState().status.code == Code::ok);
+        const auto oversized = runtime->renderAudio(std::vector<float>{}.max_size(), 48'000);
+        CHECK(oversized.status.code == Code::invalidArgument);
+        CHECK(!oversized.value.has_value());
+    }
+    {
+        auto runtime = runtimeWithFailure(Point::boundedExecution);
+        checkRuntimeOK(runtime->loadOSROM(makeLoopingOSROM()));
+        checkRuntimeOK(runtime->reset());
+        const auto before = runtimeValue(runtime->cpuState());
+        const auto failed = runtime->runFor(10);
+        CHECK(failed.status.code == Code::resourceExhausted);
+        CHECK(!failed.value.has_value());
+        CHECK(runtimeValue(runtime->cpuState()) == before);
+        CHECK(runtimeValue(runtime->state()) == beeb::RuntimeState::paused);
+    }
+    {
+        auto runtime = runtimeWithFailure(Point::sustainedExecution);
+        checkRuntimeOK(runtime->loadOSROM(makeLoopingOSROM()));
+        checkRuntimeOK(runtime->reset());
+        checkRuntimeOK(runtime->start());
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (runtimeValue(runtime->state()) != beeb::RuntimeState::faulted &&
+               std::chrono::steady_clock::now() < deadline)
+            std::this_thread::yield();
+        CHECK(runtimeValue(runtime->state()) == beeb::RuntimeState::faulted);
+        const auto ledger = runtime->ledger();
+        CHECK(std::any_of(ledger.begin(), ledger.end(), [](const auto& entry) {
+            return entry.event == beeb::LedgerEventKind::executionSlice &&
+                   entry.status == beeb::RuntimeStatusCode::resourceExhausted;
+        }));
+        checkRuntimeOK(runtime->reset());
+        CHECK(runtime->cpuState().status.code == Code::ok);
+    }
+}
+
 /// Complete deterministic replay signature: CPU state, safe point, and owned ledger.
 struct C1ReplaySignature {
     beeb::CPUState cpu;
@@ -1943,6 +2007,8 @@ int main(int argc, char** argv) {
          testC1ClosedLoopSustainedLifecycleRepeats},
         {"C1 replay: machine digest covers rollback state",
          testC1MachineDigestCoversRollbackState},
+        {"C1 allocation: failures remain recoverable",
+         testC1AllocationFailuresRemainRecoverable},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
         {"C1 replay: captured concurrent ledger replays exactly",
          testC1ReplayCapturedConcurrentLedgerExactly},
