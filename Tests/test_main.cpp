@@ -1705,10 +1705,15 @@ void testC1ObservationsReturnConsistentOwnedValues() {
 
 void testC1RaceMixedCommands() {
     beeb::MachineRuntime runtime({.enableLedger = true});
-    loadNOPFixture(runtime);
+    const auto loopingOS = makeLoopingOSROM();
+    checkRuntimeOK(runtime.loadOSROM(loopingOS));
+    checkRuntimeOK(runtime.reset());
+    const std::vector<std::uint8_t> sideways(0x4000, 0x42);
+    const std::vector<std::uint8_t> disc(40 * 10 * 256, 0);
     constexpr unsigned threadCount = 8;
     constexpr unsigned operationsPerThread = 1'250;
-    std::atomic<unsigned> completed{0};
+    std::atomic<unsigned> accounted{0};
+    std::atomic<unsigned> accepted{0};
     std::atomic<unsigned> failed{0};
     std::vector<std::thread> workers;
     workers.reserve(threadCount);
@@ -1717,7 +1722,7 @@ void testC1RaceMixedCommands() {
         workers.emplace_back([&, thread] {
             for (unsigned operation = 0; operation < operationsPerThread; ++operation) {
                 beeb::RuntimeStatus status;
-                switch ((thread + operation) % 5) {
+                switch ((thread + operation) % 14) {
                 case 0:
                     status = runtime.start();
                     break;
@@ -1728,16 +1733,45 @@ void testC1RaceMixedCommands() {
                     status = runtime.reset();
                     break;
                 case 3:
+                    status = runtime.loadOSROM(loopingOS);
+                    break;
+                case 4:
+                    status = runtime.loadSidewaysROM(3, sideways);
+                    break;
+                case 5:
+                    status = runtime.mountDisc(0, disc, beeb::DiscImage::Layout::SSD);
+                    break;
+                case 6:
                     status = runtime.setKey(static_cast<std::uint8_t>(thread),
                                             static_cast<std::uint8_t>(operation % 8),
                                             (operation & 1) != 0);
                     break;
-                default:
+                case 7:
+                    status = runtime.setBreak(false);
+                    break;
+                case 8:
+                    status = runtime.state().status;
+                    break;
+                case 9:
                     status = runtime.cpuState().status;
                     break;
+                case 10:
+                    status = runtime.frame().status;
+                    break;
+                case 11:
+                    status = runtime.renderAudio(1, 48'000).status;
+                    break;
+                case 12:
+                    status = runtime.safePoint().status;
+                    break;
+                default:
+                    status = runtime.fault().status;
+                    break;
                 }
-                if (status.code == beeb::RuntimeStatusCode::ok)
-                    ++completed;
+                ++accounted;
+                if (status.code == beeb::RuntimeStatusCode::ok &&
+                    status.acceptanceSequence != 0)
+                    ++accepted;
                 else
                     ++failed;
             }
@@ -1746,10 +1780,27 @@ void testC1RaceMixedCommands() {
     for (auto& worker : workers)
         worker.join();
 
-    CHECK_EQ(completed.load() + failed.load(), threadCount * operationsPerThread);
+    CHECK_EQ(accounted.load(), threadCount * operationsPerThread);
+    CHECK_EQ(accepted.load() + failed.load(), accounted.load());
     CHECK_EQ(failed.load(), 0);
     checkRuntimeOK(runtime.pause());
-    CHECK(runtime.ledger().size() >= completed.load());
+    CHECK(runtime.ledger().size() >= accepted.load());
+
+    checkRuntimeOK(runtime.loadOSROM(makeLateFaultOSROM()));
+    checkRuntimeOK(runtime.reset());
+    const auto execution = runtime.runFor(100);
+    ++accounted;
+    CHECK(execution.status.code == beeb::RuntimeStatusCode::executionFailed);
+    const auto fault = runtime.fault();
+    ++accounted;
+    checkRuntimeOK(fault.status);
+    CHECK(runtimeValue(fault).available);
+    checkRuntimeOK(runtime.reset());
+    ++accounted;
+    checkRuntimeOK(runtime.loadOSROM(loopingOS));
+    ++accounted;
+    CHECK_EQ(accounted.load(), threadCount * operationsPerThread + 4);
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
 }
 
 void testC1RaceShutdownDrainAndRejection() {
