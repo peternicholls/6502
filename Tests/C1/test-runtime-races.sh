@@ -32,5 +32,10 @@ if c1_tsan_supported; then
     TSAN_OPTIONS="halt_on_error=1:exitcode=66" \
         c1_run_tsan_tests --filter "C1 race:"
 else
+    if [[ "${C1_REQUIRE_TSAN:-0}" == "1" ]]; then
+        printf 'ERROR: ThreadSanitizer is required but is not supported by %s on this host\n' \
+            "${c1_cxx}" >&2
+        exit 1
+    fi
     printf 'N/A: ThreadSanitizer is not supported by %s on this host\n' "${c1_cxx}"
 fi
