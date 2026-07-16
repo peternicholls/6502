@@ -170,7 +170,7 @@ mapping, concurrency, and destruction evidence.
 **Purpose**: Resolve the reviewed inline-documentation catalogue with focused
 contracts and rationale, then calibrate an enforceable private/internal gate.
 
-- [ ] T052 [P] Add single-owner/threading and callback ownership/invocation/exception contracts to `Sources/BeebCore/include/beeb/crtc6845.hpp`, `disc_image.hpp`, `intel8271.hpp`, `sn76489.hpp`, `teletext_renderer.hpp`, `via6522.hpp`, and `video_ula.hpp`; verify generated declarations and `git diff --check` (IDC-003).
+- [x] T052 [P] Add single-owner/threading and callback ownership/invocation/exception contracts to `Sources/BeebCore/include/beeb/crtc6845.hpp`, `disc_image.hpp`, `intel8271.hpp`, `sn76489.hpp`, `teletext_renderer.hpp`, `via6522.hpp`, and `video_ula.hpp`; verify generated declarations and `git diff --check` (IDC-003).
 - [ ] T053 [P] Replace the CPU private TODO with grouped bus/addressing/stack/flag/arithmetic/finish invariants and document 8271 `Status`/`Transfer` responsibilities in `Sources/BeebCore/include/beeb/cpu6502.hpp` and `Sources/BeebCore/include/beeb/intel8271.hpp`; verify `make docs-check` (IDC-004, IDC-005).
 - [ ] T054 [P] Document `PlatformImage`, `EmulatorModel`, `ContentView`, `BeebDemoApp`, and the Swift test-suite boundary in `Sources/BeebDemo/main.swift` and `Tests/BeebKitTests/BeebMachineTests.swift`; verify Swift DocC/test compilation and `git diff --check` (IDC-007, IDC-008).
 - [ ] T055 Document `RAMBus`, `TestFailure`, the test registry/schema, and `C1ReplaySignature`/`C1CapturedReplay`/`C1ReplayOutcome` in `Tests/test_main.cpp`; explain evidence responsibilities without per-test boilerplate and verify `make docs-check` (IDC-009, IDC-010).
