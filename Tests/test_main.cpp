@@ -826,6 +826,27 @@ std::array<std::uint8_t, 0x4000> makeNOPOSROM() {
     return os;
 }
 
+std::array<std::uint8_t, 0x4000> makeLoopingOSROM() {
+    auto os = makeNOPOSROM();
+    os[0] = 0x4C;
+    os[1] = 0x00;
+    os[2] = 0xC0;
+    return os;
+}
+
+std::array<std::uint8_t, 0x4000> makeLateFaultOSROM() {
+    auto os = makeNOPOSROM();
+    const std::array<std::uint8_t, 11> program{
+        0xA9, 0x2A,       // LDA #$2A
+        0x8D, 0x00, 0x00, // STA $0000
+        0xA9, 0x0F,       // LDA #$0F
+        0x8D, 0x00, 0xFE, // STA $FE00 (CRTC register select)
+        0x02,             // unsupported opcode after RAM and device mutation
+    };
+    std::copy(program.begin(), program.end(), os.begin());
+    return os;
+}
+
 void checkRuntimeOK(const beeb::RuntimeStatus& status) {
     CHECK(status.code == beeb::RuntimeStatusCode::ok);
     CHECK(status.message.empty());
@@ -916,6 +937,71 @@ void testC1RuntimeContractStructuredStatusIsolation() {
     checkRuntimeOK(success);
     CHECK(!first.message.empty());
     CHECK(runtimeValue(runtime.frame()).available == false);
+}
+
+void testC1LateFaultRetainsLastCompletedBoundary() {
+    const auto exercisePaused = [](bool untilFrame) {
+        beeb::MachineRuntime runtime({.enableLedger = true});
+        checkRuntimeOK(runtime.loadOSROM(makeLateFaultOSROM()));
+        checkRuntimeOK(runtime.reset());
+        const auto beforeCPU = runtimeValue(runtime.cpuState());
+        const auto beforeFrame = runtimeValue(runtime.frame());
+        const auto result = untilFrame ? runtime.runUntilFrame(100).status : runtime.runFor(100).status;
+        CHECK(result.code == beeb::RuntimeStatusCode::executionFailed);
+        CHECK(runtimeValue(runtime.cpuState()) == beforeCPU);
+        CHECK(runtimeValue(runtime.frame()) == beforeFrame);
+        const auto fault = runtimeValue(runtime.fault());
+        CHECK(fault.available);
+        CHECK_EQ(fault.safePoint.cpuCycles, beforeCPU.cycles);
+        CHECK(fault.safePoint.state == beeb::RuntimeState::faulted);
+        const auto ledger = runtime.ledger();
+        CHECK(!ledger.empty());
+        CHECK_EQ(ledger.back().actualCycles, 0);
+        checkRuntimeOK(runtime.reset());
+        CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+    };
+
+    exercisePaused(false);
+    exercisePaused(true);
+
+    beeb::MachineRuntime sustained({.enableLedger = true});
+    checkRuntimeOK(sustained.loadOSROM(makeLateFaultOSROM()));
+    checkRuntimeOK(sustained.reset());
+    const auto beforeCPU = runtimeValue(sustained.cpuState());
+    checkRuntimeOK(sustained.start());
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (runtimeValue(sustained.state()) != beeb::RuntimeState::faulted &&
+           std::chrono::steady_clock::now() < deadline)
+        std::this_thread::yield();
+    CHECK(runtimeValue(sustained.state()) == beeb::RuntimeState::faulted);
+    CHECK(runtimeValue(sustained.cpuState()) == beforeCPU);
+    const auto ledger = sustained.ledger();
+    const auto failedSlice = std::find_if(ledger.rbegin(), ledger.rend(), [](const auto& entry) {
+        return entry.event == beeb::LedgerEventKind::executionSlice &&
+               entry.status == beeb::RuntimeStatusCode::executionFailed;
+    });
+    CHECK(failedSlice != ledger.rend());
+    CHECK_EQ(failedSlice->actualCycles, 0);
+    checkRuntimeOK(sustained.reset());
+}
+
+void testC1ClosedLoopSustainedLifecycleRepeats() {
+    for (unsigned repetition = 0; repetition < 50; ++repetition) {
+        beeb::MachineRuntime runtime({.enableLedger = true});
+        checkRuntimeOK(runtime.loadOSROM(makeLoopingOSROM()));
+        checkRuntimeOK(runtime.reset());
+        checkRuntimeOK(runtime.start());
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (runtime.ledger().empty() && std::chrono::steady_clock::now() < deadline)
+            std::this_thread::yield();
+        checkRuntimeOK(runtime.pause());
+        CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
+        CHECK(!runtimeValue(runtime.fault()).available);
+        const auto ledger = runtime.ledger();
+        CHECK(std::any_of(ledger.begin(), ledger.end(), [](const auto& entry) {
+            return entry.event == beeb::LedgerEventKind::executionSlice;
+        }));
+    }
 }
 
 /// Complete deterministic replay signature: CPU state, safe point, and owned ledger.
@@ -1618,6 +1704,10 @@ int main(int argc, char** argv) {
         {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
         {"C1 contract: structured status isolation",
          testC1RuntimeContractStructuredStatusIsolation},
+        {"C1 faults: late mutations retain the last completed boundary",
+         testC1LateFaultRetainsLastCompletedBoundary},
+        {"C1 lifecycle: closed sustained fixture repeats 50 times",
+         testC1ClosedLoopSustainedLifecycleRepeats},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
         {"C1 replay: captured concurrent ledger replays exactly",
          testC1ReplayCapturedConcurrentLedgerExactly},
