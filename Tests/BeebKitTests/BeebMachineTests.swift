@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import BeebCore
 @testable import BeebKit
 
 /// Validates the Swift wrapper's typed errors, lifecycle/concurrency contract,
@@ -69,6 +70,21 @@ final class BeebMachineTests: XCTestCase {
         try machine.reset()
         assertCoreStatus(.executionFailed) {
             _ = try machine.run(cycles: 1)
+        }
+    }
+
+    func testEveryCoreStatusCategoryMapsDirectly() {
+        let cases: [(beeb_status_code, BeebStatusCategory)] = [
+            (BEEB_STATUS_INVALID_ARGUMENT, .invalidArgument),
+            (BEEB_STATUS_INVALID_STATE, .invalidState),
+            (BEEB_STATUS_EXECUTION_FAILED, .executionFailed),
+            (BEEB_STATUS_RESOURCE_EXHAUSTED, .resourceExhausted),
+            (BEEB_STATUS_UNAVAILABLE, .unavailable),
+            (BEEB_STATUS_REENTRANT_CALL, .reentrantCall),
+            (BEEB_STATUS_INTERNAL_FAILURE, .internalFailure),
+        ]
+        for (code, expected) in cases {
+            XCTAssertEqual(BeebMachine.statusCategory(code), expected)
         }
     }
 
@@ -177,6 +193,37 @@ final class BeebMachineTests: XCTestCase {
         try machine.pause()
         XCTAssertEqual(try machine.state, .paused)
         XCTAssertGreaterThan(try machine.safePoint().cpuCycles, 0)
+    }
+
+    func testConcurrentFaultQueryResetRecoveryAndFinalRelease() async throws {
+        weak var releasedMachine: BeebMachine?
+        do {
+            let machine = try BeebMachine()
+            releasedMachine = machine
+            var illegal = [UInt8](validOSROM())
+            illegal[0] = 0x02
+            try machine.loadOSROM(Data(illegal))
+            try machine.reset()
+            assertCoreStatus(.executionFailed) { _ = try machine.run(cycles: 1) }
+
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for index in 0..<64 {
+                    group.addTask {
+                        switch index % 4 {
+                        case 0: _ = try machine.state
+                        case 1: _ = try machine.cpuState()
+                        case 2: _ = try machine.fault()
+                        default: try machine.reset()
+                        }
+                    }
+                }
+                try await group.waitForAll()
+            }
+            try machine.reset()
+            XCTAssertEqual(try machine.state, .paused)
+            XCTAssertNil(try machine.fault())
+        }
+        XCTAssertNil(releasedMachine)
     }
 
     func testValidAudioAndBreakCallsRemainRecoverable() throws {

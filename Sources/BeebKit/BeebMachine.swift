@@ -357,7 +357,7 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Maps the closed C category vocabulary into the public Swift vocabulary.
-    private static func statusCategory(_ code: beeb_status_code) -> BeebStatusCategory {
+    static func statusCategory(_ code: beeb_status_code) -> BeebStatusCategory {
         switch code {
         case BEEB_STATUS_INVALID_ARGUMENT: return .invalidArgument
         case BEEB_STATUS_INVALID_STATE: return .invalidState
