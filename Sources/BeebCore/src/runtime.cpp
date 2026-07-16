@@ -174,7 +174,9 @@ class MachineRuntime::Impl final {
     /// Starts the owner and blocks until BBCMicro construction succeeds or fails.
     /// @param options Controls opt-in in-memory ledger retention.
     explicit Impl(MachineRuntimeOptions options)
-        : allocationFailurePoint_(options.failAllocationAt), ledgerEnabled_(options.enableLedger),
+        : allocationFailurePoint_(options.failAllocationAt),
+          testReentrantSubmission_(options.testReentrantSubmission),
+          ledgerEnabled_(options.enableLedger),
           owner_([this] { ownerLoop(); }) {
         std::unique_lock lock(mutex_);
         stateChanged_.wait(lock, [this] { return ready_; });
@@ -329,6 +331,8 @@ class MachineRuntime::Impl final {
     RuntimeAllocationFailurePoint allocationFailurePoint_ =
         RuntimeAllocationFailurePoint::none;
     std::atomic<bool> allocationFailureConsumed_{false};
+    bool testReentrantSubmission_ = false;
+    bool testReentrantSubmissionConsumed_ = false;
 
     RuntimeState runtimeState_ = RuntimeState::paused;
     std::string faultMessage_;
@@ -482,6 +486,14 @@ class MachineRuntime::Impl final {
         const auto invalidState = [accepted](const char* message) {
             return Completion{status(RuntimeStatusCode::invalidState, message, accepted), {}};
         };
+
+        if (testReentrantSubmission_ && !testReentrantSubmissionConsumed_ &&
+            request.kind == RuntimeCommandKind::runtimeState) {
+            testReentrantSubmissionConsumed_ = true;
+            auto nested = submit(RuntimeCommandKind::runtimeState);
+            nested.status.acceptanceSequence = accepted;
+            return nested;
+        }
 
         switch (request.kind) {
         case RuntimeCommandKind::start:

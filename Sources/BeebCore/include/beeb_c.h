@@ -25,6 +25,8 @@ extern "C" {
 #define BEEB_STATUS_MESSAGE_CAPACITY 256
 
 /// Stable status categories shared one-to-one with the C++ runtime.
+/// Documentation rationale: docs/code/host-boundary.md owns the cross-language
+/// category and recovery contract represented by this closed vocabulary.
 typedef enum beeb_status_code {
     BEEB_STATUS_OK = 0,                 ///< Operation completed successfully.
     BEEB_STATUS_INVALID_ARGUMENT = 1,   ///< Pointer, size, value, or output is invalid.
@@ -32,7 +34,7 @@ typedef enum beeb_status_code {
     BEEB_STATUS_EXECUTION_FAILED = 3,   ///< Emulated execution faulted at a safe point.
     BEEB_STATUS_RESOURCE_EXHAUSTED = 4, ///< Required allocation or capacity failed.
     BEEB_STATUS_UNAVAILABLE = 5,        ///< Runtime is shutting down or no longer accepts work.
-    BEEB_STATUS_REENTRANT_CALL = 6,     ///< Owner-thread re-entry would deadlock.
+    BEEB_STATUS_REENTRANT_CALL = 6,     ///< Reserved: owner-thread re-entry would deadlock.
     BEEB_STATUS_INTERNAL_FAILURE = 7    ///< Unexpected implementation failure was contained.
 } beeb_status_code;
 

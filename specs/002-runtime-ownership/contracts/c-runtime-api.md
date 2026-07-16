@@ -28,6 +28,9 @@ rate are validated.
 - Input is copied before it may outlive the call. Frame/audio/state outputs are caller-owned.
 - Every call is synchronous to its safe-point completion and may be made from
   any thread except re-entrantly from the owner.
+- `reentrant_call` is reserved for private owner-thread producers. Current C
+  hosts cannot install an owner callback, but the runtime rejects the path
+  deterministically so a future internal producer cannot deadlock.
 - No exception crosses C. Unknown exceptions become `internal_failure`.
 - `beeb_destroy` may overlap calls already inside the API and waits safely; no
   call is valid after destroy returns.

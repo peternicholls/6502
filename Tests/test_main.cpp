@@ -945,6 +945,8 @@ void testC1RuntimeContractLifecycleMatrix() {
     CHECK(runtime.state().status.code == beeb::RuntimeStatusCode::unavailable);
 }
 
+/// Status/output tuple used by the exhaustive lifecycle matrix independent of
+/// each command's concrete C++ result type.
 struct C1MatrixObservation {
     beeb::RuntimeStatus status;
     bool outputPresent = false;
@@ -1276,6 +1278,15 @@ void testC1AllocationFailuresRemainRecoverable() {
         checkRuntimeOK(runtime->reset());
         CHECK(runtime->cpuState().status.code == Code::ok);
     }
+}
+
+void testC1OwnerReentrantSubmissionIsRejected() {
+    beeb::MachineRuntime runtime({.enableLedger = true, .testReentrantSubmission = true});
+    const auto rejected = runtime.state();
+    CHECK(rejected.status.code == beeb::RuntimeStatusCode::reentrantCall);
+    CHECK(!rejected.value.has_value());
+    CHECK(rejected.status.acceptanceSequence != 0);
+    CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
 }
 
 /// Complete deterministic replay signature: CPU state, safe point, and owned ledger.
@@ -2050,6 +2061,8 @@ int main(int argc, char** argv) {
          testC1MachineDigestCoversRollbackState},
         {"C1 allocation: failures remain recoverable",
          testC1AllocationFailuresRemainRecoverable},
+        {"C1 contract: owner reentrant submission is rejected",
+         testC1OwnerReentrantSubmissionIsRejected},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
         {"C1 replay: captured concurrent ledger replays exactly",
          testC1ReplayCapturedConcurrentLedgerExactly},

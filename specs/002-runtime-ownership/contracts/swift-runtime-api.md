@@ -10,5 +10,8 @@ diagnostic. Returned state, frame, and audio are Swift-owned values. No callback
 is invoked under runtime synchronization. Deinitialization performs blocking
 shutdown; callers must retain the object for concurrent operations.
 
+`.reentrantCall` is a reserved lossless mapping of the C category. The public
+Swift wrapper exposes no owner-thread callback capable of producing it today.
+
 Swift task-group tests cover concurrent lifecycle, mutation, observation,
 failure recovery, and release after all tasks complete.

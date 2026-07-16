@@ -150,6 +150,8 @@ struct MachineRuntimeOptions {
     bool enableLedger = false; ///< Retain full in-memory test diagnostics when true.
     RuntimeAllocationFailurePoint failAllocationAt = RuntimeAllocationFailurePoint::none;
     ///< One-shot private test failure; never exposed through C or Swift.
+    bool testReentrantSubmission = false;
+    ///< One-shot owner-thread producer used only to prove deadlock rejection.
 };
 
 /// Owns one BBCMicro and serializes all supported host access on one thread.

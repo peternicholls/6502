@@ -13,7 +13,7 @@ public enum BeebStatusCategory: Sendable, Equatable {
     case resourceExhausted
     /// The runtime was shutting down or no longer accepted work.
     case unavailable
-    /// Owner-thread re-entry would have deadlocked.
+    /// Reserved mapping for an owner-thread producer that would have deadlocked.
     case reentrantCall
     /// An unexpected implementation failure was contained.
     case internalFailure
