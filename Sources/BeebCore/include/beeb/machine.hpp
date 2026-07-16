@@ -32,6 +32,29 @@ struct VideoFrame {
 /// direct construction is reserved for low-level single-threaded core tests.
 class BBCMicro final : public Bus {
   public:
+    /// In-memory rollback value for one runtime execution transaction.
+    ///
+    /// This private-in-spirit C++ seam is neither a persisted snapshot format
+    /// nor a host API. It owns every device value that instruction execution
+    /// can mutate so a failed transaction can restore one coherent boundary.
+    struct Checkpoint {
+        CPUState cpu;
+        std::array<std::uint8_t, 0x8000> ram;
+        std::array<std::uint16_t, 16> keyboard;
+        std::array<bool, 8> ic32;
+        VIA6522 systemVIA;
+        VIA6522 userVIA;
+        CRTC6845 crtc;
+        VideoULA videoULA;
+        SN76489 sound;
+        Intel8271 fdc;
+        VideoFrame frame;
+        std::uint8_t selectedROM = 0;
+        std::uint32_t viaRemainder = 0;
+        std::uint32_t crtcRemainder = 0;
+        bool breakPressed = false;
+    };
+
     /// Constructs a machine, connects device callbacks, and resets all state.
     BBCMicro();
 
@@ -115,6 +138,12 @@ class BBCMicro final : public Bus {
     /// Restores the complete RAM image from a previously captured snapshot.
     /// @param bytes Exactly 32 KiB of RAM contents.
     void restoreRAM(std::span<const std::uint8_t> bytes) noexcept;
+    /// Captures the complete mutable execution boundary for runtime rollback.
+    /// @return Owned, process-local checkpoint with no stable serialized form.
+    [[nodiscard]] Checkpoint checkpoint() const;
+    /// Restores a checkpoint captured from this machine.
+    /// @param checkpoint Complete mutable execution state to reinstall.
+    void restore(const Checkpoint& checkpoint);
     /// Returns the currently selected sideways-ROM bank.
     /// @return Bank number in the range 0...15.
     [[nodiscard]] std::uint8_t selectedROM() const noexcept { return selectedROM_; }

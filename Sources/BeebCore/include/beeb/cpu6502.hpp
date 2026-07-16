@@ -139,6 +139,7 @@ class CPU6502 {
     std::uint32_t branch(bool condition);
     std::uint32_t interrupt(std::uint16_t vector);
     std::uint32_t finish(std::uint32_t cycles);
+    std::uint32_t stepImpl();
     [[noreturn]] void illegal(std::uint8_t opcode, std::uint16_t address) const;
 };
 

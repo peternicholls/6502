@@ -580,20 +580,16 @@ class MachineRuntime::Impl final {
     }
 
     Completion executeBounded(std::uint64_t cycles, std::uint64_t accepted) {
-        const auto before = machine_->cpu().state();
-        const auto ramBefore =
-            std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
+        const auto before = machine_->checkpoint();
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runFor(cycles)};
         } catch (const std::exception& error) {
-            machine_->cpu().setState(before);
-            machine_->restoreRAM(ramBefore);
+            machine_->restore(before);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = error.what();
             return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
         } catch (...) {
-            machine_->cpu().setState(before);
-            machine_->restoreRAM(ramBefore);
+            machine_->restore(before);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = "unknown execution failure";
             return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
@@ -601,20 +597,16 @@ class MachineRuntime::Impl final {
     }
 
     Completion executeUntilFrame(std::uint64_t cycles, std::uint64_t accepted) {
-        const auto before = machine_->cpu().state();
-        const auto ramBefore =
-            std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
+        const auto before = machine_->checkpoint();
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runUntilFrame(cycles)};
         } catch (const std::exception& error) {
-            machine_->cpu().setState(before);
-            machine_->restoreRAM(ramBefore);
+            machine_->restore(before);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = error.what();
             return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
         } catch (...) {
-            machine_->cpu().setState(before);
-            machine_->restoreRAM(ramBefore);
+            machine_->restore(before);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = "unknown execution failure";
             return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
@@ -622,32 +614,31 @@ class MachineRuntime::Impl final {
     }
 
     void executeRunningSlice() noexcept {
-        const auto before = machine_->cpu().state();
-        std::vector<std::uint8_t> ramBefore;
+        std::optional<BBCMicro::Checkpoint> before;
         try {
-            ramBefore.assign(machine_->ram().begin(), machine_->ram().end());
+            before = machine_->checkpoint();
         } catch (...) {
-            ramBefore.clear();
+            before.reset();
         }
         RuntimeStatusCode code = RuntimeStatusCode::ok;
         std::uint64_t actual = 0;
         try {
             actual = machine_->runFor(MachineRuntime::executionSliceCycles);
         } catch (const std::exception& error) {
-            const auto after = machine_->cpu().state();
-            actual = after.cycles - before.cycles;
-            machine_->cpu().setState(before);
+            if (before) {
+                machine_->restore(*before);
+                actual = 0;
+            }
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage(error.what());
-            if (!ramBefore.empty()) machine_->restoreRAM(ramBefore);
             code = RuntimeStatusCode::executionFailed;
         } catch (...) {
-            const auto after = machine_->cpu().state();
-            actual = after.cycles - before.cycles;
-            machine_->cpu().setState(before);
+            if (before) {
+                machine_->restore(*before);
+                actual = 0;
+            }
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage("unknown execution failure");
-            if (!ramBefore.empty()) machine_->restoreRAM(ramBefore);
             code = RuntimeStatusCode::executionFailed;
         }
 

@@ -72,6 +72,32 @@ void BBCMicro::restoreRAM(std::span<const std::uint8_t> bytes) noexcept {
     if (bytes.size() == ram_.size()) std::copy(bytes.begin(), bytes.end(), ram_.begin());
 }
 
+BBCMicro::Checkpoint BBCMicro::checkpoint() const {
+    return {cpu_.state(), ram_,       keyboard_,     ic32_,          systemVIA_,
+            userVIA_,     crtc_,      videoULA_,     sound_,         fdc_,
+            frame_,       selectedROM_, viaRemainder_, crtcRemainder_, breakPressed_};
+}
+
+void BBCMicro::restore(const Checkpoint& checkpoint) {
+    cpu_.setState(checkpoint.cpu);
+    ram_ = checkpoint.ram;
+    keyboard_ = checkpoint.keyboard;
+    ic32_ = checkpoint.ic32;
+    systemVIA_ = checkpoint.systemVIA;
+    userVIA_ = checkpoint.userVIA;
+    crtc_ = checkpoint.crtc;
+    videoULA_ = checkpoint.videoULA;
+    sound_ = checkpoint.sound;
+    fdc_ = checkpoint.fdc;
+    frame_ = checkpoint.frame;
+    selectedROM_ = checkpoint.selectedROM;
+    viaRemainder_ = checkpoint.viaRemainder;
+    crtcRemainder_ = checkpoint.crtcRemainder;
+    breakPressed_ = checkpoint.breakPressed;
+    configureSystemVIA();
+    fdc_.setNMICallback([this] { cpu_.requestNMI(); });
+}
+
 bool BBCMicro::mountDisc(unsigned drive, std::span<const std::uint8_t> bytes,
                          DiscImage::Layout layout, bool writable) {
     return fdc_.mount(drive, bytes, layout, writable);

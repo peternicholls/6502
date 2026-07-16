@@ -250,6 +250,20 @@ void CPU6502::reset() {
 }
 
 std::uint32_t CPU6502::step() {
+    const auto before = state();
+    const auto irqBefore = irqLine_;
+    const auto nmiBefore = nmiPending_;
+    try {
+        return stepImpl();
+    } catch (...) {
+        setState(before);
+        irqLine_ = irqBefore;
+        nmiPending_ = nmiBefore;
+        throw;
+    }
+}
+
+std::uint32_t CPU6502::stepImpl() {
     const auto beforeTrace = state();
     if (nmiPending_) {
         nmiPending_ = false;
