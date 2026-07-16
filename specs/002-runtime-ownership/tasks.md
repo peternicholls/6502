@@ -196,7 +196,7 @@ narrow reviewed exclusion consumed by the branch-aware gate.
 regression-proof in maintained gates.
 
 - [x] T066 Add failing CLI boundary/overflow cases for `--pc`, `--rom BANK`, and other narrowed numeric options in a focused shell contract under `Tests/C0/`; assert exact maximum acceptance and rejection of one-past/wrapping inputs before implementation (AUD-014).
-- [ ] T067 Validate parsed wide integers before narrowing in `Tools/beeb-headless/main.cpp`, preserve valid functional/BBC behavior, and verify T066, strict tool builds, `make test`, and `git diff --check` (AUD-014).
+- [x] T067 Validate parsed wide integers before narrowing in `Tools/beeb-headless/main.cpp`, preserve valid functional/BBC behavior, and verify T066, strict tool builds, `make test`, and `git diff --check` (AUD-014).
 - [ ] T068 Reconcile tracing, C 0.2 completion, owned-frame terminology, concurrent-host guidance, and required verification commands across `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `docs/code/runtime-ownership.md`, `docs/code/architecture.md`, and `docs/code/host-boundary.md`; add stale-text/link assertions to `Tests/C1/test-documentation.sh` (AUD-020).
 - [ ] T069 Verify the committed mechanical formatting pass covers every declared C/C++ file, correct remaining drift with formatting-only changes, and keep semantic edits out of the diff; run `clang-format --dry-run --Werror` and `git diff --check` (AUD-018).
 - [ ] T070 Confirm `make format-check` and its dedicated `.github/workflows/ci.yml` step fail on an injected formatting fixture and pass the clean tree; verify `make test` and `make sanitize` before commit (AUD-018).
