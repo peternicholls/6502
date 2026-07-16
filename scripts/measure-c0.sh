@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(cd -P "$(dirname "$0")/.." && pwd -P)"
+home_root="$(cd -P "${HOME}" && pwd -P)"
 samples=5
 output="${root}/.build/c0/measurements/latest.txt"
 sample_command=""
@@ -25,23 +26,40 @@ while [[ $# -gt 0 ]]; do
 done
 case "${samples}" in *[!0-9]*|0|'') printf 'samples must be a positive integer\n' >&2; exit 2 ;; esac
 
+case "${output}" in
+    ""|/)
+        printf 'unsafe measurement output: %s\n' "${output}" >&2
+        exit 2
+        ;;
+esac
+if [[ -d "${output}" ]]; then
+    printf 'measurement output must be a file: %s\n' "${output}" >&2
+    exit 2
+fi
+
 mkdir -p "$(dirname "${output}")"
 work_dir="$(dirname "${output}")/.measurement-work"
-work_parent="$(cd "$(dirname "${work_dir}")" && pwd)"
+work_parent="$(cd -P "$(dirname "${work_dir}")" && pwd -P)"
 work_target="${work_parent}/$(basename "${work_dir}")"
 case "${work_target}" in
-    /|"${root}"|"${HOME}"|"${root}/.git"|"${root}/.git"/*)
+    "${root}/.build"/*)
+        rm -rf -- "${work_target}"
+        mkdir -p "${work_target}"
+        ;;
+    /|"${root}"|"${root}"/*|"${home_root}"|"${home_root}"/*)
         printf 'unsafe measurement work directory: %s\n' "${work_target}" >&2; exit 2 ;;
-    "${root}/.build"/*) ;;
     *)
         [[ ! -e "${work_target}" ]] || {
             printf 'refusing to remove an existing unowned directory: %s\n' "${work_target}" >&2
             exit 2
         }
+        mkdir "${work_target}"
         ;;
 esac
-rm -rf -- "${work_dir}"
-mkdir -p "${work_dir}"
+work_dir="${work_target}"
+# The directory was either created atomically above or recreated inside the
+# tool-owned build tree, so this trap cannot remove a caller-owned path.
+trap 'rm -rf -- "${work_dir}"' EXIT
 sample_records="${work_dir}/samples.txt"
 rates="${work_dir}/rates.txt"
 : >"${sample_records}"

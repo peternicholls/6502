@@ -91,7 +91,7 @@ the phase checkpoint; do not create an empty duplicate commit.
 the broader remediation repeatedly invokes those tools.
 
 - [x] T031 [P] Add destructive-path negative fixtures for repository root, home, `/`, empty, symlink-escaped, and pre-existing unowned output directories in `Tests/C0/test-documentation.sh`, `Tests/C0/test-baseline-verifier.sh`, and `Tests/C0/test-measurement-record.sh`; prove sentinel files survive each expected red failure (AUD-002).
-- [ ] T032 Complete canonical path and tool-owned cleanup protection in `scripts/build-docs.sh`, `scripts/verify-c0.sh`, `scripts/verify-c0-references.sh`, and `scripts/measure-c0.sh`; verify T031, `bash -n` for every shell script, `make docs-check DOCS_PROFILE=portable`, and `make verify-c0 C0_PROFILE=portable` before the Lore commit (AUD-002).
+- [x] T032 Complete canonical path and tool-owned cleanup protection in `scripts/build-docs.sh`, `scripts/verify-c0.sh`, `scripts/verify-c0-references.sh`, and `scripts/measure-c0.sh`; verify T031, `bash -n` for every shell script, `make docs-check DOCS_PROFILE=portable`, and `make verify-c0 C0_PROFILE=portable` before the Lore commit (AUD-002).
 - [ ] T033 [P] Add offline checksum-mismatch, cleanup, and concurrent-invocation fixtures for Klaus evidence in `Tests/C0/test-fixture-evidence.sh`, using a local fake downloader/input so the negative tests require no network (AUD-017).
 - [ ] T034 Finish immutable Klaus handling in `scripts/run-klaus.sh` by pinning the reviewed revision and SHA-256, using a unique guarded temporary directory, and retaining no shared filename; verify T033 plus one network-backed success-trap run, `bash -n scripts/run-klaus.sh`, and `git diff --check`, then commit Phase 7 complete (AUD-017).
 

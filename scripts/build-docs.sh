@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project_root="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source_root="${project_root}"
 output_dir="${project_root}/.build/docs"
 profile="auto"
@@ -71,36 +71,43 @@ case "${profile}" in
         ;;
 esac
 
-guard_removable_dir() {
+if [[ ! -d "${source_root}" ]]; then
+    printf 'missing documentation source root: %s\n' "${source_root}" >&2
+    exit 2
+fi
+source_root="$(cd -P "${source_root}" && pwd -P)"
+home_root="$(cd -P "${HOME}" && pwd -P)"
+
+prepare_output_dir() {
     local target="$1" parent name
-    parent="$(cd "$(dirname "${target}")" && pwd)"
+    parent="$(cd -P "$(dirname "${target}")" && pwd -P)"
     name="$(basename "${target}")"
     target="${parent}/${name}"
     case "${target}" in
-        /|"${source_root}"|"${HOME}"|"${source_root}/.git"|"${source_root}/.git"/*)
+        "${source_root}/.build"/*)
+            rm -rf -- "${target}"
+            mkdir -p "${target}"
+            ;;
+        /|"${source_root}"|"${source_root}"/*|"${home_root}"|"${home_root}"/*)
             printf 'refusing to remove protected directory: %s\n' "${target}" >&2
             exit 2
             ;;
-        "${source_root}/.build"/*) ;;
         *)
             if [[ -e "${target}" ]]; then
                 printf 'refusing to remove an existing unowned directory: %s\n' "${target}" >&2
                 exit 2
             fi
+            mkdir "${target}"
             ;;
     esac
 }
-if [[ ! -d "${source_root}" ]]; then
-    printf 'missing documentation source root: %s\n' "${source_root}" >&2
-    exit 2
-fi
 case "${output_dir}" in
     ""|/)
         printf 'unsafe documentation output directory: %s\n' "${output_dir}" >&2
         exit 2
         ;;
 esac
-guard_removable_dir "${output_dir}"
+prepare_output_dir "${output_dir}"
 
 if [[ -z "${debt_baseline}" ]]; then
     debt_baseline="${source_root}/Tests/Fixtures/C0/documentation-debt.txt"
@@ -336,8 +343,6 @@ command -v doxygen >/dev/null 2>&1 || {
     exit 2
 }
 
-rm -rf -- "${output_dir}"
-mkdir -p "${output_dir}"
 doxygen_config="$(mktemp "${TMPDIR:-/tmp}/beeb-doxygen.XXXXXX")"
 if [[ -z "${changed_files:-}" || "${changed_files}" != "${TMPDIR:-/tmp}"/beeb-docs-changed.* ]]; then
     # The caller supplied the changed-files inventory, so only the generated
