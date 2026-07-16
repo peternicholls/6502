@@ -160,8 +160,9 @@ and documented reset/destruction recovery.
   the documented shutdown policy, joins the owner, and only then releases state.
 - Commands submitted after shutdown begins fail immediately with a stable
   unavailable status and do not access the handle's machine state.
-- An execution fault in an unsupported opcode is contained after device time
-  for the completed instruction boundary has been accounted consistently.
+- An execution fault in an unsupported opcode restores the last completed
+  whole-machine boundary; no partial CPU transition or device time from the
+  failed instruction is retained.
 - Diagnostics are operation-scoped: a successful operation cannot expose an
   older failure, and concurrent callers cannot read another command's message.
 - A frame read before any completed frame returns an explicit no-value success,

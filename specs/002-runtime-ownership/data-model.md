@@ -54,8 +54,9 @@ No borrowed shared diagnostic exists.
 
 - Only the owner touches `BBCMicro`; synchronization protects queue/lifecycle,
   never shared direct machine access.
-- Accepted queue sequence is total and monotonic; accepted commands complete
-  once, FIFO, unless shutdown returns their documented unavailable result.
+- Accepted queue sequence is total and monotonic; every accepted command before
+  the shutdown marker completes exactly once in FIFO order. Submissions rejected
+  after shutdown begins receive `unavailable` without an acceptance identity.
 - Input buffers are copied before submission returns control to mutable caller
   storage; outputs are values or owned buffers.
 - Reset/load validation failure leaves state unchanged. Execution failure is

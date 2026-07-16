@@ -20,7 +20,8 @@ Tests/C1/test-runtime-replay.sh
 ```
 
 Expected: every state/command matrix cell passes; ten ledger replays produce
-identical state, frame, cycle, and safe-point signatures.
+identical CPU state, safe point, exact ledger, and whole-machine device/RAM
+digest.
 
 ## 3. Race and shutdown evidence
 
@@ -57,6 +58,7 @@ swift build
 make verify-c0
 make test-c1
 make docs-check
+make format-check
 git diff --check
 ```
 
