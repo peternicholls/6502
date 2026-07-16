@@ -421,16 +421,18 @@ private:
         try {
             completion = processCommand(request);
         } catch (const std::bad_alloc&) {
-            completion.status = status(RuntimeStatusCode::resourceExhausted,
-                                       "runtime operation allocation failed",
-                                       request.acceptanceSequence);
+            completion.status.code = RuntimeStatusCode::resourceExhausted;
+            completion.status.acceptanceSequence = request.acceptanceSequence;
+            completion.status.message.clear();
         } catch (const std::exception& error) {
-            completion.status = status(RuntimeStatusCode::internalFailure,
-                                       error.what(), request.acceptanceSequence);
+            completion.status.code = RuntimeStatusCode::internalFailure;
+            completion.status.acceptanceSequence = request.acceptanceSequence;
+            try { completion.status.message = error.what(); }
+            catch (...) { completion.status.message.clear(); }
         } catch (...) {
-            completion.status = status(RuntimeStatusCode::internalFailure,
-                                       "unknown runtime operation failure",
-                                       request.acceptanceSequence);
+            completion.status.code = RuntimeStatusCode::internalFailure;
+            completion.status.acceptanceSequence = request.acceptanceSequence;
+            completion.status.message.clear();
         }
 
         const auto sequence = nextLedgerSequence_++;
@@ -591,16 +593,19 @@ private:
 
     Completion executeBounded(std::uint64_t cycles, std::uint64_t accepted) {
         const auto before = machine_->cpu().state();
+        const auto ramBefore = std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runFor(cycles)};
         } catch (const std::exception& error) {
             machine_->cpu().setState(before);
+            machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = error.what();
             return {status(RuntimeStatusCode::executionFailed,
                            faultMessage_, accepted), {}};
         } catch (...) {
             machine_->cpu().setState(before);
+            machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = "unknown execution failure";
             return {status(RuntimeStatusCode::executionFailed,
@@ -610,17 +615,20 @@ private:
 
     Completion executeUntilFrame(std::uint64_t cycles, std::uint64_t accepted) {
         const auto before = machine_->cpu().state();
+        const auto ramBefore = std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted),
                     machine_->runUntilFrame(cycles)};
         } catch (const std::exception& error) {
             machine_->cpu().setState(before);
+            machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = error.what();
             return {status(RuntimeStatusCode::executionFailed,
                            faultMessage_, accepted), {}};
         } catch (...) {
             machine_->cpu().setState(before);
+            machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = "unknown execution failure";
             return {status(RuntimeStatusCode::executionFailed,
@@ -630,6 +638,9 @@ private:
 
     void executeRunningSlice() noexcept {
         const auto before = machine_->cpu().state();
+        std::vector<std::uint8_t> ramBefore;
+        try { ramBefore.assign(machine_->ram().begin(), machine_->ram().end()); }
+        catch (...) { ramBefore.clear(); }
         RuntimeStatusCode code = RuntimeStatusCode::ok;
         std::uint64_t actual = 0;
         try {
@@ -639,14 +650,16 @@ private:
             actual = after.cycles - before.cycles;
             machine_->cpu().setState(before);
             runtimeState_ = RuntimeState::faulted;
-            faultMessage_ = error.what();
+            setFaultMessage(error.what());
+            if (!ramBefore.empty()) machine_->restoreRAM(ramBefore);
             code = RuntimeStatusCode::executionFailed;
         } catch (...) {
             const auto after = machine_->cpu().state();
             actual = after.cycles - before.cycles;
             machine_->cpu().setState(before);
             runtimeState_ = RuntimeState::faulted;
-            faultMessage_ = "unknown execution failure";
+            setFaultMessage("unknown execution failure");
+            if (!ramBefore.empty()) machine_->restoreRAM(ramBefore);
             code = RuntimeStatusCode::executionFailed;
         }
 
@@ -656,6 +669,11 @@ private:
                       RuntimeCommandKind::runCycles,
                       MachineRuntime::executionSliceCycles, actual, 0,
                       mix(1, actual), code, safePoint});
+    }
+
+    void setFaultMessage(const char* message) noexcept {
+        try { faultMessage_ = message; }
+        catch (...) { faultMessage_.clear(); }
     }
 
     SafePoint currentSafePoint(std::uint64_t ledgerSequence) const {

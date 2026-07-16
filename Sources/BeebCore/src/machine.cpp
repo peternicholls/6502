@@ -64,6 +64,10 @@ bool BBCMicro::loadRAM(std::uint16_t address, std::span<const std::uint8_t> byte
     return true;
 }
 
+void BBCMicro::restoreRAM(std::span<const std::uint8_t> bytes) noexcept {
+    if (bytes.size() == ram_.size()) std::copy(bytes.begin(), bytes.end(), ram_.begin());
+}
+
 bool BBCMicro::mountDisc(unsigned drive, std::span<const std::uint8_t> bytes,
                          DiscImage::Layout layout, bool writable) {
     return fdc_.mount(drive, bytes, layout, writable);

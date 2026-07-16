@@ -229,6 +229,7 @@ void CPU6502::reset() {
 }
 
 std::uint32_t CPU6502::step() {
+    const auto beforeTrace = state();
     if (nmiPending_) {
         nmiPending_ = false;
         return interrupt(0xFFFA);
@@ -237,7 +238,16 @@ std::uint32_t CPU6502::step() {
 
     const auto opcodeAddress = pc_;
     const auto opcode = fetch8();
-    if (trace_) trace_(state(), opcode);
+    if (trace_) {
+        try {
+            trace_(state(), opcode);
+        } catch (...) {
+            // Trace observers are outside the emulated machine. Keep the
+            // instruction boundary atomic if one of them fails.
+            setState(beforeTrace);
+            throw;
+        }
+    }
     bool crossed = false;
     std::uint16_t address = 0;
     std::uint8_t value = 0;

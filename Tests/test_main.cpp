@@ -328,6 +328,21 @@ void testIllegalOpcodeTraps() {
     CHECK(threw);
 }
 
+void testTraceObserverFailureIsAtomic() {
+    RAMBus bus;
+    auto cpu = makeCPU(bus);
+    bus.memory[0x0200] = 0xEA; // NOP
+    const auto before = cpu.state();
+    cpu.setTraceCallback([](const beeb::CPUState&, std::uint8_t) {
+        throw std::runtime_error("trace failed");
+    });
+    bool threw = false;
+    try { cpu.step(); } catch (const std::runtime_error&) { threw = true; }
+    CHECK(threw);
+    CHECK(cpu.state() == before);
+    CHECK_EQ(bus.ticks, 0);
+}
+
 void checkCStatus(const beeb_status& status, beeb_status_code expected) {
     CHECK(status.code == expected);
     CHECK(status.message[BEEB_STATUS_MESSAGE_CAPACITY - 1] == '\0');
@@ -1509,6 +1524,7 @@ int main(int argc, char** argv) {
         {"NMOS decimal flag vectors", testNMOSDecimalFlagVectors},
         {"all 151 official opcodes decode", testAllOfficialOpcodesDecode},
         {"illegal opcode trap", testIllegalOpcodeTraps},
+        {"trace observer failure is atomic", testTraceObserverFailureIsAtomic},
         {"C 0.2: status out-parameters and nullability", testCAPI02StatusOutParametersAndNullability},
         {"C 0.2: fault detail and reset recovery", testCAPI02FaultAndRecovery},
         {"C 0.2: destroy waits for calls already inside", testCAPI02DestroyWaitsForCallsAlreadyInside},

@@ -55,6 +55,9 @@ class CPU6502 {
     /// Executes one instruction or pending interrupt as one atomic transition.
     /// @return CPU cycles consumed; the same count has been sent to Bus::tick().
     /// @throws std::runtime_error for an unsupported/illegal opcode.
+    /// @throws Any exception raised by the trace observer after restoring the
+    /// processor's pre-fetch state. Observer callbacks run synchronously on
+    /// the stepping thread and must not mutate the processor or bus.
     std::uint32_t step();
 
     /// Sets the level-sensitive maskable interrupt input.

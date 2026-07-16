@@ -112,6 +112,9 @@ public:
     /// Borrows all 32 KiB RAM until the next machine mutation.
     /// @return Read-only RAM span.
     [[nodiscard]] std::span<const std::uint8_t> ram() const noexcept { return ram_; }
+    /// Restores the complete RAM image from a previously captured snapshot.
+    /// @param bytes Exactly 32 KiB of RAM contents.
+    void restoreRAM(std::span<const std::uint8_t> bytes) noexcept;
     /// Returns the currently selected sideways-ROM bank.
     /// @return Bank number in the range 0...15.
     [[nodiscard]] std::uint8_t selectedROM() const noexcept { return selectedROM_; }
