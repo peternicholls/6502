@@ -29,17 +29,17 @@ struct CPUState {
 /// The processor borrows its Bus for its entire lifetime. The class is not
 /// internally synchronized; one caller must serialize stepping and mutation.
 class CPU6502 {
-public:
+  public:
     /// Bit masks for the processor status register.
     enum Flag : std::uint8_t {
-        Carry = 0x01,           ///< Carry or borrow state.
-        Zero = 0x02,            ///< Result was zero.
-        InterruptDisable = 0x04,///< Maskable interrupt disable.
-        Decimal = 0x08,         ///< Binary-coded decimal arithmetic mode.
-        Break = 0x10,           ///< Break marker used in stacked status.
-        Unused = 0x20,          ///< Status bit held high by the processor.
-        Overflow = 0x40,        ///< Signed arithmetic overflow.
-        Negative = 0x80,        ///< Result sign bit.
+        Carry = 0x01,            ///< Carry or borrow state.
+        Zero = 0x02,             ///< Result was zero.
+        InterruptDisable = 0x04, ///< Maskable interrupt disable.
+        Decimal = 0x08,          ///< Binary-coded decimal arithmetic mode.
+        Break = 0x10,            ///< Break marker used in stacked status.
+        Unused = 0x20,           ///< Status bit held high by the processor.
+        Overflow = 0x40,         ///< Signed arithmetic overflow.
+        Negative = 0x80,         ///< Result sign bit.
     };
 
     /// Observer called before execution with the current state and opcode.
@@ -86,7 +86,8 @@ public:
     /// @param callback Observer to own, or an empty function to disable tracing.
     void setTraceCallback(TraceCallback callback) { trace_ = std::move(callback); }
 
-private:
+  private:
+    // TODO: Document the private interface and implementation for CPU6502 maintainers.
     Bus& bus_;
     std::uint8_t a_ = 0;
     std::uint8_t x_ = 0;
