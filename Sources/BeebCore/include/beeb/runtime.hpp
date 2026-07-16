@@ -133,9 +133,23 @@ struct LedgerEntry {
     friend bool operator==(const LedgerEntry&, const LedgerEntry&) = default;
 };
 
-/// Construction options; full command ledgers are disabled for normal hosts.
+/// Private test failpoints for proving allocation recovery without exhausting a host.
+enum class RuntimeAllocationFailurePoint {
+    none,
+    request,
+    queue,
+    ledger,
+    frame,
+    audio,
+    boundedExecution,
+    sustainedExecution,
+};
+
+/// Construction options; diagnostics and failure injection are disabled for normal hosts.
 struct MachineRuntimeOptions {
     bool enableLedger = false; ///< Retain full in-memory test diagnostics when true.
+    RuntimeAllocationFailurePoint failAllocationAt = RuntimeAllocationFailurePoint::none;
+    ///< One-shot private test failure; never exposed through C or Swift.
 };
 
 /// Owns one BBCMicro and serializes all supported host access on one thread.

@@ -2,6 +2,7 @@
 
 #include "beeb/machine.hpp"
 
+#include <atomic>
 #include <bit>
 #include <cmath>
 #include <condition_variable>
@@ -24,6 +25,13 @@ namespace {
 RuntimeStatus status(RuntimeStatusCode code, std::string message = {},
                      std::uint64_t acceptanceSequence = 0) {
     return {code, std::move(message), acceptanceSequence};
+}
+
+RuntimeStatus allocationFailure(std::uint64_t acceptanceSequence = 0) noexcept {
+    RuntimeStatus result;
+    result.code = RuntimeStatusCode::resourceExhausted;
+    result.acceptanceSequence = acceptanceSequence;
+    return result;
 }
 
 std::uint64_t hashBytes(std::span<const std::uint8_t> bytes) noexcept {
@@ -166,7 +174,8 @@ class MachineRuntime::Impl final {
     /// Starts the owner and blocks until BBCMicro construction succeeds or fails.
     /// @param options Controls opt-in in-memory ledger retention.
     explicit Impl(MachineRuntimeOptions options)
-        : ledgerEnabled_(options.enableLedger), owner_([this] { ownerLoop(); }) {
+        : allocationFailurePoint_(options.failAllocationAt), ledgerEnabled_(options.enableLedger),
+          owner_([this] { ownerLoop(); }) {
         std::unique_lock lock(mutex_);
         stateChanged_.wait(lock, [this] { return ready_; });
         if (startupError_) std::rethrow_exception(startupError_);
@@ -190,6 +199,9 @@ class MachineRuntime::Impl final {
             }
         }
 
+        if (shouldFail(RuntimeAllocationFailurePoint::request))
+            return {allocationFailure(), {}};
+
         std::shared_ptr<Request> request;
         std::future<Completion> future;
         try {
@@ -199,9 +211,7 @@ class MachineRuntime::Impl final {
             request->payloadDigest = payloadDigest;
             future = request->completion.get_future();
         } catch (const std::bad_alloc&) {
-            return {
-                status(RuntimeStatusCode::resourceExhausted, "runtime command allocation failed"),
-                {}};
+            return {allocationFailure(), {}};
         } catch (const std::exception& error) {
             return {status(RuntimeStatusCode::internalFailure, error.what()), {}};
         }
@@ -214,12 +224,12 @@ class MachineRuntime::Impl final {
             if (!accepting_) {
                 return {status(RuntimeStatusCode::unavailable, "runtime is shutting down"), {}};
             }
+            if (shouldFail(RuntimeAllocationFailurePoint::queue))
+                return {allocationFailure(), {}};
             try {
                 queue_.push_back(request);
             } catch (const std::bad_alloc&) {
-                return {
-                    status(RuntimeStatusCode::resourceExhausted, "runtime queue allocation failed"),
-                    {}};
+                return {allocationFailure(), {}};
             } catch (const std::exception& error) {
                 return {status(RuntimeStatusCode::internalFailure, error.what()), {}};
             }
@@ -316,6 +326,10 @@ class MachineRuntime::Impl final {
     std::thread::id ownerId_;
     std::exception_ptr startupError_;
 
+    RuntimeAllocationFailurePoint allocationFailurePoint_ =
+        RuntimeAllocationFailurePoint::none;
+    std::atomic<bool> allocationFailureConsumed_{false};
+
     RuntimeState runtimeState_ = RuntimeState::paused;
     std::string faultMessage_;
     std::unique_ptr<BBCMicro> machine_;
@@ -327,6 +341,12 @@ class MachineRuntime::Impl final {
     bool ledgerAllocationFailed_ = false;
 
     std::jthread owner_;
+
+    bool shouldFail(RuntimeAllocationFailurePoint point) noexcept {
+        if (allocationFailurePoint_ != point) return false;
+        bool expected = false;
+        return allocationFailureConsumed_.compare_exchange_strong(expected, true);
+    }
 
     void ownerLoop() noexcept {
         {
@@ -403,7 +423,10 @@ class MachineRuntime::Impl final {
     void completeRequest(Request& request) noexcept {
         Completion completion;
         try {
-            completion = processCommand(request);
+            if (shouldFail(RuntimeAllocationFailurePoint::ledger))
+                completion = {allocationFailure(request.acceptanceSequence), {}};
+            else
+                completion = processCommand(request);
         } catch (const std::bad_alloc&) {
             completion.status.code = RuntimeStatusCode::resourceExhausted;
             completion.status.acceptanceSequence = request.acceptanceSequence;
@@ -553,6 +576,8 @@ class MachineRuntime::Impl final {
         case RuntimeCommandKind::cpuState:
             return ok(machine_->cpu().state());
         case RuntimeCommandKind::frame: {
+            if (shouldFail(RuntimeAllocationFailurePoint::frame))
+                return {allocationFailure(accepted), {}};
             const auto& frame = machine_->frame();
             OwnedFrame copy;
             copy.available = !frame.rgba.empty();
@@ -572,6 +597,13 @@ class MachineRuntime::Impl final {
                                "audio sample rate must be finite and positive", accepted),
                         {}};
             }
+            if (payload.frames >= std::vector<float>{}.max_size()) {
+                return {status(RuntimeStatusCode::invalidArgument,
+                               "audio frame count exceeds container capacity", accepted),
+                        {}};
+            }
+            if (shouldFail(RuntimeAllocationFailurePoint::audio))
+                return {allocationFailure(accepted), {}};
             std::vector<float> samples(payload.frames);
             machine_->sound().render(samples.data(), samples.size(), payload.sampleRate);
             return ok(std::move(samples));
@@ -584,6 +616,8 @@ class MachineRuntime::Impl final {
     }
 
     Completion executeBounded(std::uint64_t cycles, std::uint64_t accepted) {
+        if (shouldFail(RuntimeAllocationFailurePoint::boundedExecution))
+            return {allocationFailure(accepted), {}};
         const auto before = machine_->checkpoint();
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runFor(cycles)};
@@ -618,32 +652,65 @@ class MachineRuntime::Impl final {
     }
 
     void executeRunningSlice() noexcept {
+        if (shouldFail(RuntimeAllocationFailurePoint::sustainedExecution)) {
+            runtimeState_ = RuntimeState::faulted;
+            faultMessage_.clear();
+            const auto sequence = nextLedgerSequence_++;
+            const auto safePoint = currentSafePoint(sequence);
+            appendLedger({sequence, 0, LedgerEventKind::executionSlice,
+                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0,
+                          0, 0, RuntimeStatusCode::resourceExhausted, safePoint});
+            return;
+        }
         std::optional<BBCMicro::Checkpoint> before;
         try {
             before = machine_->checkpoint();
+        } catch (const std::bad_alloc&) {
+            runtimeState_ = RuntimeState::faulted;
+            faultMessage_.clear();
+            const auto sequence = nextLedgerSequence_++;
+            const auto safePoint = currentSafePoint(sequence);
+            appendLedger({sequence, 0, LedgerEventKind::executionSlice,
+                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0,
+                          0, 0, RuntimeStatusCode::resourceExhausted, safePoint});
+            return;
         } catch (...) {
-            before.reset();
+            runtimeState_ = RuntimeState::faulted;
+            faultMessage_.clear();
+            const auto sequence = nextLedgerSequence_++;
+            const auto safePoint = currentSafePoint(sequence);
+            appendLedger({sequence, 0, LedgerEventKind::executionSlice,
+                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0,
+                          0, 0, RuntimeStatusCode::internalFailure, safePoint});
+            return;
         }
         RuntimeStatusCode code = RuntimeStatusCode::ok;
         std::uint64_t actual = 0;
+        const auto restoreBoundary = [&]() noexcept {
+            if (!before) return false;
+            try {
+                machine_->restore(*before);
+                return true;
+            } catch (...) {
+                return false;
+            }
+        };
         try {
             actual = machine_->runFor(MachineRuntime::executionSliceCycles);
         } catch (const std::exception& error) {
-            if (before) {
-                machine_->restore(*before);
-                actual = 0;
-            }
+            const auto restored = restoreBoundary();
+            if (restored) actual = 0;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage(error.what());
-            code = RuntimeStatusCode::executionFailed;
+            code = restored ? RuntimeStatusCode::executionFailed
+                            : RuntimeStatusCode::internalFailure;
         } catch (...) {
-            if (before) {
-                machine_->restore(*before);
-                actual = 0;
-            }
+            const auto restored = restoreBoundary();
+            if (restored) actual = 0;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage("unknown execution failure");
-            code = RuntimeStatusCode::executionFailed;
+            code = restored ? RuntimeStatusCode::executionFailed
+                            : RuntimeStatusCode::internalFailure;
         }
 
         const auto sequence = nextLedgerSequence_++;
@@ -729,7 +796,7 @@ RuntimeStatus MachineRuntime::loadOSROM(std::span<const std::uint8_t> rom) {
         const auto digest = hashBytes(copy);
         return impl_->submit(RuntimeCommandKind::loadOSROM, std::move(copy), digest).status;
     } catch (const std::bad_alloc&) {
-        return status(RuntimeStatusCode::resourceExhausted, "OS ROM command copy failed");
+        return allocationFailure();
     }
 }
 
@@ -741,7 +808,7 @@ RuntimeStatus MachineRuntime::loadSidewaysROM(std::uint8_t bank,
         return impl_->submit(RuntimeCommandKind::loadSidewaysROM, std::move(payload), digest)
             .status;
     } catch (const std::bad_alloc&) {
-        return status(RuntimeStatusCode::resourceExhausted, "sideways ROM command copy failed");
+        return allocationFailure();
     }
 }
 
@@ -754,7 +821,7 @@ RuntimeStatus MachineRuntime::mountDisc(unsigned drive, std::span<const std::uin
         digest = mix(digest, writable ? 1 : 0);
         return impl_->submit(RuntimeCommandKind::mountDisc, std::move(payload), digest).status;
     } catch (const std::bad_alloc&) {
-        return status(RuntimeStatusCode::resourceExhausted, "disc command copy failed");
+        return allocationFailure();
     }
 }
 
