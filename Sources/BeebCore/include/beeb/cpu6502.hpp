@@ -42,7 +42,9 @@ class CPU6502 {
         Negative = 0x80,         ///< Result sign bit.
     };
 
-    /// Observer called before execution with the current state and opcode.
+    /// Observer called after opcode fetch but before execution or device time.
+    /// The supplied PC therefore addresses the first operand byte. If the
+    /// observer throws, step() restores the complete pre-fetch CPU boundary.
     using TraceCallback = std::function<void(const CPUState&, std::uint8_t)>;
 
     /// Creates a processor borrowing `bus` for all memory and timing access.

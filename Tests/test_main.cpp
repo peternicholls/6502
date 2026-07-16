@@ -374,6 +374,20 @@ void testTraceObserverFailureIsAtomic() {
     RAMBus bus;
     auto cpu = makeCPU(bus);
     bus.memory[0x0200] = 0xEA; // NOP
+    beeb::CPUState observed{};
+    std::uint8_t observedOpcode = 0;
+    cpu.setTraceCallback([&](const beeb::CPUState& state, std::uint8_t opcode) {
+        observed = state;
+        observedOpcode = opcode;
+    });
+    const auto tracedBefore = cpu.state();
+    CHECK_EQ(cpu.step(), 2);
+    auto expectedObserved = tracedBefore;
+    ++expectedObserved.pc;
+    CHECK(observed == expectedObserved);
+    CHECK_EQ(observedOpcode, 0xEA);
+
+    bus.memory[cpu.state().pc] = 0xEA;
     const auto before = cpu.state();
     cpu.setTraceCallback(
         [](const beeb::CPUState&, std::uint8_t) { throw std::runtime_error("trace failed"); });
@@ -385,7 +399,7 @@ void testTraceObserverFailureIsAtomic() {
     }
     CHECK(threw);
     CHECK(cpu.state() == before);
-    CHECK_EQ(bus.ticks, 0);
+    CHECK_EQ(bus.ticks, 2);
 }
 
 void checkCStatus(const beeb_status& status, beeb_status_code expected) {
