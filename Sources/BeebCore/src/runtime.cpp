@@ -431,9 +431,13 @@ class MachineRuntime::Impl final {
             completion.value =
                 RuntimeFault{runtimeState_ == RuntimeState::faulted, faultMessage_, safePoint};
         }
+        const auto resultDigest =
+            request.kind == RuntimeCommandKind::safePoint && completion.status.isOK()
+                ? BBCMicroTestAccess::digest(*machine_)
+                : completionDigest(completion.value);
         appendLedger({sequence, request.acceptanceSequence, LedgerEventKind::command, request.kind,
                       requestedCycles(request), actualCycles(completion), request.payloadDigest,
-                      completionDigest(completion.value), completion.status.code, safePoint});
+                      resultDigest, completion.status.code, safePoint});
 
         try {
             request.completion.set_value(std::move(completion));

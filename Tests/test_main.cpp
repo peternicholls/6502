@@ -28,12 +28,6 @@
 #include <thread>
 #include <vector>
 
-namespace beeb {
-struct BBCMicroTestAccess {
-    static std::uint64_t digest(const BBCMicro& machine) noexcept { return machine.testDigest(); }
-};
-} // namespace beeb
-
 namespace {
 
 /// Deterministic fake bus that captures device ticks and every write for assertions
@@ -1027,6 +1021,7 @@ struct C1ReplaySignature {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
     std::vector<beeb::LedgerEntry> ledger;
+    std::uint64_t machineDigest = 0;
 };
 
 C1ReplaySignature runC1ReplayScenario() {
@@ -1036,7 +1031,11 @@ C1ReplaySignature runC1ReplayScenario() {
     checkRuntimeOK(runtime.setKey(1, 2, true));
     CHECK(runtimeValue(runtime.runFor(31)) >= 31);
     checkRuntimeOK(runtime.setKey(1, 2, false));
-    return {runtimeValue(runtime.cpuState()), runtimeValue(runtime.safePoint()), runtime.ledger()};
+    const auto cpu = runtimeValue(runtime.cpuState());
+    const auto safePoint = runtimeValue(runtime.safePoint());
+    const auto ledger = runtime.ledger();
+    CHECK(!ledger.empty());
+    return {cpu, safePoint, ledger, ledger.back().resultDigest};
 }
 
 void testC1ReplayDeterministicLedger() {
@@ -1047,6 +1046,7 @@ void testC1ReplayDeterministicLedger() {
         CHECK(actual.cpu == expected.cpu);
         CHECK(actual.safePoint == expected.safePoint);
         CHECK(actual.ledger == expected.ledger);
+        CHECK_EQ(actual.machineDigest, expected.machineDigest);
     }
 }
 
@@ -1056,6 +1056,7 @@ struct C1CapturedReplay {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
     std::vector<beeb::LedgerEntry> ledger;
+    std::uint64_t machineDigest = 0;
 };
 
 C1CapturedReplay captureC1ConcurrentLedger() {
@@ -1089,13 +1090,16 @@ C1CapturedReplay captureC1ConcurrentLedger() {
 
     const auto cpu = runtimeValue(runtime.cpuState());
     const auto safePoint = runtimeValue(runtime.safePoint());
-    return {cpu, safePoint, runtime.ledger()};
+    const auto ledger = runtime.ledger();
+    CHECK(!ledger.empty());
+    return {cpu, safePoint, ledger, ledger.back().resultDigest};
 }
 
 /// Final CPU/safe-point pair produced by replaying a captured ledger on a fresh machine.
 struct C1ReplayOutcome {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
+    std::uint64_t machineDigest = 0;
 
     friend bool operator==(const C1ReplayOutcome&, const C1ReplayOutcome&) = default;
 };
@@ -1153,7 +1157,7 @@ C1ReplayOutcome replayC1Ledger(const std::vector<beeb::LedgerEntry>& ledger) {
         CHECK(state == entry.safePoint.state);
         finalSafePoint = entry.safePoint;
     }
-    return {machine.cpu().state(), finalSafePoint};
+    return {machine.cpu().state(), finalSafePoint, beeb::BBCMicroTestAccess::digest(machine)};
 }
 
 void writeC1ReplayEvidence(const C1CapturedReplay& capture) {
@@ -1164,6 +1168,7 @@ void writeC1ReplayEvidence(const C1CapturedReplay& capture) {
     CHECK(output.good());
     output << "sequence event command acceptance requested actual payload result status "
               "cpu_cycles frame state\n";
+    output << "# safe_point_machine_digest=" << capture.machineDigest << '\n';
     for (const auto& entry : capture.ledger) {
         output << entry.sequence << ' ' << static_cast<unsigned>(entry.event) << ' '
                << static_cast<unsigned>(entry.command) << ' ' << entry.acceptanceSequence << ' '
@@ -1179,7 +1184,7 @@ void testC1ReplayCapturedConcurrentLedgerExactly() {
     CHECK(!capture.ledger.empty());
     writeC1ReplayEvidence(capture);
 
-    const C1ReplayOutcome expected{capture.cpu, capture.safePoint};
+    const C1ReplayOutcome expected{capture.cpu, capture.safePoint, capture.machineDigest};
     for (unsigned repetition = 0; repetition < 10; ++repetition) {
         CHECK(replayC1Ledger(capture.ledger) == expected);
     }

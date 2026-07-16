@@ -197,4 +197,10 @@ class BBCMicro final : public Bus {
     [[nodiscard]] std::uint64_t testDigest() const noexcept;
 };
 
+/// Friend-gated access used only by deterministic C++ replay tests.
+struct BBCMicroTestAccess {
+    /// Returns the machine's process-local diagnostic digest.
+    static std::uint64_t digest(const BBCMicro& machine) noexcept { return machine.testDigest(); }
+};
+
 } // namespace beeb
