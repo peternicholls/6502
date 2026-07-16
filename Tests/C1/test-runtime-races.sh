@@ -22,7 +22,10 @@ c1_tsan_supported() {
 }
 
 if [[ "${C1_ONLY_TSAN:-0}" != "1" ]]; then
-    c1_run_tests --filter "C1 race:"
+    for repetition in {1..10}; do
+        printf 'C1 race normal repetition %d/10\n' "${repetition}"
+        c1_run_tests --filter "C1 race:"
+    done
 fi
 
 if c1_tsan_supported; then
