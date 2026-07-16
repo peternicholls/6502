@@ -333,9 +333,45 @@ validate_internal_named_abstractions() {
         -print0 2>/dev/null || true)
 }
 
+validate_swift_throwing_contracts() {
+    local swift
+    while IFS= read -r -d '' swift; do
+        awk '
+            function fail() {
+                printf "missing Swift throwing contract: %s:%d\n", FILENAME, declaration_line > "/dev/stderr"
+                failed = 1
+            }
+            /^[[:space:]]*\/\/\// {
+                if ($0 ~ /- Throws:/) documented_throws = 1
+                next
+            }
+            /^[[:space:]]*$/ { next }
+            /^[[:space:]]*@/ { next }
+            {
+                if ($0 ~ /^[[:space:]]*public (init|func|var)[[:space:](]/) {
+                    pending = 1
+                    declaration_line = FNR
+                    pending_documented = documented_throws
+                    pending_var = $0 ~ /^[[:space:]]*public var[[:space:]]/
+                }
+                if (pending && ($0 ~ /(^|[[:space:]])throws([[:space:]]|\{|->)/ ||
+                                $0 ~ /^[[:space:]]*get[[:space:]]+throws/)) {
+                    if (!pending_documented) fail()
+                    pending = 0
+                } else if (pending && !pending_var && $0 ~ /\{/) {
+                    pending = 0
+                }
+                documented_throws = 0
+            }
+            END { exit failed }
+        ' "${swift}" || return 1
+    done < <(find "${source_root}/Sources" -type f -name '*.swift' -print0 2>/dev/null)
+}
+
 validate_debt
 validate_public_headers
 validate_internal_named_abstractions
+validate_swift_throwing_contracts
 validate_changed_complex_code
 
 command -v doxygen >/dev/null 2>&1 || {

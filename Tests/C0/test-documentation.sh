@@ -109,6 +109,21 @@ c0_assert_contains "${C0_TEST_TMP}/undocumented-internal.stderr" \
     "missing named-abstraction documentation: src/internal.cpp:2"
 c0_pass "undocumented internal named abstraction is rejected"
 
+missing_swift_throws="${C0_TEST_TMP}/missing-swift-throws"
+cp -R "${fixture}" "${missing_swift_throws}"
+mkdir -p "${missing_swift_throws}/Sources"
+printf '%s\n' '/// Performs fallible work.' 'public func fallible() throws {}' \
+    >"${missing_swift_throws}/Sources/Fixture.swift"
+c0_capture missing-swift-throws "${builder}" --profile portable --check \
+    --source-root "${missing_swift_throws}" \
+    --output-dir "${C0_TEST_TMP}/docs-missing-swift-throws" \
+    --debt-baseline "${missing_swift_throws}/documentation-debt.txt" \
+    --changed-files "${missing_swift_throws}/changed-files.txt"
+c0_expect_failure missing-swift-throws
+c0_assert_contains "${C0_TEST_TMP}/missing-swift-throws.stderr" \
+    "missing Swift throwing contract"
+c0_pass "public Swift throwing declarations require a Throws contract"
+
 invalid_markup="${C0_TEST_TMP}/invalid-markup"
 cp -R "${fixture}" "${invalid_markup}"
 printf '%s\n' \
