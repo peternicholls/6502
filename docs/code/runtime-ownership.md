@@ -95,12 +95,21 @@ time is used only by tests as a deadlock guard and never changes emulated state.
 
 ## Fault containment
 
-An execution exception is caught on the owner, the CPU is restored to the last
-completed state captured before the failing run, and the runtime enters
-`faulted`. The operation receives `executionFailed`; later fault queries return
-an owned copy of the same diagnostic and safe point. State, fault, CPU, and
-frame queries remain legal. Start, pause, bounded execution, media, input, and
-audio mutation are rejected until reset succeeds.
+An execution exception is caught on the owner, and a process-local checkpoint
+restores CPU, RAM, devices, mounted media state, frame storage, keyboard state,
+and timing remainders to the last completed boundary captured before the
+failing run. The runtime then enters `faulted`. Work rolled back by that
+transaction is not retained work, so its ledger `actualCycles` is zero. The
+operation receives `executionFailed`; later fault queries return an owned copy
+of the same diagnostic and safe point. State, fault, CPU, and frame queries
+remain legal. Start, pause, bounded execution, media, input, and audio mutation
+are rejected until reset succeeds.
+
+`CPU6502::step()` applies the same rule to processor-local failures. A trace
+observer runs after opcode fetch but before instruction execution or device
+time; if it throws, the pre-fetch CPU boundary is restored and the exception is
+transported to the caller. Sustained-execution tests use an explicit closed JMP
+loop so a lifecycle test can never fault merely by falling out of its fixture.
 
 Every owner command has an exception boundary. Allocation failure becomes
 `resourceExhausted`; other known and unknown failures become operation-scoped
@@ -132,9 +141,11 @@ without releasing the runtime early.
 Full ledger capture is disabled by default. Tests may opt in to an in-memory
 ledger containing one total sequence across accepted commands and internal
 execution slices, plus requested/actual cycles, payload and result digests,
-status, and resulting safe point. The C1 replay test captures a concurrent
-interleaving, replays that exact ledger ten times, and writes a disposable text
-view under ignored `.build/c1/` storage.
+status, and resulting safe point. Test safe-point entries carry a process-local
+whole-machine digest covering deterministic CPU, RAM, device, media, frame, and
+timing values. The C1 replay tests compare CPU state, safe point, exact ledger,
+and that machine digest across ten runs, and write a disposable text view under
+ignored `.build/c1/` storage.
 
 The ledger is evidence, not a persisted emulator format. C3 owns snapshots and
 versioned persistence. New result variants must extend the result digest, and

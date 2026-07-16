@@ -45,6 +45,13 @@ the request. The owner checks the FIFO before selecting another slice, so an
 accepted pause waits for at most the already selected slice. Bounded execution
 is a separate paused-only command. Neither path consults host wall time.
 
+If an instruction, trace observer, or aggregate device transition throws, the
+runtime restores the process-local whole-machine checkpoint captured before
+that execution transaction. Discarded transitions contribute zero retained
+`actualCycles`; the fault safe point therefore names the same CPU/device
+boundary that observations and replay digest report, rather than mixing
+restored CPU time with advanced peripheral state.
+
 ## Where to extend fidelity
 
 Future timing work should strengthen the device and bus model behind these

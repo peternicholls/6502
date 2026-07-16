@@ -17,6 +17,7 @@
 
 namespace beeb {
 
+/// Forward declaration for the friend-gated replay diagnostic seam below.
 struct BBCMicroTestAccess;
 
 /// Owned rendering result for the most recently completed video frame.
@@ -39,22 +40,24 @@ class BBCMicro final : public Bus {
     /// This private-in-spirit C++ seam is neither a persisted snapshot format
     /// nor a host API. It owns every device value that instruction execution
     /// can mutate so a failed transaction can restore one coherent boundary.
+    /// Documentation rationale: docs/code/runtime-ownership.md owns the
+    /// rollback boundary and its exclusion from snapshot persistence.
     struct Checkpoint {
-        CPUState cpu;
-        std::array<std::uint8_t, 0x8000> ram;
-        std::array<std::uint16_t, 16> keyboard;
-        std::array<bool, 8> ic32;
-        VIA6522 systemVIA;
-        VIA6522 userVIA;
-        CRTC6845 crtc;
-        VideoULA videoULA;
-        SN76489 sound;
-        Intel8271 fdc;
-        VideoFrame frame;
-        std::uint8_t selectedROM = 0;
-        std::uint32_t viaRemainder = 0;
-        std::uint32_t crtcRemainder = 0;
-        bool breakPressed = false;
+        CPUState cpu;                         ///< Processor boundary.
+        std::array<std::uint8_t, 0x8000> ram; ///< Complete writable memory.
+        std::array<std::uint16_t, 16> keyboard; ///< Keyboard matrix rows.
+        std::array<bool, 8> ic32;               ///< Addressable latch outputs.
+        VIA6522 systemVIA;                      ///< System VIA state and callbacks.
+        VIA6522 userVIA;                        ///< User VIA state and callbacks.
+        CRTC6845 crtc;                          ///< Video timing registers/counters.
+        VideoULA videoULA;                      ///< Video control and palette.
+        SN76489 sound;                          ///< Sound registers and phases.
+        Intel8271 fdc;                          ///< Controller and private media state.
+        VideoFrame frame;                       ///< Latest owned rendered frame.
+        std::uint8_t selectedROM = 0;           ///< Active sideways bank.
+        std::uint32_t viaRemainder = 0;         ///< CPU-to-VIA fractional cycles.
+        std::uint32_t crtcRemainder = 0;        ///< CPU-to-CRTC fractional cycles.
+        bool breakPressed = false;              ///< BREAK edge-tracking state.
     };
 
     /// Constructs a machine, connects device callbacks, and resets all state.
@@ -200,6 +203,8 @@ class BBCMicro final : public Bus {
 /// Friend-gated access used only by deterministic C++ replay tests.
 struct BBCMicroTestAccess {
     /// Returns the machine's process-local diagnostic digest.
+    /// @param machine Low-level test machine to inspect without mutation.
+    /// @return Deterministic digest with no persisted representation.
     static std::uint64_t digest(const BBCMicro& machine) noexcept { return machine.testDigest(); }
 };
 
