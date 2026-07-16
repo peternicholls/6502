@@ -30,6 +30,9 @@
 
 namespace {
 
+// C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns why these fixtures
+// retain exact hardware, boundary, replay, and concurrency observations.
+
 /// Deterministic fake bus that captures device ticks and every write for assertions
 /// about NMOS bus-visible behavior; reads come from a complete 64 KiB backing store.
 class RAMBus final : public beeb::Bus {
@@ -1289,7 +1292,8 @@ void testC1OwnerReentrantSubmissionIsRejected() {
     CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
 }
 
-/// Complete deterministic replay signature: CPU state, safe point, and owned ledger.
+/// Owned signature from one deterministic command scenario: CPU, safe point,
+/// exact ledger, and whole-machine digest are compared across fresh runtimes.
 struct C1ReplaySignature {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
@@ -1323,8 +1327,8 @@ void testC1ReplayDeterministicLedger() {
     }
 }
 
-/// Snapshot captured after concurrent command admission; fields are compared with
-/// sequential replay to prove ordering and payload determinism.
+/// Owned capture after concurrent command admission; its accepted ledger drives
+/// sequential replay while CPU, safe point, and machine digest define the target.
 struct C1CapturedReplay {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
@@ -1368,7 +1372,7 @@ C1CapturedReplay captureC1ConcurrentLedger() {
     return {cpu, safePoint, ledger, ledger.back().resultDigest};
 }
 
-/// Final CPU/safe-point pair produced by replaying a captured ledger on a fresh machine.
+/// Final CPU, safe-point, and machine-digest outcome from one sequential replay.
 struct C1ReplayOutcome {
     beeb::CPUState cpu;
     beeb::SafePoint safePoint;
