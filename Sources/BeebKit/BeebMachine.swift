@@ -145,6 +145,7 @@ public final class BeebMachine: @unchecked Sendable {
     deinit { _ = beeb_destroy(handle) }
 
     /// Lifecycle state from one FIFO safe point.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.
     public var state: BeebRuntimeState {
         get throws {
             var state = BEEB_RUNTIME_STATE_PAUSED
@@ -154,9 +155,11 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Starts sustained deterministic execution; running is idempotent.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` for lifecycle or runtime failures.
     public func start() throws { try Self.check(beeb_start(handle)) }
 
     /// Pauses at a safe point; paused is idempotent.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` for lifecycle or runtime failures.
     public func pause() throws { try Self.check(beeb_pause(handle)) }
 
     /// Validates and copies a BBC Model B operating-system ROM.
@@ -220,11 +223,13 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Resets CPU and devices, clears a fault, retains media, and finishes paused.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if reset cannot complete.
     public func reset() throws { try Self.check(beeb_reset(handle)) }
 
     /// Executes whole instructions while paused until the cycle budget is met.
     /// - Parameter cycles: Minimum CPU-cycle budget; zero performs no work.
     /// - Returns: Actual cycles, which may exceed the request by one instruction.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` when bounded execution is invalid or faults.
     @discardableResult
     public func run(cycles: UInt64) throws -> UInt64 {
         var actual: UInt64 = 0
@@ -235,6 +240,7 @@ public final class BeebMachine: @unchecked Sendable {
     /// Executes while paused until a frame completes or the budget is met.
     /// - Parameter maximumCycles: Maximum cycle budget before returning `false`.
     /// - Returns: `true` when a new frame completed.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` when bounded execution is invalid or faults.
     @discardableResult
     public func runToNextFrame(maximumCycles: UInt64 = 100_000) throws -> Bool {
         var completed: Int32 = 0
@@ -243,6 +249,7 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Copies CPU registers and cycle count from one safe point.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.
     public func cpuState() throws -> BeebCPUState {
         var state = beeb_cpu_state()
         try Self.check(beeb_get_cpu_state(handle, &state))
@@ -259,6 +266,7 @@ public final class BeebMachine: @unchecked Sendable {
 
     /// Copies the latest C-owned frame into independently owned Swift storage.
     /// - Returns: A complete frame, or `nil` before one has rendered.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` for runtime or ownership failures.
     public func videoFrame() throws -> BeebVideoFrame? {
         var frame = beeb_frame()
         try Self.check(beeb_get_frame(handle, &frame))
@@ -287,6 +295,7 @@ public final class BeebMachine: @unchecked Sendable {
     /// - Parameters:
     ///   - frames: Positive number of samples.
     ///   - sampleRate: Finite positive sample rate in hertz.
+    /// - Throws: ``BeebError/invalidAudioRequest`` or a typed core status.
     public func renderAudio(frames: Int, sampleRate: Double) throws -> [Float] {
         guard frames > 0, sampleRate.isFinite, sampleRate > 0 else {
             throw BeebError.invalidAudioRequest
@@ -300,17 +309,20 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Changes one keyboard-matrix bit in FIFO order.
+    /// - Throws: ``BeebError/invalidKey`` or a typed core status.
     public func setKey(column: UInt8, row: UInt8, pressed: Bool) throws {
         guard column < 16, row < 16 else { throw BeebError.invalidKey }
         try Self.check(beeb_set_key(handle, column, row, pressed ? 1 : 0))
     }
 
     /// Changes BREAK state without inventing a lifecycle transition.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` for runtime failures.
     public func setBreak(pressed: Bool) throws {
         try Self.check(beeb_set_break(handle, pressed ? 1 : 0))
     }
 
     /// Returns the current completed-instruction/device-tick identity.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.
     public func safePoint() throws -> BeebSafePoint {
         var point = beeb_safe_point()
         try Self.check(beeb_get_safe_point(handle, &point))
@@ -318,6 +330,7 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Returns retained execution-fault detail, or `nil` outside faulted state.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.
     public func fault() throws -> BeebRuntimeFault? {
         var detail = beeb_fault_detail()
         try Self.check(beeb_get_fault(handle, &detail))

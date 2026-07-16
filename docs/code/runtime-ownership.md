@@ -6,8 +6,9 @@ returns a machine, device, frame-buffer, or sound-generator reference. Host
 threads exchange copied commands and owned results with that owner.
 
 Direct `BBCMicro` construction remains available only to low-level,
-single-threaded core tests. The C and Swift hosts migrate atomically to this
-runtime with the C API 0.2 boundary later in C1.
+single-threaded core tests. The C and Swift hosts now use this runtime through
+the versioned C API 0.2 boundary; no supported host path accesses the machine
+directly.
 
 ## Lifecycle
 

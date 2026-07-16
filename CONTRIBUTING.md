@@ -14,6 +14,9 @@ Run the checks relevant to every changed layer:
 ```sh
 make test all
 make sanitize
+make test-c1
+make thread-sanitize
+make docs-check
 swift test
 swift build
 ```
@@ -35,7 +38,8 @@ make demo-rom
 
 - Use C++20 without third-party runtime dependencies in `BeebCore`.
 - Keep host concerns behind the C ABI; never allow a C++ exception to cross it.
-- Serialize access to a `BeebMachine` instance at the host boundary.
+- Use `MachineRuntime`/the C ABI as the host boundary; concurrent calls are
+  serialized by the runtime owner and must not access `BBCMicro` directly.
 - Add a regression test before fixing an emulator correctness defect.
 - Compile warning-free under `-Wall -Wextra -Wpedantic -Werror`.
 - Follow `.clang-format` and `.editorconfig`; avoid formatting unrelated code.

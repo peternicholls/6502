@@ -80,9 +80,11 @@ it does not add it to this MIT-licensed project.
   --frame boot.ppm
 ```
 
-Add `--trace` for an instruction trace. Add other sideways ROMs with another
-`--rom BANK FILE` pair. The core itself accepts SSD/DSD images; the Swift demo
-currently exposes mounting through its file importer.
+Add other sideways ROMs with another `--rom BANK FILE` pair. The BBC-mode
+headless path does not accept `--trace`; standalone functional CPU tracing
+remains available through the functional-test mode. The core itself accepts
+SSD/DSD images; the Swift demo currently exposes mounting through its file
+importer.
 
 Inspect the installed runtime version with:
 

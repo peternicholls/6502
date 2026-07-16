@@ -268,8 +268,9 @@ and documented reset/destruction recovery.
 
 ## Assumptions
 
-- C1 is planned as one phase package with two dependent, independently testable
-  stories: single-owner runtime first, recoverable boundary transport second.
+- C1 is planned as one phase package with three dependent, independently
+  testable stories: single-owner runtime first, serialized transactions second,
+  and recoverable boundary transport third.
 - The current instruction-level `CPU6502::step()` plus `BBCMicro::tick()` return
   already forms the required safe point; C1 names and protects that invariant
   without implementing bus-cycle micro-operations.
