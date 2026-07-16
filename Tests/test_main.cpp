@@ -28,6 +28,12 @@
 #include <thread>
 #include <vector>
 
+namespace beeb {
+struct BBCMicroTestAccess {
+    static std::uint64_t digest(const BBCMicro& machine) noexcept { return machine.testDigest(); }
+};
+} // namespace beeb
+
 namespace {
 
 /// Deterministic fake bus that captures device ticks and every write for assertions
@@ -1004,6 +1010,18 @@ void testC1ClosedLoopSustainedLifecycleRepeats() {
     }
 }
 
+void testC1MachineDigestCoversRollbackState() {
+    beeb::BBCMicro machine;
+    const auto initial = beeb::BBCMicroTestAccess::digest(machine);
+    const auto checkpoint = machine.checkpoint();
+    const std::array<std::uint8_t, 1> byte{0x2A};
+    CHECK(machine.loadRAM(0, byte));
+    machine.crtc().select(15);
+    CHECK(beeb::BBCMicroTestAccess::digest(machine) != initial);
+    machine.restore(checkpoint);
+    CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), initial);
+}
+
 /// Complete deterministic replay signature: CPU state, safe point, and owned ledger.
 struct C1ReplaySignature {
     beeb::CPUState cpu;
@@ -1708,6 +1726,8 @@ int main(int argc, char** argv) {
          testC1LateFaultRetainsLastCompletedBoundary},
         {"C1 lifecycle: closed sustained fixture repeats 50 times",
          testC1ClosedLoopSustainedLifecycleRepeats},
+        {"C1 replay: machine digest covers rollback state",
+         testC1MachineDigestCoversRollbackState},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
         {"C1 replay: captured concurrent ledger replays exactly",
          testC1ReplayCapturedConcurrentLedgerExactly},

@@ -17,6 +17,8 @@
 
 namespace beeb {
 
+struct BBCMicroTestAccess;
+
 /// Owned rendering result for the most recently completed video frame.
 struct VideoFrame {
     std::uint32_t width = 0;        ///< Pixel width.
@@ -161,6 +163,8 @@ class BBCMicro final : public Bus {
     void setBreak(bool pressed);
 
   private:
+    friend struct BBCMicroTestAccess;
+
     std::array<std::uint8_t, 0x8000> ram_{};
     std::array<std::uint8_t, 0x4000> osROM_{};
     std::array<std::array<std::uint8_t, 0x4000>, 16> sidewaysROM_{};
@@ -188,6 +192,9 @@ class BBCMicro final : public Bus {
     std::uint8_t keyboardPortA() const;
     void updateIC32(std::uint8_t value, std::uint8_t ddr);
     static std::array<std::uint8_t, 4> rgbaForColour(std::uint8_t colour);
+    /// Produces a process-local deterministic digest for replay tests.
+    /// @return Digest of CPU, RAM, devices, media, and rendering state.
+    [[nodiscard]] std::uint64_t testDigest() const noexcept;
 };
 
 } // namespace beeb

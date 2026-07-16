@@ -98,6 +98,79 @@ void BBCMicro::restore(const Checkpoint& checkpoint) {
     fdc_.setNMICallback([this] { cpu_.requestNMI(); });
 }
 
+std::uint64_t BBCMicro::testDigest() const noexcept {
+    auto digest = std::uint64_t{1469598103934665603ULL};
+    const auto add = [&digest](auto value) {
+        auto bits = static_cast<std::uint64_t>(value);
+        for (std::size_t index = 0; index < sizeof(value); ++index) {
+            digest ^= static_cast<std::uint8_t>(bits & 0xFFu);
+            digest *= 1099511628211ULL;
+            bits >>= 8;
+        }
+    };
+    const auto addBytes = [&add](std::span<const std::uint8_t> bytes) {
+        for (const auto byte : bytes)
+            add(byte);
+    };
+
+    const auto cpu = cpu_.state();
+    add(cpu.a);
+    add(cpu.x);
+    add(cpu.y);
+    add(cpu.sp);
+    add(cpu.p);
+    add(cpu.pc);
+    add(cpu.cycles);
+    addBytes(ram_);
+    for (const auto row : keyboard_)
+        add(row);
+    for (const auto value : ic32_)
+        add(static_cast<std::uint8_t>(value));
+    for (std::uint8_t index = 0; index < 32; ++index)
+        add(crtc_.reg(index));
+    add(crtc_.selected());
+    add(crtc_.horizontalCharacter());
+    add(crtc_.characterRow());
+    add(crtc_.rasterRow());
+    add(crtc_.frameNumber());
+    add(static_cast<std::uint8_t>(crtc_.frameReady()));
+    for (const auto* via : {&systemVIA_, &userVIA_}) {
+        add(via->outputA());
+        add(via->outputB());
+        add(via->ddra());
+        add(via->ddrb());
+        add(static_cast<std::uint8_t>(via->irq()));
+    }
+    add(videoULA_.control());
+    for (std::uint8_t logical = 0; logical < 16; ++logical) {
+        add(videoULA_.physicalColour(logical));
+        add(videoULA_.physicalColour(logical, true));
+    }
+    for (unsigned channel = 0; channel < 3; ++channel)
+        add(sound_.tonePeriod(channel));
+    for (unsigned channel = 0; channel < 4; ++channel)
+        add(sound_.volume(channel));
+    add(fdc_.status());
+    add(fdc_.result());
+    for (unsigned drive = 0; drive < 2; ++drive) {
+        const auto& disc = fdc_.disc(drive);
+        add(static_cast<std::uint8_t>(disc.present()));
+        add(static_cast<std::uint8_t>(disc.writable()));
+        add(disc.tracks());
+        add(disc.sides());
+        addBytes(disc.bytes());
+    }
+    add(frame_.width);
+    add(frame_.height);
+    add(frame_.number);
+    addBytes(frame_.rgba);
+    add(selectedROM_);
+    add(viaRemainder_);
+    add(crtcRemainder_);
+    add(static_cast<std::uint8_t>(breakPressed_));
+    return digest;
+}
+
 bool BBCMicro::mountDisc(unsigned drive, std::span<const std::uint8_t> bytes,
                          DiscImage::Layout layout, bool writable) {
     return fdc_.mount(drive, bytes, layout, writable);
