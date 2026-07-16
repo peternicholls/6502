@@ -13,8 +13,9 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 - A single-owner `MachineRuntime` with a capacity-64 FIFO, deterministic
   instruction safe points, sustained execution, bounded commands, shutdown
   drain/join, fault recovery, and opt-in exact replay evidence.
-- A structured C 0.2 boundary with eight operation-scoped status categories,
-  success-only out-parameters, caller-owned frames, and destroy-overlap safety.
+- A completed structured C 0.2 boundary with eight operation-scoped status
+  categories, success-only out-parameters, caller-owned frame allocations, and
+  destroy-overlap safety.
 - Typed Swift lifecycle, safe-point, fault, and status values with concurrent
   task-group coverage and no redundant host-side machine lock.
 - A C1 aggregate covering public boundaries, transaction ordering, exact replay,
@@ -42,8 +43,8 @@ All notable changes to Beeb6502 are documented in this file. The project uses
   structured status returns and explicit outputs; all repository consumers now
   use the 0.2 contract.
 - Routed the headless BBC and evidence tools through the supported runtime
-  owner. BBC-mode `--trace` is no longer accepted; standalone functional CPU
-  tracing remains available.
+  owner. BBC-mode `--trace` is rejected; instruction-level tracing remains
+  available only in standalone functional CPU mode.
 - Made Swift reset, input, audio, and observation failures explicit throwing
   operations and moved serialization into the C++ runtime owner.
 - Reworked the emulator roadmap into dependency-aware delivery phases with

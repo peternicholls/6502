@@ -81,10 +81,12 @@ it does not add it to this MIT-licensed project.
 ```
 
 Add other sideways ROMs with another `--rom BANK FILE` pair. The BBC-mode
-headless path does not accept `--trace`; standalone functional CPU tracing
-remains available through the functional-test mode. The core itself accepts
+headless path rejects `--trace` before runtime creation; tracing is an
+instruction-level diagnostic available only through standalone functional-test
+mode. The core itself accepts
 SSD/DSD images; the Swift demo currently exposes mounting through its file
-importer.
+importer. Supported host ownership and concurrency are described in the
+[host-boundary guide](docs/code/host-boundary.md).
 
 Inspect the installed runtime version with:
 

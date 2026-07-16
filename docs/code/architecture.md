@@ -24,10 +24,12 @@ graph.
 `BBCMicro` owns every device. `CPU6502` only borrows its `Bus`. Disc and ROM
 loads copy caller bytes. `MachineRuntime` owns the `BBCMicro`; the C handle owns
 that runtime, and Swift owns the opaque C handle.
-References and spans returned by the C++ layer are borrowed views. C 0.2
-operations instead document each output explicitly: scalar aggregates are
-written to caller-provided storage, and `beeb_get_frame()` returns a caller-
-owned allocation released with `beeb_frame_release()`.
+References and spans used inside the native C++ layer are borrowed views and do
+not cross the host boundary. Completed C 0.2 operations instead document each
+output explicitly: scalar aggregates are written to caller-provided storage,
+and `beeb_get_frame()` returns a caller-owned allocation released with
+`beeb_frame_release()`. Calling that frame "borrowed" would violate the public
+contract.
 
 For boundary details, continue with [The Host Boundary](host-boundary.md). For
 device advancement, see [The Timing Model](timing-model.md). For observable

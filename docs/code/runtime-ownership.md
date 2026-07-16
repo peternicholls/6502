@@ -7,8 +7,9 @@ threads exchange copied commands and owned results with that owner.
 
 Direct `BBCMicro` construction remains available only to low-level,
 single-threaded core tests. The C and Swift hosts now use this runtime through
-the versioned C API 0.2 boundary; no supported host path accesses the machine
-directly.
+the completed, versioned C API 0.2 boundary; no supported host path accesses
+the machine directly. This guide describes the implemented host contract, not
+a deferred migration design.
 
 ## Lifecycle
 
@@ -110,6 +111,8 @@ observer runs after opcode fetch but before instruction execution or device
 time; if it throws, the pre-fetch CPU boundary is restored and the exception is
 transported to the caller. Sustained-execution tests use an explicit closed JMP
 loop so a lifecycle test can never fault merely by falling out of its fixture.
+The headless tool exposes this observer only in standalone functional CPU mode;
+BBC-mode execution through `MachineRuntime` rejects `--trace`.
 
 Every owner command has an exception boundary. Allocation failure becomes
 `resourceExhausted`; other known and unknown failures become operation-scoped

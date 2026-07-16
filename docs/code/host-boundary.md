@@ -62,6 +62,12 @@ runs only after the final strong reference is gone and performs blocking C
 destroy. Public callbacks are not part of this boundary, so neither Swift nor C
 invokes host code under runtime synchronization.
 
+Supported hosts may enter C 0.2 concurrently. They must not add an outer lock
+or dispatch queue to impose a competing order: the runtime owner's acceptance
+FIFO is the sole serialization authority. Command-line instruction tracing is
+separate from this boundary and is available only in standalone functional CPU
+mode, never BBC runtime mode.
+
 ## Adding a boundary operation
 
 Define the C contract first: legal lifecycle states, null behavior, copied input
