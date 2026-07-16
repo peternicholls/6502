@@ -20,7 +20,7 @@ is governed separately by the [product strand](product/README.md).
 | C1 runtime ownership | One owner, capacity-64 FIFO, safe-point lifecycle, exact replay, structured C/Swift recovery | Green; local TSan N/A |
 | C0 aggregate evidence | `make verify-c0`: all 11 macOS groups; explicit portable profile passes with Swift groups N/A | Green |
 | Lawful exact references | Ten identical clean-room runs; exact CPU state plus 320×200 bitmap and 480×500 Mode 7 PPMs | Green |
-| Code documentation | Strict Doxygen + DocC site, link/markup/public-surface checks, zero debt | Green |
+| Code documentation | Generated public Doxygen + DocC references; branch-aware internal named-abstraction checks; separate public/internal debt baselines at zero | Green within enforced scope |
 
 ## C0 foundation evidence
 
@@ -117,10 +117,20 @@ Approved evidence is clean-room and byte exact:
 | Bitmap frame | `5882cedf1a0939ab8e77144fd73bc713ae13a5b2e2faece7110c5fb40faf4f00` | Complete 320×200 PPM for the named bitmap workload |
 | Mode 7 frame | `c4c9884af9187ab1178f63480962b6921b98a87e1e674371c40904d505fcc994` | Complete 480×500 PPM for the named clean-room Mode 7 workload |
 
-The documentation gate covers all 12 exported C/C++/C ABI header surfaces, all
-public `BeebKit` symbols, and four focused conceptual guides. The module map and
-private header sections are classified internal-only; the tracked debt baseline
-is zero. Generated output remains ignored under `.build/docs/`.
+The generated public reference covers all 12 exported C/C++/C ABI header
+surfaces, all public `BeebKit` symbols, and four focused conceptual guides.
+Representative generated pages include `beeb_c.h`, `MachineRuntime`, runtime
+ownership, and the host boundary. Doxygen remains public-reference oriented; it
+does not claim generated private-member completeness.
+
+Changed private/internal named abstractions are instead enforced by the
+branch-aware source gate using `DOCS_BASE=<base>`. The tracked public and
+internal debt baselines are independently zero. That means no reviewed debt is
+currently recorded within either enforced scope, not that every private field
+is generated or requires prose. The only reviewed exclusions are SwiftPM's
+non-declaration module-map wiring and self-evident fields, accessors, and
+delegators without an independent responsibility boundary. Generated output
+remains ignored under `.build/docs/`.
 
 The descriptive throughput comparison used five 100,000-cycle Mode 7 samples
 on an Apple M2 Ultra with Apple clang 17.0.0 and the release `-O2` Make build.
