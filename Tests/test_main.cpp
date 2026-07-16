@@ -403,7 +403,12 @@ void testTraceObserverFailureIsAtomic() {
 }
 
 void checkCStatus(const beeb_status& status, beeb_status_code expected) {
-    CHECK(status.code == expected);
+    if (status.code != expected) {
+        std::ostringstream message;
+        message << "C status expected " << static_cast<int>(expected) << ", got "
+                << static_cast<int>(status.code) << ": " << status.message;
+        throw TestFailure(message.str());
+    }
     CHECK(status.message[BEEB_STATUS_MESSAGE_CAPACITY - 1] == '\0');
     if (expected == BEEB_STATUS_OK) CHECK(status.message[0] == '\0');
 }
@@ -416,6 +421,8 @@ beeb_machine* createCMachine() {
 }
 
 void testCAPI02StatusOutParametersAndNullability() {
+    // Declaration-driven C 0.2 matrix: keep one applicable success and one
+    // output-preserving validation failure for every fallible header family.
     CHECK(std::string(beeb_version_string()) == "0.2.0");
     checkCStatus(beeb_create(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
     checkCStatus(beeb_destroy(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
@@ -435,6 +442,7 @@ void testCAPI02StatusOutParametersAndNullability() {
     int completedFrame = 7;
     checkCStatus(beeb_run_until_frame(nullptr, 1, &completedFrame), BEEB_STATUS_INVALID_ARGUMENT);
     CHECK_EQ(completedFrame, 7);
+    checkCStatus(beeb_run_until_frame(nullptr, 1, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
     beeb_cpu_state untouchedState{};
     untouchedState.pc = 0x1234;
@@ -443,6 +451,17 @@ void testCAPI02StatusOutParametersAndNullability() {
     CHECK_EQ(untouchedState.pc, 0x1234);
     CHECK_EQ(untouchedState.cycles, 99);
     checkCStatus(beeb_get_cpu_state(nullptr, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_safe_point untouchedPoint{};
+    untouchedPoint.cpu_cycles = 123;
+    checkCStatus(beeb_get_safe_point(nullptr, &untouchedPoint), BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK_EQ(untouchedPoint.cpu_cycles, 123);
+    checkCStatus(beeb_get_safe_point(nullptr, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+    beeb_fault_detail untouchedFault{};
+    untouchedFault.available = 1;
+    checkCStatus(beeb_get_fault(nullptr, &untouchedFault), BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK_EQ(untouchedFault.available, 1);
+    checkCStatus(beeb_get_fault(nullptr, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
     beeb_frame untouchedFrame{};
     untouchedFrame.available = 1;
@@ -476,6 +495,10 @@ void testCAPI02StatusOutParametersAndNullability() {
     CHECK(std::string(staleStatus.message) == "OS ROM data is null");
     checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
 
+    completedFrame = 7;
+    checkCStatus(beeb_run_until_frame(machine, 0, &completedFrame), BEEB_STATUS_OK);
+    CHECK_EQ(completedFrame, 0);
+
     actualCycles = 0;
     checkCStatus(beeb_run_cycles(machine, 1, &actualCycles), BEEB_STATUS_OK);
     CHECK(actualCycles >= 1);
@@ -483,6 +506,23 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_get_cpu_state(machine, &state), BEEB_STATUS_OK);
     CHECK(state.pc >= 0xC001);
     checkCStatus(beeb_get_cpu_state(machine, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
+    beeb_safe_point point{};
+    checkCStatus(beeb_get_safe_point(machine, &point), BEEB_STATUS_OK);
+    beeb_fault_detail fault{};
+    checkCStatus(beeb_get_fault(machine, &fault), BEEB_STATUS_OK);
+    CHECK_EQ(fault.available, 0);
+
+    const std::array<std::uint8_t, 1> tinySideways{0x42};
+    checkCStatus(beeb_load_sideways_rom(machine, 0, tinySideways.data(), tinySideways.size()),
+                 BEEB_STATUS_OK);
+    checkCStatus(beeb_load_sideways_rom(machine, 0, tinySideways.data(), 0),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    std::vector<std::uint8_t> oversizedSideways(0x4001, 0);
+    checkCStatus(beeb_load_sideways_rom(machine, 0, oversizedSideways.data(),
+                                        oversizedSideways.size()),
+                 BEEB_STATUS_INVALID_ARGUMENT);
+    const std::vector<std::uint8_t> disc(40 * 10 * 256, 0);
+    checkCStatus(beeb_mount_disc(machine, 0, disc.data(), disc.size(), 0, 0), BEEB_STATUS_OK);
 
     beeb_frame frame{};
     checkCStatus(beeb_get_frame(machine, &frame), BEEB_STATUS_OK);
@@ -501,6 +541,7 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_set_break(machine, 1), BEEB_STATUS_OK);
     checkCStatus(beeb_set_break(machine, 0), BEEB_STATUS_OK);
     checkCStatus(beeb_destroy(machine), BEEB_STATUS_OK);
+    checkCStatus(beeb_start(machine), BEEB_STATUS_INVALID_ARGUMENT);
 }
 
 void testCAPI02FaultAndRecovery() {

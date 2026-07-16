@@ -802,6 +802,9 @@ RuntimeStatus MachineRuntime::loadOSROM(std::span<const std::uint8_t> rom) {
 
 RuntimeStatus MachineRuntime::loadSidewaysROM(std::uint8_t bank,
                                               std::span<const std::uint8_t> rom) {
+    if (rom.empty())
+        return status(RuntimeStatusCode::invalidArgument,
+                      "sideways ROM must contain 1...16384 bytes");
     try {
         SidewaysPayload payload{bank, {rom.begin(), rom.end()}};
         const auto digest = mix(hashBytes(payload.bytes), bank);

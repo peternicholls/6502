@@ -121,13 +121,16 @@ beeb_status beeb_destroy(beeb_machine* machine);
 /// Reads lifecycle state from one FIFO safe point.
 /// @param machine Live runtime token.
 /// @param out_state Required output, written only on success.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_UNAVAILABLE` while shutting down.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// output, `BEEB_STATUS_RESOURCE_EXHAUSTED` on allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` while shutting down.
 beeb_status beeb_get_runtime_state(beeb_machine* machine, beeb_runtime_state* out_state);
 
 /// Starts sustained deterministic execution; running is an idempotent success.
 /// @param machine Live runtime token.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_STATE` when faulted or
-/// paused/running transition rules reject the command.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token,
+/// `BEEB_STATUS_INVALID_STATE` when faulted, `BEEB_STATUS_RESOURCE_EXHAUSTED`
+/// on command allocation failure, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_start(beeb_machine* machine);
 
 /// Pauses at a safe point; paused is an idempotent success.
@@ -138,7 +141,9 @@ beeb_status beeb_pause(beeb_machine* machine);
 
 /// Resets CPU and devices, clears a fault, retains media, and finishes paused.
 /// @param machine Live runtime token.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_reset(beeb_machine* machine);
 
 /// Executes whole instructions while paused until the cycle budget is met.
@@ -146,7 +151,9 @@ beeb_status beeb_reset(beeb_machine* machine);
 /// @param cycles Minimum CPU-cycle budget; zero performs no work.
 /// @param out_actual_cycles Required output, written only on success.
 /// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for bad output, or
-/// `BEEB_STATUS_INVALID_STATE` unless paused.
+/// `BEEB_STATUS_INVALID_STATE` unless paused, `BEEB_STATUS_EXECUTION_FAILED`
+/// for an emulated fault, `BEEB_STATUS_RESOURCE_EXHAUSTED` on allocation
+/// failure, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_run_cycles(beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles);
 
 /// Executes while paused until a frame completes or the budget is met.
@@ -155,7 +162,9 @@ beeb_status beeb_run_cycles(beeb_machine* machine, uint64_t cycles, uint64_t* ou
 /// @param out_completed Required output receiving non-zero when a frame completed.
 /// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for bad input, or
 /// `BEEB_STATUS_INVALID_STATE` when execution is not paused, or
-/// `BEEB_STATUS_EXECUTION_FAILED` if the emulated CPU faults.
+/// `BEEB_STATUS_EXECUTION_FAILED` if the emulated CPU faults,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` on allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles,
                                  int* out_completed);
 
@@ -165,7 +174,8 @@ beeb_status beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles,
 /// @param count Byte count, which must be exactly 16,384.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for a null or
 /// incorrectly sized image, or `BEEB_STATUS_INVALID_STATE` if media setup is
-/// rejected by the current lifecycle.
+/// rejected by the current lifecycle, `BEEB_STATUS_RESOURCE_EXHAUSTED` if the
+/// copy cannot be allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_load_os_rom(beeb_machine* machine, const uint8_t* bytes, size_t count);
 
 /// Copies and installs one sideways-ROM bank.
@@ -174,7 +184,9 @@ beeb_status beeb_load_os_rom(beeb_machine* machine, const uint8_t* bytes, size_t
 /// @param bytes Required readable source; copied during the call.
 /// @param count Byte count in the inclusive range 1...16,384.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for a bad bank,
-/// pointer, or size.
+/// pointer, or size, `BEEB_STATUS_INVALID_STATE` when faulted,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` if copying fails, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_load_sideways_rom(beeb_machine* machine, uint8_t bank, const uint8_t* bytes,
                                    size_t count);
 
@@ -186,7 +198,9 @@ beeb_status beeb_load_sideways_rom(beeb_machine* machine, uint8_t bank, const ui
 /// @param double_sided Non-zero for interleaved DSD, zero for SSD.
 /// @param writable Non-zero to permit writes to the private copy.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad geometry,
-/// drive, pointer, or size.
+/// drive, pointer, or size, `BEEB_STATUS_INVALID_STATE` when faulted,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` if copying fails, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_mount_disc(beeb_machine* machine, unsigned drive, const uint8_t* bytes,
                             size_t count, int double_sided, int writable);
 
