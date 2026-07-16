@@ -904,6 +904,149 @@ void testC1RuntimeContractLifecycleMatrix() {
     CHECK(runtime.state().status.code == beeb::RuntimeStatusCode::unavailable);
 }
 
+struct C1MatrixObservation {
+    beeb::RuntimeStatus status;
+    bool outputPresent = false;
+};
+
+C1MatrixObservation invokeC1MatrixCommand(beeb::MachineRuntime& runtime,
+                                           beeb::RuntimeCommandKind command) {
+    const auto result = [](const auto& value) {
+        return C1MatrixObservation{value.status, value.value.has_value()};
+    };
+    switch (command) {
+    case beeb::RuntimeCommandKind::start:
+        return {runtime.start(), false};
+    case beeb::RuntimeCommandKind::pause:
+        return {runtime.pause(), false};
+    case beeb::RuntimeCommandKind::reset:
+        return {runtime.reset(), false};
+    case beeb::RuntimeCommandKind::runCycles:
+        return result(runtime.runFor(0));
+    case beeb::RuntimeCommandKind::runUntilFrame:
+        return result(runtime.runUntilFrame(0));
+    case beeb::RuntimeCommandKind::loadOSROM:
+        return {runtime.loadOSROM(makeLoopingOSROM()), false};
+    case beeb::RuntimeCommandKind::loadSidewaysROM: {
+        const std::array<std::uint8_t, 1> rom{0x42};
+        return {runtime.loadSidewaysROM(0, rom), false};
+    }
+    case beeb::RuntimeCommandKind::mountDisc: {
+        const std::vector<std::uint8_t> disc(40 * 10 * 256, 0);
+        return {runtime.mountDisc(0, disc, beeb::DiscImage::Layout::SSD), false};
+    }
+    case beeb::RuntimeCommandKind::setKey:
+        return {runtime.setKey(0, 0, true), false};
+    case beeb::RuntimeCommandKind::setBreak:
+        return {runtime.setBreak(false), false};
+    case beeb::RuntimeCommandKind::runtimeState:
+        return result(runtime.state());
+    case beeb::RuntimeCommandKind::safePoint:
+        return result(runtime.safePoint());
+    case beeb::RuntimeCommandKind::fault:
+        return result(runtime.fault());
+    case beeb::RuntimeCommandKind::cpuState:
+        return result(runtime.cpuState());
+    case beeb::RuntimeCommandKind::frame:
+        return result(runtime.frame());
+    case beeb::RuntimeCommandKind::renderAudio:
+        return result(runtime.renderAudio(1, 48'000));
+    case beeb::RuntimeCommandKind::shutdown:
+        return {runtime.shutdown(), false};
+    }
+    throw TestFailure("unhandled C1 matrix command");
+}
+
+void testC1RuntimeCompleteCommandMatrix() {
+    using Kind = beeb::RuntimeCommandKind;
+    using Code = beeb::RuntimeStatusCode;
+    using State = beeb::RuntimeState;
+    constexpr std::array commands{Kind::start,       Kind::pause,
+                                  Kind::reset,       Kind::runCycles,
+                                  Kind::runUntilFrame, Kind::loadOSROM,
+                                  Kind::loadSidewaysROM, Kind::mountDisc,
+                                  Kind::setKey,      Kind::setBreak,
+                                  Kind::runtimeState, Kind::safePoint,
+                                  Kind::fault,       Kind::cpuState,
+                                  Kind::frame,       Kind::renderAudio,
+                                  Kind::shutdown};
+    constexpr std::array states{State::paused, State::running, State::faulted,
+                                State::shuttingDown};
+    const auto isQuery = [](Kind command) {
+        return command == Kind::runCycles || command == Kind::runUntilFrame ||
+               command == Kind::runtimeState || command == Kind::safePoint ||
+               command == Kind::fault || command == Kind::cpuState || command == Kind::frame ||
+               command == Kind::renderAudio;
+    };
+    const auto expectedCode = [](State state, Kind command) {
+        if (state == State::shuttingDown)
+            return command == Kind::shutdown ? Code::ok : Code::unavailable;
+        if (state == State::faulted) {
+            switch (command) {
+            case Kind::reset:
+            case Kind::runtimeState:
+            case Kind::safePoint:
+            case Kind::fault:
+            case Kind::cpuState:
+            case Kind::frame:
+            case Kind::shutdown:
+                return Code::ok;
+            default:
+                return Code::invalidState;
+            }
+        }
+        if (state == State::running &&
+            (command == Kind::runCycles || command == Kind::runUntilFrame))
+            return Code::invalidState;
+        return Code::ok;
+    };
+
+    for (const auto initial : states) {
+        for (const auto command : commands) {
+            beeb::MachineRuntime runtime({.enableLedger = true});
+            checkRuntimeOK(runtime.loadOSROM(initial == State::faulted ? makeLateFaultOSROM()
+                                                                       : makeLoopingOSROM()));
+            checkRuntimeOK(runtime.reset());
+            if (initial == State::running) checkRuntimeOK(runtime.start());
+            if (initial == State::faulted) {
+                CHECK(runtime.runFor(100).status.code == Code::executionFailed);
+            }
+            if (initial == State::shuttingDown) checkRuntimeOK(runtime.shutdown());
+
+            const auto observation = invokeC1MatrixCommand(runtime, command);
+            const auto expected = expectedCode(initial, command);
+            CHECK(observation.status.code == expected);
+            CHECK_EQ(observation.outputPresent, expected == Code::ok && isQuery(command));
+            if (initial == State::shuttingDown && command != Kind::shutdown) {
+                CHECK_EQ(observation.status.acceptanceSequence, 0);
+                continue;
+            }
+            if (initial == State::shuttingDown && command == Kind::shutdown)
+                CHECK_EQ(observation.status.acceptanceSequence, 0);
+            else
+                CHECK(observation.status.acceptanceSequence != 0);
+            const auto ledger = runtime.ledger();
+            const auto entry = std::find_if(ledger.rbegin(), ledger.rend(), [&](const auto& item) {
+                return item.event == beeb::LedgerEventKind::command && item.command == command;
+            });
+            CHECK(entry != ledger.rend());
+            CHECK(entry->status == expected);
+
+            if (command == Kind::shutdown) continue;
+            const auto state = runtimeValue(runtime.state());
+            if (expected != Code::ok) {
+                CHECK(state == initial);
+            } else if (command == Kind::start) {
+                CHECK(state == State::running);
+            } else if (command == Kind::pause || command == Kind::reset) {
+                CHECK(state == State::paused);
+            } else {
+                CHECK(state == initial);
+            }
+        }
+    }
+}
+
 void testC1RuntimeContractFaultAndRecoveryMatrix() {
     beeb::MachineRuntime runtime;
     auto illegal = makeNOPOSROM();
@@ -1738,6 +1881,8 @@ int main(int argc, char** argv) {
         {"teletext control cells use active background",
          testTeletextControlCellsUseActiveBackground},
         {"C1 contract: lifecycle command matrix", testC1RuntimeContractLifecycleMatrix},
+        {"C1 contract: complete 17-command lifecycle matrix",
+         testC1RuntimeCompleteCommandMatrix},
         {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
         {"C1 contract: structured status isolation",
          testC1RuntimeContractStructuredStatusIsolation},
