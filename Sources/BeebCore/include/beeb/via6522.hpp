@@ -1,5 +1,7 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/timing-model.md owns aggregate VIA timing.
+
 #include <cstdint>
 #include <functional>
 

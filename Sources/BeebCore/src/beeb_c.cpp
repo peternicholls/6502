@@ -1,5 +1,7 @@
 #include "beeb_c.h"
 
+// C0-DOC-RATIONALE: docs/code/host-boundary.md owns C token and status invariants.
+
 #include "beeb/runtime.hpp"
 
 #include <algorithm>

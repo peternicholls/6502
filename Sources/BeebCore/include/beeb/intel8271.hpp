@@ -1,5 +1,7 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/timing-model.md owns controller timing limits.
+
 #include "beeb/disc_image.hpp"
 
 #include <array>

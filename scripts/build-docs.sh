@@ -136,23 +136,24 @@ if [[ ! -f "${changed_files}" ]]; then
 fi
 
 validate_debt() {
-    local baseline_count current_count
-    baseline_count="$(sed -n 's/^baseline_count=//p' "${debt_baseline}")"
-    if [[ ! "${baseline_count}" =~ ^[0-9]+$ ]]; then
-        printf 'invalid documentation debt baseline_count: %s\n' "${debt_baseline}" >&2
-        return 1
-    fi
-    current_count="$(awk '
-        /^[[:space:]]*($|#)/ { next }
-        /^baseline_count=/ { next }
-        { count++ }
-        END { print count + 0 }
-    ' "${debt_baseline}")"
-    if ((current_count > baseline_count)); then
-        printf 'documentation debt exceeds baseline: %d > %d\n' \
-            "${current_count}" "${baseline_count}" >&2
-        return 1
-    fi
+    local scope prefix baseline_count current_count
+    for scope in public internal; do
+        baseline_count="$(sed -n "s/^${scope}_baseline_count=//p" "${debt_baseline}")"
+        if [[ ! "${baseline_count}" =~ ^[0-9]+$ ]]; then
+            printf 'invalid %s documentation debt baseline: %s\n' \
+                "${scope}" "${debt_baseline}" >&2
+            return 1
+        fi
+        if [[ "${scope}" == "public" ]]; then prefix="PUBLIC_DEBT-"; else prefix="INTERNAL_DEBT-"; fi
+        current_count="$(awk -F'|' -v prefix="${prefix}" \
+            'index($1, prefix) == 1 { count++ } END { print count + 0 }' \
+            "${debt_baseline}")"
+        if ((current_count > baseline_count)); then
+            printf '%s documentation debt exceeds baseline: %d > %d\n' \
+                "${scope}" "${current_count}" "${baseline_count}" >&2
+            return 1
+        fi
+    done
 }
 
 validate_public_headers() {
@@ -305,6 +306,10 @@ validate_internal_named_abstractions() {
         scan_roots=("${source_root}")
     fi
     while IFS= read -r -d '' path; do
+        local relative="${path#"${source_root}/"}"
+        if ! grep -Fqx -- "${relative}" "${changed_files}"; then
+            continue
+        fi
         awk -v path="${path#"${source_root}/"}" '
             function clear_doc() { documented = 0; in_block = 0 }
             /^[[:space:]]*\/\/\// { documented = 1; next }

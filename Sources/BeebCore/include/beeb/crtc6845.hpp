@@ -1,5 +1,7 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/timing-model.md owns aggregate CRTC timing.
+
 #include <array>
 #include <cstdint>
 

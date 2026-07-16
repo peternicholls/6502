@@ -1,4 +1,6 @@
 #include <array>
+
+// C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns deterministic ROM evidence.
 #include <cstddef>
 #include <cstdint>
 #include <fstream>

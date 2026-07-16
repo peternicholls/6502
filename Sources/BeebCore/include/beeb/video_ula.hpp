@@ -1,5 +1,7 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns pixel evidence.
+
 #include <array>
 #include <cstdint>
 

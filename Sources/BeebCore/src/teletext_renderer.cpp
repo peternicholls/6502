@@ -1,5 +1,7 @@
 #include "beeb/teletext_renderer.hpp"
 
+// C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns Mode 7 evidence limits.
+
 #include <algorithm>
 #include <cctype>
 

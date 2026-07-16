@@ -1,5 +1,7 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns clean-room rendering evidence.
+
 #include "beeb/crtc6845.hpp"
 
 #include <array>

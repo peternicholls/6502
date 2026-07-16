@@ -1,5 +1,7 @@
 #include "beeb/video_ula.hpp"
 
+// C0-DOC-RATIONALE: docs/REFERENCES.md owns Video ULA programming authority.
+
 namespace beeb {
 
 // BBC ULA palette values are active-low physical colours; bit 3 requests flash and

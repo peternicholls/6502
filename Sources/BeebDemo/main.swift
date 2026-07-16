@@ -1,4 +1,6 @@
 import BeebKit
+
+// C0-DOC-RATIONALE: Sources/BeebKit/Documentation.docc/BeebKit.md owns host usage.
 import SwiftUI
 import UniformTypeIdentifiers
 

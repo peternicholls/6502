@@ -117,23 +117,32 @@ reason is not a decision.
 
 `Tests/Fixtures/C0/documentation-debt.txt` is an inventory of reviewed,
 unchanged internal gaps, not permission to omit documentation from new work.
-Its first line is the maximum baseline count:
+Its first two lines are independent maximum counts:
 
 ```text
-baseline_count=0
+public_baseline_count=0
+internal_baseline_count=0
 ```
 
 Any entry uses this stable form:
 
 ```text
-DEBT-001|path-or-symbol|severity|repayment trigger|target phase
+PUBLIC_DEBT-001|path-or-symbol|severity|repayment trigger|target phase
+INTERNAL_DEBT-001|path-or-symbol|severity|repayment trigger|target phase
 ```
 
 Adding an entry or broadening its scope fails the gate unless the baseline
 change is separately reviewed as an explicit governance decision. Ordinary
 feature work must keep the count level or reduce it. When touching an inventoried
 surface, repay the entry in the same task if its trigger applies; remove the
-entry and lower `baseline_count` together.
+entry and lower the corresponding baseline together.
+
+`REVIEWED_EXCLUSION` lines name narrow non-declaration surfaces such as module
+wiring or obvious fields/accessors; they are not debt and cannot waive a named
+abstraction. `DOCS_BASE=<base>` makes the private/internal scan consume the
+committed `<base>...HEAD` file inventory, while an uncommitted run consumes the
+working-tree inventory. Doxygen remains public-reference oriented; the manual
+branch-aware scan enforces changed private/internal declarations.
 
 ## Review checklist
 

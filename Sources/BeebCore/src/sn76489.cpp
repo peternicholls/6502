@@ -1,5 +1,7 @@
 #include "beeb/sn76489.hpp"
 
+// C0-DOC-RATIONALE: docs/REFERENCES.md owns sound protocol authority.
+
 #include <algorithm>
 #include <array>
 #include <cmath>

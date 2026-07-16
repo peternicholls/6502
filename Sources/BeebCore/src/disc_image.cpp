@@ -1,5 +1,7 @@
 #include "beeb/disc_image.hpp"
 
+// C0-DOC-RATIONALE: docs/REFERENCES.md owns DFS geometry provenance.
+
 #include <algorithm>
 #include <limits>
 

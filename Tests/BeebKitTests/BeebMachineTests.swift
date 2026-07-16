@@ -3,6 +3,8 @@ import XCTest
 import BeebCore
 @testable import BeebKit
 
+// C0-DOC-RATIONALE: docs/code/host-boundary.md owns cross-language recovery evidence.
+
 /// Validates the Swift wrapper's typed errors, lifecycle/concurrency contract,
 /// and owned CPU/video observations against the C runtime boundary.
 final class BeebMachineTests: XCTestCase {

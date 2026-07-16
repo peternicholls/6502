@@ -1,5 +1,7 @@
 #include "beeb/intel8271.hpp"
 
+// C0-DOC-RATIONALE: docs/REFERENCES.md owns the controller protocol authority.
+
 #include <algorithm>
 #include <utility>
 

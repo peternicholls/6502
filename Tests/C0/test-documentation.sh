@@ -21,7 +21,8 @@ printf '%s\n' \
     '/// @return The sum.' \
     'int add(int lhs, int rhs);' >"${fixture}/include/example.hpp"
 printf '%s\n' '# Guide' '' 'A small conceptual guide.' >"${fixture}/docs/guide.md"
-printf 'baseline_count=0\n' >"${fixture}/documentation-debt.txt"
+printf 'public_baseline_count=0\ninternal_baseline_count=0\n' \
+    >"${fixture}/documentation-debt.txt"
 : >"${fixture}/changed-files.txt"
 
 common_args=(--check --source-root "${fixture}" \
@@ -100,6 +101,7 @@ undocumented_internal="${C0_TEST_TMP}/undocumented-internal"
 cp -R "${fixture}" "${undocumented_internal}"
 printf '%s\n' '#include <cstdint>' 'struct InternalFixture { std::uint8_t value = 0; };' \
     >"${undocumented_internal}/src/internal.cpp"
+printf 'src/internal.cpp\n' >"${undocumented_internal}/changed-files.txt"
 c0_capture undocumented-internal "${builder}" --profile portable --check \
     --source-root "${undocumented_internal}" --output-dir "${C0_TEST_TMP}/docs-undocumented-internal" \
     --debt-baseline "${undocumented_internal}/documentation-debt.txt" \
@@ -168,7 +170,7 @@ c0_pass "changed complex code requires rationale or a reviewed N/A"
 
 debt="${C0_TEST_TMP}/debt"
 cp -R "${fixture}" "${debt}"
-printf '%s\n' 'DEBT-001|src/legacy.cpp|low|Document when changed|C1' \
+printf '%s\n' 'INTERNAL_DEBT-001|src/legacy.cpp|low|Document when changed|C1' \
     >>"${debt}/documentation-debt.txt"
 c0_capture debt "${builder}" --profile portable --check \
     --source-root "${debt}" --output-dir "${C0_TEST_TMP}/docs-debt" \
@@ -176,7 +178,7 @@ c0_capture debt "${builder}" --profile portable --check \
     --changed-files "${debt}/changed-files.txt"
 c0_expect_failure debt
 c0_assert_contains "${C0_TEST_TMP}/debt.stderr" \
-    "documentation debt exceeds baseline: 1 > 0"
+    "internal documentation debt exceeds baseline: 1 > 0"
 c0_pass "documentation debt cannot grow"
 
 test "$(git check-ignore -v .build/docs/index.html | wc -l | tr -d ' ')" = "1"

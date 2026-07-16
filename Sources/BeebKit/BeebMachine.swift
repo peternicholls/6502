@@ -1,6 +1,8 @@
 import BeebCore
 import Foundation
 
+// C0-DOC-RATIONALE: docs/code/host-boundary.md owns Swift/C lifetime and recovery.
+
 /// Stable Swift mapping of the C runtime status categories.
 public enum BeebStatusCategory: Sendable, Equatable {
     /// A pointer, size, value, or output was invalid.

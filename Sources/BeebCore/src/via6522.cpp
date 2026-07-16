@@ -1,5 +1,7 @@
 #include "beeb/via6522.hpp"
 
+// C0-DOC-RATIONALE: docs/REFERENCES.md owns VIA protocol authority.
+
 #include <utility>
 
 namespace beeb {
