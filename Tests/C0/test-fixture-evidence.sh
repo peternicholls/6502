@@ -47,6 +47,56 @@ c0_assert_contains "${C0_TEST_TMP}/unknown-output.stderr" \
     "unknown output kind: pixels"
 c0_pass "unknown output kind is rejected"
 
+klaus_runner="${C0_KLAUS_SCRIPT:-${C0_TEST_ROOT}/scripts/run-klaus.sh}"
+if [[ ! -x "${klaus_runner}" ]]; then
+    printf 'missing Klaus runner: %s\n' "${klaus_runner}" >&2
+    exit 1
+fi
+
+klaus_tmp="${C0_TEST_TMP}/klaus-tmp"
+klaus_commands="${C0_TEST_TMP}/klaus-commands"
+mkdir -p "${klaus_tmp}" "${klaus_commands}"
+printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' \
+    'output=""' \
+    'while (($#)); do if [[ "$1" == "-o" ]]; then output="$2"; shift 2; else shift; fi; done' \
+    'printf "offline checksum mismatch fixture\n" >"${output:?missing curl output}"' \
+    >"${klaus_commands}/curl"
+printf '%s\n' '#!/usr/bin/env bash' \
+    'printf "make must not run after a checksum mismatch\n" >&2' 'exit 97' \
+    >"${klaus_commands}/make"
+chmod +x "${klaus_commands}/curl" "${klaus_commands}/make"
+
+c0_capture klaus-checksum env TMPDIR="${klaus_tmp}" \
+    PATH="${klaus_commands}:${PATH}" "${klaus_runner}"
+c0_expect_failure klaus-checksum
+c0_assert_contains "${C0_TEST_TMP}/klaus-checksum.stderr" \
+    "Klaus functional image checksum mismatch"
+test -z "$(find "${klaus_tmp}" -mindepth 1 -maxdepth 1 -print -quit)"
+c0_pass "offline Klaus checksum mismatches clean their private input"
+
+env TMPDIR="${klaus_tmp}" PATH="${klaus_commands}:${PATH}" \
+    "${klaus_runner}" >"${C0_TEST_TMP}/klaus-a.stdout" \
+    2>"${C0_TEST_TMP}/klaus-a.stderr" &
+klaus_a=$!
+env TMPDIR="${klaus_tmp}" PATH="${klaus_commands}:${PATH}" \
+    "${klaus_runner}" >"${C0_TEST_TMP}/klaus-b.stdout" \
+    2>"${C0_TEST_TMP}/klaus-b.stderr" &
+klaus_b=$!
+set +e
+wait "${klaus_a}"
+klaus_a_status=$?
+wait "${klaus_b}"
+klaus_b_status=$?
+set -e
+test "${klaus_a_status}" -ne 0
+test "${klaus_b_status}" -ne 0
+c0_assert_contains "${C0_TEST_TMP}/klaus-a.stderr" \
+    "Klaus functional image checksum mismatch"
+c0_assert_contains "${C0_TEST_TMP}/klaus-b.stderr" \
+    "Klaus functional image checksum mismatch"
+test -z "$(find "${klaus_tmp}" -mindepth 1 -maxdepth 1 -print -quit)"
+c0_pass "concurrent Klaus failures use collision-free inputs and clean both"
+
 fixture_root="${C0_FIXTURE_ROOT:-${C0_TEST_ROOT}/Tests/Fixtures/C0}"
 reference_verifier="${C0_REFERENCE_VERIFIER:-${C0_TEST_ROOT}/scripts/verify-c0-references.sh}"
 if [[ ! -d "${fixture_root}" ]]; then
