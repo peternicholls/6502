@@ -176,8 +176,7 @@ class MachineRuntime::Impl final {
     explicit Impl(MachineRuntimeOptions options)
         : allocationFailurePoint_(options.failAllocationAt),
           testReentrantSubmission_(options.testReentrantSubmission),
-          ledgerEnabled_(options.enableLedger),
-          owner_([this] { ownerLoop(); }) {
+          ledgerEnabled_(options.enableLedger), owner_([this] { ownerLoop(); }) {
         std::unique_lock lock(mutex_);
         stateChanged_.wait(lock, [this] { return ready_; });
         if (startupError_) std::rethrow_exception(startupError_);
@@ -201,8 +200,7 @@ class MachineRuntime::Impl final {
             }
         }
 
-        if (shouldFail(RuntimeAllocationFailurePoint::request))
-            return {allocationFailure(), {}};
+        if (shouldFail(RuntimeAllocationFailurePoint::request)) return {allocationFailure(), {}};
 
         std::shared_ptr<Request> request;
         std::future<Completion> future;
@@ -226,8 +224,7 @@ class MachineRuntime::Impl final {
             if (!accepting_) {
                 return {status(RuntimeStatusCode::unavailable, "runtime is shutting down"), {}};
             }
-            if (shouldFail(RuntimeAllocationFailurePoint::queue))
-                return {allocationFailure(), {}};
+            if (shouldFail(RuntimeAllocationFailurePoint::queue)) return {allocationFailure(), {}};
             try {
                 queue_.push_back(request);
             } catch (const std::bad_alloc&) {
@@ -328,8 +325,7 @@ class MachineRuntime::Impl final {
     std::thread::id ownerId_;
     std::exception_ptr startupError_;
 
-    RuntimeAllocationFailurePoint allocationFailurePoint_ =
-        RuntimeAllocationFailurePoint::none;
+    RuntimeAllocationFailurePoint allocationFailurePoint_ = RuntimeAllocationFailurePoint::none;
     std::atomic<bool> allocationFailureConsumed_{false};
     bool testReentrantSubmission_ = false;
     bool testReentrantSubmissionConsumed_ = false;
@@ -670,8 +666,8 @@ class MachineRuntime::Impl final {
             const auto sequence = nextLedgerSequence_++;
             const auto safePoint = currentSafePoint(sequence);
             appendLedger({sequence, 0, LedgerEventKind::executionSlice,
-                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0,
-                          0, 0, RuntimeStatusCode::resourceExhausted, safePoint});
+                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0, 0,
+                          0, RuntimeStatusCode::resourceExhausted, safePoint});
             return;
         }
         std::optional<BBCMicro::Checkpoint> before;
@@ -683,8 +679,8 @@ class MachineRuntime::Impl final {
             const auto sequence = nextLedgerSequence_++;
             const auto safePoint = currentSafePoint(sequence);
             appendLedger({sequence, 0, LedgerEventKind::executionSlice,
-                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0,
-                          0, 0, RuntimeStatusCode::resourceExhausted, safePoint});
+                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0, 0,
+                          0, RuntimeStatusCode::resourceExhausted, safePoint});
             return;
         } catch (...) {
             runtimeState_ = RuntimeState::faulted;
@@ -692,8 +688,8 @@ class MachineRuntime::Impl final {
             const auto sequence = nextLedgerSequence_++;
             const auto safePoint = currentSafePoint(sequence);
             appendLedger({sequence, 0, LedgerEventKind::executionSlice,
-                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0,
-                          0, 0, RuntimeStatusCode::internalFailure, safePoint});
+                          RuntimeCommandKind::runCycles, MachineRuntime::executionSliceCycles, 0, 0,
+                          0, RuntimeStatusCode::internalFailure, safePoint});
             return;
         }
         RuntimeStatusCode code = RuntimeStatusCode::ok;
@@ -714,15 +710,15 @@ class MachineRuntime::Impl final {
             if (restored) actual = 0;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage(error.what());
-            code = restored ? RuntimeStatusCode::executionFailed
-                            : RuntimeStatusCode::internalFailure;
+            code =
+                restored ? RuntimeStatusCode::executionFailed : RuntimeStatusCode::internalFailure;
         } catch (...) {
             const auto restored = restoreBoundary();
             if (restored) actual = 0;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage("unknown execution failure");
-            code = restored ? RuntimeStatusCode::executionFailed
-                            : RuntimeStatusCode::internalFailure;
+            code =
+                restored ? RuntimeStatusCode::executionFailed : RuntimeStatusCode::internalFailure;
         }
 
         const auto sequence = nextLedgerSequence_++;

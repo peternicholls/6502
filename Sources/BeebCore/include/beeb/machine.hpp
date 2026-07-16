@@ -43,8 +43,8 @@ class BBCMicro final : public Bus {
     /// Documentation rationale: docs/code/runtime-ownership.md owns the
     /// rollback boundary and its exclusion from snapshot persistence.
     struct Checkpoint {
-        CPUState cpu;                         ///< Processor boundary.
-        std::array<std::uint8_t, 0x8000> ram; ///< Complete writable memory.
+        CPUState cpu;                           ///< Processor boundary.
+        std::array<std::uint8_t, 0x8000> ram;   ///< Complete writable memory.
         std::array<std::uint16_t, 16> keyboard; ///< Keyboard matrix rows.
         std::array<bool, 8> ic32;               ///< Addressable latch outputs.
         VIA6522 systemVIA;                      ///< System VIA state and callbacks.

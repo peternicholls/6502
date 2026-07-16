@@ -521,9 +521,9 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_load_sideways_rom(machine, 0, tinySideways.data(), 0),
                  BEEB_STATUS_INVALID_ARGUMENT);
     std::vector<std::uint8_t> oversizedSideways(0x4001, 0);
-    checkCStatus(beeb_load_sideways_rom(machine, 0, oversizedSideways.data(),
-                                        oversizedSideways.size()),
-                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(
+        beeb_load_sideways_rom(machine, 0, oversizedSideways.data(), oversizedSideways.size()),
+        BEEB_STATUS_INVALID_ARGUMENT);
     const std::vector<std::uint8_t> disc(40 * 10 * 256, 0);
     checkCStatus(beeb_mount_disc(machine, 0, disc.data(), disc.size(), 0, 0), BEEB_STATUS_OK);
 
@@ -956,7 +956,7 @@ struct C1MatrixObservation {
 };
 
 C1MatrixObservation invokeC1MatrixCommand(beeb::MachineRuntime& runtime,
-                                           beeb::RuntimeCommandKind command) {
+                                          beeb::RuntimeCommandKind command) {
     const auto result = [](const auto& value) {
         return C1MatrixObservation{value.status, value.value.has_value()};
     };
@@ -1007,17 +1007,13 @@ void testC1RuntimeCompleteCommandMatrix() {
     using Kind = beeb::RuntimeCommandKind;
     using Code = beeb::RuntimeStatusCode;
     using State = beeb::RuntimeState;
-    constexpr std::array commands{Kind::start,       Kind::pause,
-                                  Kind::reset,       Kind::runCycles,
-                                  Kind::runUntilFrame, Kind::loadOSROM,
-                                  Kind::loadSidewaysROM, Kind::mountDisc,
-                                  Kind::setKey,      Kind::setBreak,
-                                  Kind::runtimeState, Kind::safePoint,
-                                  Kind::fault,       Kind::cpuState,
-                                  Kind::frame,       Kind::renderAudio,
-                                  Kind::shutdown};
-    constexpr std::array states{State::paused, State::running, State::faulted,
-                                State::shuttingDown};
+    constexpr std::array commands{Kind::start,           Kind::pause,         Kind::reset,
+                                  Kind::runCycles,       Kind::runUntilFrame, Kind::loadOSROM,
+                                  Kind::loadSidewaysROM, Kind::mountDisc,     Kind::setKey,
+                                  Kind::setBreak,        Kind::runtimeState,  Kind::safePoint,
+                                  Kind::fault,           Kind::cpuState,      Kind::frame,
+                                  Kind::renderAudio,     Kind::shutdown};
+    constexpr std::array states{State::paused, State::running, State::faulted, State::shuttingDown};
     const auto isQuery = [](Kind command) {
         return command == Kind::runCycles || command == Kind::runUntilFrame ||
                command == Kind::runtimeState || command == Kind::safePoint ||
@@ -1149,7 +1145,8 @@ void testC1LateFaultRetainsLastCompletedBoundary() {
         checkRuntimeOK(runtime.reset());
         const auto beforeCPU = runtimeValue(runtime.cpuState());
         const auto beforeFrame = runtimeValue(runtime.frame());
-        const auto result = untilFrame ? runtime.runUntilFrame(100).status : runtime.runFor(100).status;
+        const auto result =
+            untilFrame ? runtime.runUntilFrame(100).status : runtime.runFor(100).status;
         CHECK(result.code == beeb::RuntimeStatusCode::executionFailed);
         CHECK(runtimeValue(runtime.cpuState()) == beforeCPU);
         CHECK(runtimeValue(runtime.frame()) == beforeFrame);
@@ -1889,8 +1886,7 @@ void testC1RaceMixedCommands() {
                     break;
                 }
                 ++accounted;
-                if (status.code == beeb::RuntimeStatusCode::ok &&
-                    status.acceptanceSequence != 0)
+                if (status.code == beeb::RuntimeStatusCode::ok && status.acceptanceSequence != 0)
                     ++accepted;
                 else
                     ++failed;
@@ -2052,8 +2048,7 @@ int main(int argc, char** argv) {
         {"teletext control cells use active background",
          testTeletextControlCellsUseActiveBackground},
         {"C1 contract: lifecycle command matrix", testC1RuntimeContractLifecycleMatrix},
-        {"C1 contract: complete 17-command lifecycle matrix",
-         testC1RuntimeCompleteCommandMatrix},
+        {"C1 contract: complete 17-command lifecycle matrix", testC1RuntimeCompleteCommandMatrix},
         {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
         {"C1 contract: structured status isolation",
          testC1RuntimeContractStructuredStatusIsolation},
@@ -2061,10 +2056,8 @@ int main(int argc, char** argv) {
          testC1LateFaultRetainsLastCompletedBoundary},
         {"C1 lifecycle: closed sustained fixture repeats 50 times",
          testC1ClosedLoopSustainedLifecycleRepeats},
-        {"C1 replay: machine digest covers rollback state",
-         testC1MachineDigestCoversRollbackState},
-        {"C1 allocation: failures remain recoverable",
-         testC1AllocationFailuresRemainRecoverable},
+        {"C1 replay: machine digest covers rollback state", testC1MachineDigestCoversRollbackState},
+        {"C1 allocation: failures remain recoverable", testC1AllocationFailuresRemainRecoverable},
         {"C1 contract: owner reentrant submission is rejected",
          testC1OwnerReentrantSubmissionIsRejected},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},

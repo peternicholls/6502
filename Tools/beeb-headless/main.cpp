@@ -86,8 +86,7 @@ std::uint64_t number(std::string_view text) {
     return value;
 }
 
-std::uint64_t boundedNumber(std::string_view text, std::string_view option,
-                            std::uint64_t maximum) {
+std::uint64_t boundedNumber(std::string_view text, std::string_view option, std::uint64_t maximum) {
     const auto value = number(text);
     if (value > maximum) {
         throw std::runtime_error(std::string(option) + " must be in 0..." +
@@ -236,17 +235,15 @@ int main(int argc, char** argv) {
             else if (argument == "--max-instructions")
                 maximum = number(next());
             else if (argument == "--pc")
-                pc = static_cast<std::uint16_t>(boundedNumber(
-                    next(), "--pc", std::numeric_limits<std::uint16_t>::max()));
+                pc = static_cast<std::uint16_t>(
+                    boundedNumber(next(), "--pc", std::numeric_limits<std::uint16_t>::max()));
             else if (argument == "--success")
-                success =
-                    static_cast<std::uint16_t>(boundedNumber(
-                        next(), "--success", std::numeric_limits<std::uint16_t>::max()));
+                success = static_cast<std::uint16_t>(
+                    boundedNumber(next(), "--success", std::numeric_limits<std::uint16_t>::max()));
             else if (argument == "--frame")
                 framePath = next();
             else if (argument == "--rom") {
-                const auto bank =
-                    static_cast<unsigned>(boundedNumber(next(), "--rom BANK", 15));
+                const auto bank = static_cast<unsigned>(boundedNumber(next(), "--rom BANK", 15));
                 roms.emplace_back(bank, next());
             } else if (argument == "--trace")
                 trace = true;

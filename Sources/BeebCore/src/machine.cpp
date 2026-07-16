@@ -73,8 +73,8 @@ void BBCMicro::restoreRAM(std::span<const std::uint8_t> bytes) noexcept {
 }
 
 BBCMicro::Checkpoint BBCMicro::checkpoint() const {
-    return {cpu_.state(), ram_,       keyboard_,     ic32_,          systemVIA_,
-            userVIA_,     crtc_,      videoULA_,     sound_,         fdc_,
+    return {cpu_.state(), ram_,         keyboard_,     ic32_,          systemVIA_,
+            userVIA_,     crtc_,        videoULA_,     sound_,         fdc_,
             frame_,       selectedROM_, viaRemainder_, crtcRemainder_, breakPressed_};
 }
 
