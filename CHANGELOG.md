@@ -6,7 +6,13 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-07-15
+No post-0.2.0-candidate changes have been assigned to a later version.
+
+## [0.2.0] - Unreleased
+
+This is the current development candidate. It has not been published as an
+annotated `v0.2.0` tag or GitHub release; complete the release checklist before
+replacing `Unreleased` with a date.
 
 ### Added
 
@@ -78,6 +84,4 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 - Corrected nonzero CRTC vertical-adjust frame timing.
 - Rendered Mode 7 control-code cells using the active background colour.
 
-[Unreleased]: https://github.com/peternicholls/6502/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/peternicholls/6502/releases/tag/v0.2.0
-[0.1.0]: https://github.com/peternicholls/6502/releases/tag/v0.1.0
+[Unreleased]: https://github.com/peternicholls/6502/compare/develop...HEAD

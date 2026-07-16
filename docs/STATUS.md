@@ -90,6 +90,16 @@ The phase-closing commit changes only this evidence ledger and the completed
 task marker. Its committed revision is checked again for generated
 documentation and a clean tree; no empty checkpoint commit is created.
 
+## Release state
+
+Version 0.2.0 remains an unreleased development candidate. Live verification on
+2026-07-16 found no tags from `git ls-remote --tags origin`, no `v0.2.0` entry
+through the GitHub release API, and no releases or tags on the public repository
+pages. The annotated tag and published notes required by
+[RELEASING.md](RELEASING.md) therefore do not exist. `CHANGELOG.md` keeps the
+0.2.0 section explicitly `Unreleased`; no tag or release was created during
+remediation.
+
 ## C1 verified outcome
 
 C1 is complete at the architectural and public-boundary level:
