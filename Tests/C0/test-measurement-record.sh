@@ -31,6 +31,46 @@ printf '%s\n' '#!/usr/bin/env bash' \
     'printf "actual_cycles=100000\\nelapsed_ns=%s\\n" "${duration}"' >"${sample_command}"
 chmod +x "${sample_command}"
 
+safety_root="${C0_TEST_TMP}/safety-repository"
+mkdir -p "${safety_root}/scripts"
+cp "${measure}" "${safety_root}/scripts/measure-c0.sh"
+safety_measure="${safety_root}/scripts/measure-c0.sh"
+
+assert_measure_output_rejected() {
+    local name="$1"
+    local output="$2"
+    local fake_home="${C0_TEST_TMP}/home"
+    local sentinel="${fake_home}/sentinel.txt"
+    mkdir -p "${fake_home}"
+    printf 'keep\n' >"${sentinel}"
+    c0_capture "${name}" env HOME="${fake_home}" C0_SAMPLE_MODE=valid "${safety_measure}" \
+        --samples 5 --output "${output}" --sample-command "${sample_command}" \
+        --environment-file "${environment_file}"
+    c0_expect_failure "${name}"
+    test "$(cat "${sentinel}")" = "keep"
+}
+
+assert_measure_output_rejected measure-output-repository "${safety_root}/result.txt"
+assert_measure_output_rejected measure-output-home "${C0_TEST_TMP}/home/result.txt"
+c0_capture measure-output-empty "${safety_measure}" --samples 5 --output '' \
+    --sample-command "${sample_command}" --environment-file "${environment_file}"
+c0_expect_failure measure-output-empty
+
+unowned_measure="${C0_TEST_TMP}/unowned-measure"
+mkdir -p "${unowned_measure}/.measurement-work"
+printf 'keep\n' >"${unowned_measure}/.measurement-work/sentinel.txt"
+assert_measure_output_rejected measure-output-unowned "${unowned_measure}/result.txt"
+test "$(cat "${unowned_measure}/.measurement-work/sentinel.txt")" = "keep"
+
+escaped_parent="${C0_TEST_TMP}/escaped-parent"
+escaped_target="${C0_TEST_TMP}/escaped-target"
+mkdir -p "${escaped_target}/.measurement-work"
+printf 'keep\n' >"${escaped_target}/.measurement-work/sentinel.txt"
+ln -s "${escaped_target}" "${escaped_parent}"
+assert_measure_output_rejected measure-output-symlink "${escaped_parent}/result.txt"
+test "$(cat "${escaped_target}/.measurement-work/sentinel.txt")" = "keep"
+c0_pass "dangerous measurement work paths fail without deleting sentinels"
+
 valid_record="${C0_TEST_TMP}/valid.txt"
 c0_capture valid env C0_SAMPLE_MODE=valid "${measure}" --samples 5 \
     --output "${valid_record}" --sample-command "${sample_command}" \

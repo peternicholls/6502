@@ -28,6 +28,41 @@ common_args=(--check --source-root "${fixture}" \
     --debt-baseline "${fixture}/documentation-debt.txt" \
     --changed-files "${fixture}/changed-files.txt")
 
+assert_docs_output_rejected() {
+    local name="$1"
+    local output="$2"
+    local fake_home="${C0_TEST_TMP}/home"
+    local sentinel="${fake_home}/sentinel.txt"
+    mkdir -p "${fake_home}"
+    printf 'keep\n' >"${sentinel}"
+    c0_capture "${name}" env HOME="${fake_home}" "${builder}" --profile portable \
+        --output-dir "${output}" "${common_args[@]}"
+    c0_expect_failure "${name}"
+    test "$(cat "${sentinel}")" = "keep"
+}
+
+assert_docs_output_rejected docs-output-source-root "${fixture}"
+assert_docs_output_rejected docs-output-home "${C0_TEST_TMP}/home"
+assert_docs_output_rejected docs-output-root /
+c0_capture docs-output-empty "${builder}" --profile portable --output-dir '' \
+    "${common_args[@]}"
+c0_expect_failure docs-output-empty
+
+unowned_docs="${C0_TEST_TMP}/unowned-docs"
+mkdir -p "${unowned_docs}"
+printf 'keep\n' >"${unowned_docs}/sentinel.txt"
+assert_docs_output_rejected docs-output-unowned "${unowned_docs}"
+test "$(cat "${unowned_docs}/sentinel.txt")" = "keep"
+
+escaped_parent="${C0_TEST_TMP}/escaped-parent"
+escaped_target="${C0_TEST_TMP}/escaped-target"
+mkdir -p "${escaped_target}/docs"
+printf 'keep\n' >"${escaped_target}/docs/sentinel.txt"
+ln -s "${escaped_target}" "${escaped_parent}"
+assert_docs_output_rejected docs-output-symlink "${escaped_parent}/docs"
+test "$(cat "${escaped_target}/docs/sentinel.txt")" = "keep"
+c0_pass "dangerous documentation output paths fail without deleting sentinels"
+
 c0_capture portable "${builder}" --profile portable \
     --output-dir "${C0_TEST_TMP}/docs-portable" "${common_args[@]}"
 c0_expect_status 0 portable
