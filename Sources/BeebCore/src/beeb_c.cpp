@@ -22,12 +22,11 @@ struct beeb_machine final {};
 namespace {
 
 /// Creates a zero-filled, null-terminated operation status without throwing.
-beeb_status makeStatus(
-    beeb_status_code code, std::string_view message = {}) noexcept {
+beeb_status makeStatus(beeb_status_code code, std::string_view message = {}) noexcept {
     beeb_status result{};
     result.code = code;
-    const auto length = std::min(
-        message.size(), static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
+    const auto length =
+        std::min(message.size(), static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
     if (length != 0) std::memcpy(result.message, message.data(), length);
     result.message[length] = '\0';
     return result;
@@ -36,14 +35,22 @@ beeb_status makeStatus(
 /// Maps the closed C++ status vocabulary one-to-one into the C ABI vocabulary.
 beeb_status_code translateStatusCode(beeb::RuntimeStatusCode code) noexcept {
     switch (code) {
-    case beeb::RuntimeStatusCode::ok: return BEEB_STATUS_OK;
-    case beeb::RuntimeStatusCode::invalidArgument: return BEEB_STATUS_INVALID_ARGUMENT;
-    case beeb::RuntimeStatusCode::invalidState: return BEEB_STATUS_INVALID_STATE;
-    case beeb::RuntimeStatusCode::executionFailed: return BEEB_STATUS_EXECUTION_FAILED;
-    case beeb::RuntimeStatusCode::resourceExhausted: return BEEB_STATUS_RESOURCE_EXHAUSTED;
-    case beeb::RuntimeStatusCode::unavailable: return BEEB_STATUS_UNAVAILABLE;
-    case beeb::RuntimeStatusCode::reentrantCall: return BEEB_STATUS_REENTRANT_CALL;
-    case beeb::RuntimeStatusCode::internalFailure: return BEEB_STATUS_INTERNAL_FAILURE;
+    case beeb::RuntimeStatusCode::ok:
+        return BEEB_STATUS_OK;
+    case beeb::RuntimeStatusCode::invalidArgument:
+        return BEEB_STATUS_INVALID_ARGUMENT;
+    case beeb::RuntimeStatusCode::invalidState:
+        return BEEB_STATUS_INVALID_STATE;
+    case beeb::RuntimeStatusCode::executionFailed:
+        return BEEB_STATUS_EXECUTION_FAILED;
+    case beeb::RuntimeStatusCode::resourceExhausted:
+        return BEEB_STATUS_RESOURCE_EXHAUSTED;
+    case beeb::RuntimeStatusCode::unavailable:
+        return BEEB_STATUS_UNAVAILABLE;
+    case beeb::RuntimeStatusCode::reentrantCall:
+        return BEEB_STATUS_REENTRANT_CALL;
+    case beeb::RuntimeStatusCode::internalFailure:
+        return BEEB_STATUS_INTERNAL_FAILURE;
     }
     return BEEB_STATUS_INTERNAL_FAILURE;
 }
@@ -56,10 +63,14 @@ beeb_status translateStatus(const beeb::RuntimeStatus& status) noexcept {
 /// Maps runtime lifecycle state without exposing implementation storage.
 beeb_runtime_state translateState(beeb::RuntimeState state) noexcept {
     switch (state) {
-    case beeb::RuntimeState::paused: return BEEB_RUNTIME_STATE_PAUSED;
-    case beeb::RuntimeState::running: return BEEB_RUNTIME_STATE_RUNNING;
-    case beeb::RuntimeState::faulted: return BEEB_RUNTIME_STATE_FAULTED;
-    case beeb::RuntimeState::shuttingDown: return BEEB_RUNTIME_STATE_SHUTTING_DOWN;
+    case beeb::RuntimeState::paused:
+        return BEEB_RUNTIME_STATE_PAUSED;
+    case beeb::RuntimeState::running:
+        return BEEB_RUNTIME_STATE_RUNNING;
+    case beeb::RuntimeState::faulted:
+        return BEEB_RUNTIME_STATE_FAULTED;
+    case beeb::RuntimeState::shuttingDown:
+        return BEEB_RUNTIME_STATE_SHUTTING_DOWN;
     }
     return BEEB_RUNTIME_STATE_FAULTED;
 }
@@ -81,8 +92,8 @@ struct HandleState final {
     std::size_t activeCalls = 0;
     bool destroying = false;
     bool destroyComplete = false;
-    beeb_status destroyStatus = makeStatus(
-        BEEB_STATUS_INTERNAL_FAILURE, "destroy did not complete");
+    beeb_status destroyStatus =
+        makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "destroy did not complete");
     beeb::MachineRuntime runtime;
 };
 
@@ -93,7 +104,7 @@ std::unordered_map<beeb_machine*, std::shared_ptr<HandleState>> registry;
 
 /// RAII admission record that prevents handle release while one C call is inside.
 class ActiveCall final {
-public:
+  public:
     explicit ActiveCall(beeb_machine* machine) noexcept {
         if (!machine) {
             status_ = makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "machine handle is null");
@@ -103,15 +114,13 @@ public:
             std::lock_guard registryLock(registryMutex);
             const auto entry = registry.find(machine);
             if (entry == registry.end()) {
-                status_ = makeStatus(
-                    BEEB_STATUS_INVALID_ARGUMENT, "machine handle is not live");
+                status_ = makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "machine handle is not live");
                 return;
             }
             auto state = entry->second;
             std::lock_guard stateLock(state->mutex);
             if (state->destroying) {
-                status_ = makeStatus(
-                    BEEB_STATUS_UNAVAILABLE, "machine is being destroyed");
+                status_ = makeStatus(BEEB_STATUS_UNAVAILABLE, "machine is being destroyed");
                 return;
             }
             ++state->activeCalls;
@@ -120,8 +129,8 @@ public:
         } catch (const std::exception& error) {
             status_ = makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
         } catch (...) {
-            status_ = makeStatus(
-                BEEB_STATUS_INTERNAL_FAILURE, "unknown C handle admission failure");
+            status_ =
+                makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "unknown C handle admission failure");
         }
     }
 
@@ -145,7 +154,7 @@ public:
     const beeb_status& status() const noexcept { return status_; }
     beeb::MachineRuntime& runtime() noexcept { return state_->runtime; }
 
-private:
+  private:
     std::shared_ptr<HandleState> state_;
     beeb_status status_ = makeStatus(BEEB_STATUS_INTERNAL_FAILURE);
 };
@@ -175,7 +184,9 @@ beeb_status missingOutput(const char* name) noexcept {
 
 extern "C" {
 
-const char* beeb_version_string(void) { return BEEB_VERSION_STRING; }
+const char* beeb_version_string(void) {
+    return BEEB_VERSION_STRING;
+}
 
 beeb_status beeb_create(beeb_machine** out_machine) {
     if (!out_machine) return missingOutput("machine output is null");
@@ -206,8 +217,7 @@ beeb_status beeb_destroy(beeb_machine* machine) {
             std::lock_guard registryLock(registryMutex);
             const auto entry = registry.find(machine);
             if (entry == registry.end()) {
-                return makeStatus(
-                    BEEB_STATUS_INVALID_ARGUMENT, "machine handle is not live");
+                return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "machine handle is not live");
             }
             state = entry->second;
             std::lock_guard stateLock(state->mutex);
@@ -248,8 +258,7 @@ beeb_status beeb_destroy(beeb_machine* machine) {
     }
 }
 
-beeb_status beeb_get_runtime_state(
-    beeb_machine* machine, beeb_runtime_state* out_state) {
+beeb_status beeb_get_runtime_state(beeb_machine* machine, beeb_runtime_state* out_state) {
     if (!out_state) return missingOutput("runtime-state output is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         const auto result = runtime.state();
@@ -260,25 +269,21 @@ beeb_status beeb_get_runtime_state(
 }
 
 beeb_status beeb_start(beeb_machine* machine) {
-    return operation(machine, [](beeb::MachineRuntime& runtime) {
-        return translateStatus(runtime.start());
-    });
+    return operation(
+        machine, [](beeb::MachineRuntime& runtime) { return translateStatus(runtime.start()); });
 }
 
 beeb_status beeb_pause(beeb_machine* machine) {
-    return operation(machine, [](beeb::MachineRuntime& runtime) {
-        return translateStatus(runtime.pause());
-    });
+    return operation(
+        machine, [](beeb::MachineRuntime& runtime) { return translateStatus(runtime.pause()); });
 }
 
 beeb_status beeb_reset(beeb_machine* machine) {
-    return operation(machine, [](beeb::MachineRuntime& runtime) {
-        return translateStatus(runtime.reset());
-    });
+    return operation(
+        machine, [](beeb::MachineRuntime& runtime) { return translateStatus(runtime.reset()); });
 }
 
-beeb_status beeb_run_cycles(
-    beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles) {
+beeb_status beeb_run_cycles(beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles) {
     if (!out_actual_cycles) return missingOutput("cycle-count output is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         const auto result = runtime.runFor(cycles);
@@ -288,8 +293,8 @@ beeb_status beeb_run_cycles(
     });
 }
 
-beeb_status beeb_run_until_frame(
-    beeb_machine* machine, uint64_t maximum_cycles, int* out_completed) {
+beeb_status beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles,
+                                 int* out_completed) {
     if (!out_completed) return missingOutput("frame-completion output is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         const auto result = runtime.runUntilFrame(maximum_cycles);
@@ -299,32 +304,29 @@ beeb_status beeb_run_until_frame(
     });
 }
 
-beeb_status beeb_load_os_rom(
-    beeb_machine* machine, const uint8_t* bytes, size_t count) {
+beeb_status beeb_load_os_rom(beeb_machine* machine, const uint8_t* bytes, size_t count) {
     if (!bytes) return missingOutput("OS ROM data is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         return translateStatus(runtime.loadOSROM(std::span(bytes, count)));
     });
 }
 
-beeb_status beeb_load_sideways_rom(
-    beeb_machine* machine, uint8_t bank, const uint8_t* bytes, size_t count) {
+beeb_status beeb_load_sideways_rom(beeb_machine* machine, uint8_t bank, const uint8_t* bytes,
+                                   size_t count) {
     if (!bytes) return missingOutput("sideways ROM data is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         return translateStatus(runtime.loadSidewaysROM(bank, std::span(bytes, count)));
     });
 }
 
-beeb_status beeb_mount_disc(
-    beeb_machine* machine, unsigned drive, const uint8_t* bytes, size_t count,
-    int double_sided, int writable) {
+beeb_status beeb_mount_disc(beeb_machine* machine, unsigned drive, const uint8_t* bytes,
+                            size_t count, int double_sided, int writable) {
     if (!bytes) return missingOutput("disc image data is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
-        const auto layout = double_sided != 0
-            ? beeb::DiscImage::Layout::DSD
-            : beeb::DiscImage::Layout::SSD;
-        return translateStatus(runtime.mountDisc(
-            drive, std::span(bytes, count), layout, writable != 0));
+        const auto layout =
+            double_sided != 0 ? beeb::DiscImage::Layout::DSD : beeb::DiscImage::Layout::SSD;
+        return translateStatus(
+            runtime.mountDisc(drive, std::span(bytes, count), layout, writable != 0));
     });
 }
 
@@ -334,8 +336,8 @@ beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state)
         const auto result = runtime.cpuState();
         if (!result.status) return translateStatus(result.status);
         const auto& state = *result.value;
-        const beeb_cpu_state output{
-            state.a, state.x, state.y, state.sp, state.p, state.pc, state.cycles};
+        const beeb_cpu_state output{state.a, state.x,  state.y,     state.sp,
+                                    state.p, state.pc, state.cycles};
         *out_state = output;
         return makeStatus(BEEB_STATUS_OK);
     });
@@ -344,8 +346,8 @@ beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state)
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame) {
     if (!out_frame) return missingOutput("frame output is null");
     if (out_frame->rgba != nullptr) {
-        return makeStatus(
-            BEEB_STATUS_INVALID_ARGUMENT, "frame output must be released before reuse");
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "frame output must be released before reuse");
     }
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         auto result = runtime.frame();
@@ -374,8 +376,8 @@ beeb_status beeb_frame_release(beeb_frame* frame) {
     return makeStatus(BEEB_STATUS_OK);
 }
 
-beeb_status beeb_render_audio(
-    beeb_machine* machine, float* mono, size_t frames, double sample_rate) {
+beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
+                              double sample_rate) {
     if (!mono) return missingOutput("audio output buffer is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         auto result = runtime.renderAudio(frames, sample_rate);
@@ -385,8 +387,7 @@ beeb_status beeb_render_audio(
     });
 }
 
-beeb_status beeb_set_key(
-    beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {
+beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         return translateStatus(runtime.setKey(column, row, pressed != 0));
     });
@@ -398,8 +399,7 @@ beeb_status beeb_set_break(beeb_machine* machine, int pressed) {
     });
 }
 
-beeb_status beeb_get_safe_point(
-    beeb_machine* machine, beeb_safe_point* out_safe_point) {
+beeb_status beeb_get_safe_point(beeb_machine* machine, beeb_safe_point* out_safe_point) {
     if (!out_safe_point) return missingOutput("safe-point output is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         const auto result = runtime.safePoint();
@@ -417,8 +417,8 @@ beeb_status beeb_get_fault(beeb_machine* machine, beeb_fault_detail* out_fault) 
         beeb_fault_detail output{};
         output.available = result.value->available ? 1 : 0;
         const auto message = std::string_view(result.value->message);
-        const auto length = std::min(
-            message.size(), static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
+        const auto length =
+            std::min(message.size(), static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
         if (length != 0) std::memcpy(output.message, message.data(), length);
         output.message[length] = '\0';
         output.safe_point = translateSafePoint(result.value->safePoint);

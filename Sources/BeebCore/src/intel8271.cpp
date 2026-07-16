@@ -16,8 +16,8 @@ void Intel8271::reset() {
     transfer_ = Transfer::None;
 }
 
-bool Intel8271::mount(unsigned drive, std::span<const std::uint8_t> bytes,
-                     DiscImage::Layout layout, bool writable) {
+bool Intel8271::mount(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout,
+                      bool writable) {
     return drive < drives_.size() && drives_[drive].load(bytes, layout, writable);
 }
 
@@ -28,42 +28,55 @@ unsigned Intel8271::selectedDrive() const noexcept {
 
 std::uint8_t Intel8271::read(std::uint8_t reg) {
     switch (reg & 0x07) {
-        case 0:
-            return status_;
-        case 1: {
-            const auto value = result_;
-            status_ &= static_cast<std::uint8_t>(~(ResultReady | NMI));
-            return value;
+    case 0:
+        return status_;
+    case 1: {
+        const auto value = result_;
+        status_ &= static_cast<std::uint8_t>(~(ResultReady | NMI));
+        return value;
+    }
+    case 4:
+    case 5:
+    case 6:
+    case 7: {
+        if (transfer_ != Transfer::Read || transferIndex_ >= transferBuffer_.size()) return 0xFF;
+        const auto value = transferBuffer_[transferIndex_++];
+        status_ &= static_cast<std::uint8_t>(~(NeedData | NMI));
+        if (transferIndex_ >= transferBuffer_.size()) {
+            countdown_ = 64;
+        } else {
+            countdown_ = 64;
         }
-        case 4: case 5: case 6: case 7: {
-            if (transfer_ != Transfer::Read || transferIndex_ >= transferBuffer_.size()) return 0xFF;
-            const auto value = transferBuffer_[transferIndex_++];
-            status_ &= static_cast<std::uint8_t>(~(NeedData | NMI));
-            if (transferIndex_ >= transferBuffer_.size()) {
-                countdown_ = 64;
-            } else {
-                countdown_ = 64;
-            }
-            return value;
-        }
-        default:
-            return 0xFF;
+        return value;
+    }
+    default:
+        return 0xFF;
     }
 }
 
 void Intel8271::write(std::uint8_t reg, std::uint8_t value) {
     switch (reg & 0x07) {
-        case 0: command(value); break;
-        case 1: parameter(value); break;
-        case 2: if (value != 0) reset(); break;
-        case 4: case 5: case 6: case 7:
-            if (transfer_ == Transfer::Write && transferIndex_ < transferBuffer_.size()) {
-                transferBuffer_[transferIndex_++] = value;
-                status_ &= static_cast<std::uint8_t>(~(NeedData | NMI));
-                countdown_ = 64;
-            }
-            break;
-        default: break;
+    case 0:
+        command(value);
+        break;
+    case 1:
+        parameter(value);
+        break;
+    case 2:
+        if (value != 0) reset();
+        break;
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+        if (transfer_ == Transfer::Write && transferIndex_ < transferBuffer_.size()) {
+            transferBuffer_[transferIndex_++] = value;
+            status_ &= static_cast<std::uint8_t>(~(NeedData | NMI));
+            countdown_ = 64;
+        }
+        break;
+    default:
+        break;
     }
 }
 
@@ -96,46 +109,61 @@ void Intel8271::parameter(std::uint8_t value) {
 
 void Intel8271::startCommand() {
     switch (command_ & 0x3C) {
-        case 0x08: startWrite(); break;
-        case 0x10: startRead(); break;
-        case 0x18: // verify
-            startRead();
-            if (transfer_ == Transfer::Read) { transfer_ = Transfer::None; countdown_ = 64; }
-            break;
-        case 0x28: // seek
-            if (!parameters_.empty()) currentTrack_[selectedDrive()] = parameters_[0];
-            finish(0, false);
-            break;
-        case 0x2C: { // read drive status
-            const auto drive = selectedDrive();
-            result_ = drives_[drive].present() ? static_cast<std::uint8_t>(drive == 0 ? 0x04 : 0x40) : 0;
-            finish(result_, false);
-            break;
+    case 0x08:
+        startWrite();
+        break;
+    case 0x10:
+        startRead();
+        break;
+    case 0x18: // verify
+        startRead();
+        if (transfer_ == Transfer::Read) {
+            transfer_ = Transfer::None;
+            countdown_ = 64;
         }
-        case 0x34: { // specify
-            if (parameters_.size() >= 4) {
-                const auto start = parameters_[0] & 0x3F;
-                for (unsigned i = 0; i < 3 && start + i < special_.size(); ++i) special_[start + i] = parameters_[1 + i];
-            }
-            finish(0, false);
-            break;
+        break;
+    case 0x28: // seek
+        if (!parameters_.empty()) currentTrack_[selectedDrive()] = parameters_[0];
+        finish(0, false);
+        break;
+    case 0x2C: { // read drive status
+        const auto drive = selectedDrive();
+        result_ =
+            drives_[drive].present() ? static_cast<std::uint8_t>(drive == 0 ? 0x04 : 0x40) : 0;
+        finish(result_, false);
+        break;
+    }
+    case 0x34: { // specify
+        if (parameters_.size() >= 4) {
+            const auto start = parameters_[0] & 0x3F;
+            for (unsigned i = 0; i < 3 && start + i < special_.size(); ++i)
+                special_[start + i] = parameters_[1 + i];
         }
-        case 0x38: // write special register
-            if (parameters_.size() >= 2 && parameters_[0] < special_.size()) special_[parameters_[0]] = parameters_[1];
-            finish(0, false);
-            break;
-        case 0x3C: // read special register
-            result_ = (!parameters_.empty() && parameters_[0] < special_.size()) ? special_[parameters_[0]] : 0;
-            finish(result_, false);
-            break;
-        default:
-            finish(0x18, true); // unsupported / sector not found
-            break;
+        finish(0, false);
+        break;
+    }
+    case 0x38: // write special register
+        if (parameters_.size() >= 2 && parameters_[0] < special_.size())
+            special_[parameters_[0]] = parameters_[1];
+        finish(0, false);
+        break;
+    case 0x3C: // read special register
+        result_ = (!parameters_.empty() && parameters_[0] < special_.size())
+                      ? special_[parameters_[0]]
+                      : 0;
+        finish(result_, false);
+        break;
+    default:
+        finish(0x18, true); // unsupported / sector not found
+        break;
     }
 }
 
 void Intel8271::startRead() {
-    if (parameters_.size() < 3) { finish(0x18, true); return; }
+    if (parameters_.size() < 3) {
+        finish(0x18, true);
+        return;
+    }
     transferDrive_ = selectedDrive();
     transferTrack_ = parameters_[0];
     transferSector_ = parameters_[1];
@@ -143,12 +171,17 @@ void Intel8271::startRead() {
     transferSectorCount_ = parameters_[2] & 0x1F;
     if (transferSectorCount_ == 0) transferSectorCount_ = 1;
     transferSide_ = (special_[0x23] & 0x20) != 0 ? 1u : 0u;
-    if (transferSectorSize_ > 256 || !drives_[transferDrive_].present()) { finish(0x10, true); return; }
+    if (transferSectorSize_ > 256 || !drives_[transferDrive_].present()) {
+        finish(0x10, true);
+        return;
+    }
 
     transferBuffer_.assign(transferSectorSize_ * transferSectorCount_, 0);
     for (unsigned index = 0; index < transferSectorCount_; ++index) {
-        auto sector = std::span(transferBuffer_).subspan(index * transferSectorSize_, transferSectorSize_);
-        if (!drives_[transferDrive_].readSector(transferTrack_, transferSide_, transferSector_ + index, sector)) {
+        auto sector =
+            std::span(transferBuffer_).subspan(index * transferSectorSize_, transferSectorSize_);
+        if (!drives_[transferDrive_].readSector(transferTrack_, transferSide_,
+                                                transferSector_ + index, sector)) {
             finish(0x18, true);
             return;
         }
@@ -159,7 +192,10 @@ void Intel8271::startRead() {
 }
 
 void Intel8271::startWrite() {
-    if (parameters_.size() < 3) { finish(0x18, true); return; }
+    if (parameters_.size() < 3) {
+        finish(0x18, true);
+        return;
+    }
     transferDrive_ = selectedDrive();
     transferTrack_ = parameters_[0];
     transferSector_ = parameters_[1];
@@ -167,7 +203,10 @@ void Intel8271::startWrite() {
     transferSectorCount_ = parameters_[2] & 0x1F;
     if (transferSectorCount_ == 0) transferSectorCount_ = 1;
     transferSide_ = (special_[0x23] & 0x20) != 0 ? 1u : 0u;
-    if (transferSectorSize_ > 256 || !drives_[transferDrive_].writable()) { finish(0x12, true); return; }
+    if (transferSectorSize_ > 256 || !drives_[transferDrive_].writable()) {
+        finish(0x12, true);
+        return;
+    }
     transferBuffer_.assign(transferSectorSize_ * transferSectorCount_, 0);
     transferIndex_ = 0;
     transfer_ = Transfer::Write;
@@ -189,8 +228,10 @@ void Intel8271::requestTransferByte() {
 
 void Intel8271::commitWrite() {
     for (unsigned index = 0; index < transferSectorCount_; ++index) {
-        const auto sector = std::span<const std::uint8_t>(transferBuffer_).subspan(index * transferSectorSize_, transferSectorSize_);
-        if (!drives_[transferDrive_].writeSector(transferTrack_, transferSide_, transferSector_ + index, sector)) {
+        const auto sector = std::span<const std::uint8_t>(transferBuffer_)
+                                .subspan(index * transferSectorSize_, transferSectorSize_);
+        if (!drives_[transferDrive_].writeSector(transferTrack_, transferSide_,
+                                                 transferSector_ + index, sector)) {
             finish(0x12, true);
             return;
         }

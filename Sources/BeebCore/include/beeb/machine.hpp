@@ -19,9 +19,9 @@ namespace beeb {
 
 /// Owned rendering result for the most recently completed video frame.
 struct VideoFrame {
-    std::uint32_t width = 0;  ///< Pixel width.
-    std::uint32_t height = 0; ///< Pixel height.
-    std::uint64_t number = 0; ///< CRTC frame sequence number.
+    std::uint32_t width = 0;        ///< Pixel width.
+    std::uint32_t height = 0;       ///< Pixel height.
+    std::uint64_t number = 0;       ///< CRTC frame sequence number.
     std::vector<std::uint8_t> rgba; ///< Packed 8-bit RGBA pixels.
 };
 
@@ -31,7 +31,7 @@ struct VideoFrame {
 /// It has no internal synchronization. Supported hosts use MachineRuntime;
 /// direct construction is reserved for low-level single-threaded core tests.
 class BBCMicro final : public Bus {
-public:
+  public:
     /// Constructs a machine, connects device callbacks, and resets all state.
     BBCMicro();
 
@@ -67,8 +67,8 @@ public:
     /// @param layout SSD or DSD ordering.
     /// @param writable Whether writes to the private image copy are permitted.
     /// @return Whether drive and image were valid.
-    bool mountDisc(unsigned drive, std::span<const std::uint8_t> bytes,
-                   DiscImage::Layout layout, bool writable = false);
+    bool mountDisc(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout,
+                   bool writable = false);
     /// Resets processor and devices while retaining loaded ROMs and discs.
     void reset();
     /// Executes whole instructions until at least `cpuCycles` have elapsed.
@@ -131,7 +131,7 @@ public:
     /// @param pressed Whether BREAK is held.
     void setBreak(bool pressed);
 
-private:
+  private:
     std::array<std::uint8_t, 0x8000> ram_{};
     std::array<std::uint8_t, 0x4000> osROM_{};
     std::array<std::array<std::uint8_t, 0x4000>, 16> sidewaysROM_{};

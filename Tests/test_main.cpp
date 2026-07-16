@@ -12,8 +12,8 @@
 #include <array>
 #include <atomic>
 #include <chrono>
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -31,7 +31,7 @@
 namespace {
 
 class RAMBus final : public beeb::Bus {
-public:
+  public:
     std::array<std::uint8_t, 65536> memory{};
     std::uint64_t ticks = 0;
     std::vector<std::pair<std::uint16_t, std::uint8_t>> writes;
@@ -44,15 +44,29 @@ public:
     void tick(std::uint32_t cycles) override { ticks += cycles; }
 };
 
-struct TestFailure : std::runtime_error { using std::runtime_error::runtime_error; };
+struct TestFailure : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
 
-#define CHECK(expr) do { if (!(expr)) { \
-    std::ostringstream os; os << __FILE__ << ':' << __LINE__ << ": CHECK(" #expr ") failed"; \
-    throw TestFailure(os.str()); } } while (false)
+#define CHECK(expr)                                                                                \
+    do {                                                                                           \
+        if (!(expr)) {                                                                             \
+            std::ostringstream os;                                                                 \
+            os << __FILE__ << ':' << __LINE__ << ": CHECK(" #expr ") failed";                      \
+            throw TestFailure(os.str());                                                           \
+        }                                                                                          \
+    } while (false)
 
-#define CHECK_EQ(actual, expected) do { const auto a_ = (actual); const auto e_ = (expected); \
-    if (a_ != e_) { std::ostringstream os; os << __FILE__ << ':' << __LINE__ \
-    << ": expected " << +e_ << ", got " << +a_; throw TestFailure(os.str()); } } while (false)
+#define CHECK_EQ(actual, expected)                                                                 \
+    do {                                                                                           \
+        const auto a_ = (actual);                                                                  \
+        const auto e_ = (expected);                                                                \
+        if (a_ != e_) {                                                                            \
+            std::ostringstream os;                                                                 \
+            os << __FILE__ << ':' << __LINE__ << ": expected " << +e_ << ", got " << +a_;          \
+            throw TestFailure(os.str());                                                           \
+        }                                                                                          \
+    } while (false)
 
 using Test = std::pair<std::string, std::function<void()>>;
 
@@ -177,7 +191,8 @@ void testBinaryADCExhaustive() {
                 bus.memory[0x0201] = static_cast<std::uint8_t>(operand);
                 beeb::CPUState s;
                 s.a = static_cast<std::uint8_t>(a);
-                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | (carry ? beeb::CPU6502::Carry : 0));
+                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused |
+                                                (carry ? beeb::CPU6502::Carry : 0));
                 s.pc = 0x0200;
                 cpu.setState(s);
                 cpu.step();
@@ -187,7 +202,8 @@ void testBinaryADCExhaustive() {
                 CHECK_EQ(cpu.flag(beeb::CPU6502::Carry), result > 255);
                 CHECK_EQ(cpu.flag(beeb::CPU6502::Zero), byte == 0);
                 CHECK_EQ(cpu.flag(beeb::CPU6502::Negative), (byte & 0x80) != 0);
-                CHECK_EQ(cpu.flag(beeb::CPU6502::Overflow), ((~(a ^ operand) & (a ^ byte)) & 0x80) != 0);
+                CHECK_EQ(cpu.flag(beeb::CPU6502::Overflow),
+                         ((~(a ^ operand) & (a ^ byte)) & 0x80) != 0);
             }
         }
     }
@@ -203,17 +219,20 @@ void testBinarySBCExhaustive() {
                 bus.memory[0x0201] = static_cast<std::uint8_t>(operand);
                 beeb::CPUState s;
                 s.a = static_cast<std::uint8_t>(a);
-                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | (carry ? beeb::CPU6502::Carry : 0));
+                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused |
+                                                (carry ? beeb::CPU6502::Carry : 0));
                 s.pc = 0x0200;
                 cpu.setState(s);
                 cpu.step();
-                const int signedResult = static_cast<int>(a) - static_cast<int>(operand) - (carry ? 0 : 1);
+                const int signedResult =
+                    static_cast<int>(a) - static_cast<int>(operand) - (carry ? 0 : 1);
                 const auto byte = static_cast<std::uint8_t>(signedResult);
                 CHECK_EQ(cpu.state().a, byte);
                 CHECK_EQ(cpu.flag(beeb::CPU6502::Carry), signedResult >= 0);
                 CHECK_EQ(cpu.flag(beeb::CPU6502::Zero), byte == 0);
                 CHECK_EQ(cpu.flag(beeb::CPU6502::Negative), (byte & 0x80) != 0);
-                CHECK_EQ(cpu.flag(beeb::CPU6502::Overflow), (((a ^ operand) & (a ^ byte)) & 0x80) != 0);
+                CHECK_EQ(cpu.flag(beeb::CPU6502::Overflow),
+                         (((a ^ operand) & (a ^ byte)) & 0x80) != 0);
             }
         }
     }
@@ -233,7 +252,8 @@ void testValidBCDArithmeticExhaustive() {
                 bus.memory[0x0201] = bcd(operand);
                 beeb::CPUState s;
                 s.a = bcd(a);
-                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | beeb::CPU6502::Decimal | (carry ? beeb::CPU6502::Carry : 0));
+                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | beeb::CPU6502::Decimal |
+                                                (carry ? beeb::CPU6502::Carry : 0));
                 s.pc = 0x0200;
                 cpu.setState(s);
                 cpu.step();
@@ -243,7 +263,8 @@ void testValidBCDArithmeticExhaustive() {
 
                 bus.memory[0x0200] = 0xE9;
                 s.a = bcd(a);
-                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | beeb::CPU6502::Decimal | (carry ? beeb::CPU6502::Carry : 0));
+                s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | beeb::CPU6502::Decimal |
+                                                (carry ? beeb::CPU6502::Carry : 0));
                 s.pc = 0x0200;
                 cpu.setState(s);
                 cpu.step();
@@ -258,20 +279,25 @@ void testValidBCDArithmeticExhaustive() {
 }
 
 void testNMOSDecimalFlagVectors() {
-    struct Vector { std::uint8_t opcode, a, value; bool carryIn; std::uint8_t result; bool n, v, z, c; };
+    struct Vector {
+        std::uint8_t opcode, a, value;
+        bool carryIn;
+        std::uint8_t result;
+        bool n, v, z, c;
+    };
     const std::array vectors{
-        Vector{0x69, 0x00, 0x00, false, 0x00, false, false, true,  false},
-        Vector{0x69, 0x79, 0x00, true,  0x80, true,  true,  false, false},
-        Vector{0x69, 0x24, 0x56, false, 0x80, true,  true,  false, false},
-        Vector{0x69, 0x93, 0x82, false, 0x75, false, true,  false, true},
-        Vector{0x69, 0x89, 0x76, true,  0x66, false, false, true,  true},
-        Vector{0x69, 0x80, 0xF0, false, 0xD0, false, true,  false, true},
-        Vector{0x69, 0x80, 0xFA, false, 0xE0, true,  false, false, true},
-        Vector{0xE9, 0x00, 0x00, false, 0x99, true,  false, false, false},
-        Vector{0xE9, 0x00, 0x00, true,  0x00, false, false, true,  true},
-        Vector{0xE9, 0x00, 0x01, true,  0x99, true,  false, false, false},
+        Vector{0x69, 0x00, 0x00, false, 0x00, false, false, true, false},
+        Vector{0x69, 0x79, 0x00, true, 0x80, true, true, false, false},
+        Vector{0x69, 0x24, 0x56, false, 0x80, true, true, false, false},
+        Vector{0x69, 0x93, 0x82, false, 0x75, false, true, false, true},
+        Vector{0x69, 0x89, 0x76, true, 0x66, false, false, true, true},
+        Vector{0x69, 0x80, 0xF0, false, 0xD0, false, true, false, true},
+        Vector{0x69, 0x80, 0xFA, false, 0xE0, true, false, false, true},
+        Vector{0xE9, 0x00, 0x00, false, 0x99, true, false, false, false},
+        Vector{0xE9, 0x00, 0x00, true, 0x00, false, false, true, true},
+        Vector{0xE9, 0x00, 0x01, true, 0x99, true, false, false, false},
         Vector{0xE9, 0x0B, 0x00, false, 0x0A, false, false, false, true},
-        Vector{0xE9, 0x9B, 0x00, false, 0x9A, true,  false, false, true},
+        Vector{0xE9, 0x9B, 0x00, false, 0x9A, true, false, false, true},
     };
 
     RAMBus bus;
@@ -282,7 +308,8 @@ void testNMOSDecimalFlagVectors() {
         beeb::CPUState s;
         s.a = vector.a;
         s.pc = 0x0200;
-        s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | beeb::CPU6502::Decimal | (vector.carryIn ? beeb::CPU6502::Carry : 0));
+        s.p = static_cast<std::uint8_t>(beeb::CPU6502::Unused | beeb::CPU6502::Decimal |
+                                        (vector.carryIn ? beeb::CPU6502::Carry : 0));
         cpu.setState(s);
         cpu.step();
         CHECK_EQ(cpu.state().a, vector.result);
@@ -295,14 +322,17 @@ void testNMOSDecimalFlagVectors() {
 
 void testAllOfficialOpcodesDecode() {
     constexpr std::array<std::uint8_t, 151> official{
-        0x00,0x01,0x05,0x06,0x08,0x09,0x0A,0x0D,0x0E,0x10,0x11,0x15,0x16,0x18,0x19,0x1D,0x1E,
-        0x20,0x21,0x24,0x25,0x26,0x28,0x29,0x2A,0x2C,0x2D,0x2E,0x30,0x31,0x35,0x36,0x38,0x39,0x3D,0x3E,
-        0x40,0x41,0x45,0x46,0x48,0x49,0x4A,0x4C,0x4D,0x4E,0x50,0x51,0x55,0x56,0x58,0x59,0x5D,0x5E,
-        0x60,0x61,0x65,0x66,0x68,0x69,0x6A,0x6C,0x6D,0x6E,0x70,0x71,0x75,0x76,0x78,0x79,0x7D,0x7E,
-        0x81,0x84,0x85,0x86,0x88,0x8A,0x8C,0x8D,0x8E,0x90,0x91,0x94,0x95,0x96,0x98,0x99,0x9A,0x9D,
-        0xA0,0xA1,0xA2,0xA4,0xA5,0xA6,0xA8,0xA9,0xAA,0xAC,0xAD,0xAE,0xB0,0xB1,0xB4,0xB5,0xB6,0xB8,0xB9,0xBA,0xBC,0xBD,0xBE,
-        0xC0,0xC1,0xC4,0xC5,0xC6,0xC8,0xC9,0xCA,0xCC,0xCD,0xCE,0xD0,0xD1,0xD5,0xD6,0xD8,0xD9,0xDD,0xDE,
-        0xE0,0xE1,0xE4,0xE5,0xE6,0xE8,0xE9,0xEA,0xEC,0xED,0xEE,0xF0,0xF1,0xF5,0xF6,0xF8,0xF9,0xFD,0xFE,
+        0x00, 0x01, 0x05, 0x06, 0x08, 0x09, 0x0A, 0x0D, 0x0E, 0x10, 0x11, 0x15, 0x16, 0x18,
+        0x19, 0x1D, 0x1E, 0x20, 0x21, 0x24, 0x25, 0x26, 0x28, 0x29, 0x2A, 0x2C, 0x2D, 0x2E,
+        0x30, 0x31, 0x35, 0x36, 0x38, 0x39, 0x3D, 0x3E, 0x40, 0x41, 0x45, 0x46, 0x48, 0x49,
+        0x4A, 0x4C, 0x4D, 0x4E, 0x50, 0x51, 0x55, 0x56, 0x58, 0x59, 0x5D, 0x5E, 0x60, 0x61,
+        0x65, 0x66, 0x68, 0x69, 0x6A, 0x6C, 0x6D, 0x6E, 0x70, 0x71, 0x75, 0x76, 0x78, 0x79,
+        0x7D, 0x7E, 0x81, 0x84, 0x85, 0x86, 0x88, 0x8A, 0x8C, 0x8D, 0x8E, 0x90, 0x91, 0x94,
+        0x95, 0x96, 0x98, 0x99, 0x9A, 0x9D, 0xA0, 0xA1, 0xA2, 0xA4, 0xA5, 0xA6, 0xA8, 0xA9,
+        0xAA, 0xAC, 0xAD, 0xAE, 0xB0, 0xB1, 0xB4, 0xB5, 0xB6, 0xB8, 0xB9, 0xBA, 0xBC, 0xBD,
+        0xBE, 0xC0, 0xC1, 0xC4, 0xC5, 0xC6, 0xC8, 0xC9, 0xCA, 0xCC, 0xCD, 0xCE, 0xD0, 0xD1,
+        0xD5, 0xD6, 0xD8, 0xD9, 0xDD, 0xDE, 0xE0, 0xE1, 0xE4, 0xE5, 0xE6, 0xE8, 0xE9, 0xEA,
+        0xEC, 0xED, 0xEE, 0xF0, 0xF1, 0xF5, 0xF6, 0xF8, 0xF9, 0xFD, 0xFE,
     };
 
     for (const auto opcode : official) {
@@ -312,8 +342,9 @@ void testAllOfficialOpcodesDecode() {
         bus.memory[0xFFFE] = 0;
         bus.memory[0xFFFF] = 2;
         auto cpu = makeCPU(bus);
-        try { cpu.step(); }
-        catch (const std::exception& e) {
+        try {
+            cpu.step();
+        } catch (const std::exception& e) {
             throw TestFailure(std::string("official opcode rejected: ") + e.what());
         }
     }
@@ -324,7 +355,11 @@ void testIllegalOpcodeTraps() {
     auto cpu = makeCPU(bus);
     bus.memory[0x0200] = 0x02;
     bool threw = false;
-    try { cpu.step(); } catch (const std::runtime_error&) { threw = true; }
+    try {
+        cpu.step();
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
     CHECK(threw);
 }
 
@@ -333,11 +368,14 @@ void testTraceObserverFailureIsAtomic() {
     auto cpu = makeCPU(bus);
     bus.memory[0x0200] = 0xEA; // NOP
     const auto before = cpu.state();
-    cpu.setTraceCallback([](const beeb::CPUState&, std::uint8_t) {
-        throw std::runtime_error("trace failed");
-    });
+    cpu.setTraceCallback(
+        [](const beeb::CPUState&, std::uint8_t) { throw std::runtime_error("trace failed"); });
     bool threw = false;
-    try { cpu.step(); } catch (const std::runtime_error&) { threw = true; }
+    try {
+        cpu.step();
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
     CHECK(threw);
     CHECK(cpu.state() == before);
     CHECK_EQ(bus.ticks, 0);
@@ -362,8 +400,7 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_destroy(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
     beeb_runtime_state runtimeState = BEEB_RUNTIME_STATE_FAULTED;
-    checkCStatus(
-        beeb_get_runtime_state(nullptr, &runtimeState), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_get_runtime_state(nullptr, &runtimeState), BEEB_STATUS_INVALID_ARGUMENT);
     CHECK(runtimeState == BEEB_RUNTIME_STATE_FAULTED);
     checkCStatus(beeb_get_runtime_state(nullptr, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
     checkCStatus(beeb_start(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
@@ -371,20 +408,17 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_reset(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
     std::uint64_t actualCycles = 77;
-    checkCStatus(
-        beeb_run_cycles(nullptr, 1, &actualCycles), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_run_cycles(nullptr, 1, &actualCycles), BEEB_STATUS_INVALID_ARGUMENT);
     CHECK_EQ(actualCycles, 77);
     checkCStatus(beeb_run_cycles(nullptr, 1, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
     int completedFrame = 7;
-    checkCStatus(beeb_run_until_frame(nullptr, 1, &completedFrame),
-                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_run_until_frame(nullptr, 1, &completedFrame), BEEB_STATUS_INVALID_ARGUMENT);
     CHECK_EQ(completedFrame, 7);
 
     beeb_cpu_state untouchedState{};
     untouchedState.pc = 0x1234;
     untouchedState.cycles = 99;
-    checkCStatus(beeb_get_cpu_state(nullptr, &untouchedState),
-                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_get_cpu_state(nullptr, &untouchedState), BEEB_STATUS_INVALID_ARGUMENT);
     CHECK_EQ(untouchedState.pc, 0x1234);
     CHECK_EQ(untouchedState.cycles, 99);
     checkCStatus(beeb_get_cpu_state(nullptr, nullptr), BEEB_STATUS_INVALID_ARGUMENT);
@@ -398,16 +432,13 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_frame_release(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
     float sample = 42.0f;
-    checkCStatus(beeb_render_audio(nullptr, &sample, 1, 48'000.0),
-                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_render_audio(nullptr, &sample, 1, 48'000.0), BEEB_STATUS_INVALID_ARGUMENT);
     CHECK(sample == 42.0f);
     checkCStatus(beeb_set_key(nullptr, 0, 0, 1), BEEB_STATUS_INVALID_ARGUMENT);
     checkCStatus(beeb_set_break(nullptr, 1), BEEB_STATUS_INVALID_ARGUMENT);
     checkCStatus(beeb_load_os_rom(nullptr, nullptr, 0), BEEB_STATUS_INVALID_ARGUMENT);
-    checkCStatus(beeb_load_sideways_rom(nullptr, 0, nullptr, 0),
-                 BEEB_STATUS_INVALID_ARGUMENT);
-    checkCStatus(beeb_mount_disc(nullptr, 0, nullptr, 0, 0, 0),
-                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_load_sideways_rom(nullptr, 0, nullptr, 0), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_mount_disc(nullptr, 0, nullptr, 0, 0, 0), BEEB_STATUS_INVALID_ARGUMENT);
 
     auto* machine = createCMachine();
     const auto missingROM = beeb_load_os_rom(machine, nullptr, 0);
@@ -440,10 +471,8 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_frame_release(&frame), BEEB_STATUS_OK);
 
     sample = 42.0f;
-    checkCStatus(beeb_render_audio(machine, nullptr, 1, 48'000.0),
-                 BEEB_STATUS_INVALID_ARGUMENT);
-    checkCStatus(beeb_render_audio(machine, &sample, 1, 0.0),
-                 BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_render_audio(machine, nullptr, 1, 48'000.0), BEEB_STATUS_INVALID_ARGUMENT);
+    checkCStatus(beeb_render_audio(machine, &sample, 1, 0.0), BEEB_STATUS_INVALID_ARGUMENT);
     CHECK(sample == 42.0f);
     checkCStatus(beeb_render_audio(machine, &sample, 1, 48'000.0), BEEB_STATUS_OK);
     checkCStatus(beeb_set_key(machine, 16, 0, 1), BEEB_STATUS_INVALID_ARGUMENT);
@@ -542,8 +571,8 @@ void testVIADataDirectionsAndEdges() {
     via.write(0x3, 0xF0);
     via.write(0x1, 0x3C);
     CHECK_EQ(via.read(0xF), 0x35); // high nibble output, low nibble input
-    via.write(0xE, 0x82); // enable CA1
-    via.setCA1(false);    // default PCR selects falling edge
+    via.write(0xE, 0x82);          // enable CA1
+    via.setCA1(false);             // default PCR selects falling edge
     CHECK(via.irq());
     (void)via.read(0x1);
     CHECK(!via.irq());
@@ -552,7 +581,10 @@ void testVIADataDirectionsAndEdges() {
 void testCRTCFrameTiming() {
     beeb::CRTC6845 crtc;
     crtc.reset();
-    const auto set = [&](std::uint8_t reg, std::uint8_t value) { crtc.select(reg); crtc.write(value); };
+    const auto set = [&](std::uint8_t reg, std::uint8_t value) {
+        crtc.select(reg);
+        crtc.write(value);
+    };
     set(0, 3); // four character clocks per scanline
     set(1, 2);
     set(4, 1); // two character rows
@@ -571,7 +603,10 @@ void testCRTCFrameTiming() {
 void checkCRTCVerticalAdjustTiming(std::uint8_t adjustment) {
     beeb::CRTC6845 crtc;
     crtc.reset();
-    const auto set = [&](std::uint8_t reg, std::uint8_t value) { crtc.select(reg); crtc.write(value); };
+    const auto set = [&](std::uint8_t reg, std::uint8_t value) {
+        crtc.select(reg);
+        crtc.write(value);
+    };
     set(0, 0); // one character clock per scanline
     set(4, 0); // one character row
     set(5, adjustment);
@@ -607,7 +642,8 @@ void testSoundRegisterProtocolAndRendering() {
     std::array<float, 512> samples{};
     sound.render(samples.data(), samples.size(), 48'000.0);
     bool nonZero = false;
-    for (const auto sample : samples) nonZero = nonZero || sample != 0.0f;
+    for (const auto sample : samples)
+        nonZero = nonZero || sample != 0.0f;
     CHECK(nonZero);
 }
 
@@ -639,9 +675,9 @@ void testBBCBitmapFrameRendering() {
         machine.write(0xFE00, reg);
         machine.write(0xFE01, value);
     };
-    setCRTC(1, 1);  // eight output pixels
-    setCRTC(6, 1);  // one character row
-    setCRTC(9, 0);  // one raster line
+    setCRTC(1, 1); // eight output pixels
+    setCRTC(6, 1); // one character row
+    setCRTC(9, 0); // one raster line
     setCRTC(12, 0);
     setCRTC(13, 0);
     machine.write(0xFE20, 0x1C); // 80-column serializer, 2 MHz CRTC
@@ -678,7 +714,8 @@ void testSSDAndDSDSectorLayout() {
 
 void test8271SectorReadProtocol() {
     std::vector<std::uint8_t> ssd(40 * 10 * 256, 0);
-    for (unsigned byte = 0; byte < 256; ++byte) ssd[(1 * 10 + 2) * 256 + byte] = static_cast<std::uint8_t>(byte);
+    for (unsigned byte = 0; byte < 256; ++byte)
+        ssd[(1 * 10 + 2) * 256 + byte] = static_cast<std::uint8_t>(byte);
     beeb::Intel8271 fdc;
     unsigned nmis = 0;
     fdc.setNMICallback([&] { ++nmis; });
@@ -716,10 +753,14 @@ void testBBCFDCMemoryMap() {
 void testCleanRoomTeletextRendering() {
     beeb::CRTC6845 crtc;
     crtc.reset();
-    crtc.select(1); crtc.write(2);
-    crtc.select(6); crtc.write(1);
-    crtc.select(12); crtc.write(0);
-    crtc.select(13); crtc.write(0);
+    crtc.select(1);
+    crtc.write(2);
+    crtc.select(6);
+    crtc.write(1);
+    crtc.select(12);
+    crtc.write(0);
+    crtc.select(13);
+    crtc.write(0);
     std::array<std::uint8_t, 0x8000> ram{};
     ram[0x7C00] = 0x01; // alpha red
     ram[0x7C01] = 'A';
@@ -729,7 +770,9 @@ void testCleanRoomTeletextRendering() {
     CHECK_EQ(bitmap.height, 20);
     unsigned redPixels = 0;
     for (std::size_t offset = 0; offset < bitmap.rgba.size(); offset += 4) {
-        if (bitmap.rgba[offset] == 255 && bitmap.rgba[offset + 1] == 0 && bitmap.rgba[offset + 2] == 0) ++redPixels;
+        if (bitmap.rgba[offset] == 255 && bitmap.rgba[offset + 1] == 0 &&
+            bitmap.rgba[offset + 2] == 0)
+            ++redPixels;
     }
     CHECK(redPixels > 0);
 }
@@ -737,10 +780,14 @@ void testCleanRoomTeletextRendering() {
 void testTeletextControlCellsUseActiveBackground() {
     beeb::CRTC6845 crtc;
     crtc.reset();
-    crtc.select(1); crtc.write(4);
-    crtc.select(6); crtc.write(1);
-    crtc.select(12); crtc.write(0);
-    crtc.select(13); crtc.write(0);
+    crtc.select(1);
+    crtc.write(4);
+    crtc.select(6);
+    crtc.write(1);
+    crtc.select(12);
+    crtc.write(0);
+    crtc.select(13);
+    crtc.write(0);
     std::array<std::uint8_t, 0x8000> ram{};
     ram[0x7C00] = 0x01; // alpha red: set after this cell
     ram[0x7C01] = 0x1D; // new background: set after this cell
@@ -777,8 +824,7 @@ void checkRuntimeOK(const beeb::RuntimeStatus& status) {
     CHECK(status.message.empty());
 }
 
-template <typename T>
-const T& runtimeValue(const beeb::RuntimeResult<T>& result) {
+template <typename T> const T& runtimeValue(const beeb::RuntimeResult<T>& result) {
     checkRuntimeOK(result.status);
     CHECK(result.value.has_value());
     return *result.value;
@@ -912,15 +958,19 @@ C1CapturedReplay captureC1ConcurrentLedger() {
             ready.count_down();
             release.wait();
             switch (index % 3) {
-            case 0: return runtime.start();
-            case 1: return runtime.pause();
-            default: return runtime.state().status;
+            case 0:
+                return runtime.start();
+            case 1:
+                return runtime.pause();
+            default:
+                return runtime.state().status;
             }
         }));
     }
     ready.wait();
     release.count_down();
-    for (auto& call : calls) checkRuntimeOK(call.get());
+    for (auto& call : calls)
+        checkRuntimeOK(call.get());
     checkRuntimeOK(runtime.pause());
 
     const auto cpu = runtimeValue(runtime.cpuState());
@@ -1000,17 +1050,11 @@ void writeC1ReplayEvidence(const C1CapturedReplay& capture) {
     output << "sequence event command acceptance requested actual payload result status "
               "cpu_cycles frame state\n";
     for (const auto& entry : capture.ledger) {
-        output << entry.sequence << ' '
-               << static_cast<unsigned>(entry.event) << ' '
-               << static_cast<unsigned>(entry.command) << ' '
-               << entry.acceptanceSequence << ' '
-               << entry.requestedCycles << ' '
-               << entry.actualCycles << ' '
-               << entry.payloadDigest << ' '
-               << entry.resultDigest << ' '
-               << static_cast<unsigned>(entry.status) << ' '
-               << entry.safePoint.cpuCycles << ' '
-               << entry.safePoint.frameNumber << ' '
+        output << entry.sequence << ' ' << static_cast<unsigned>(entry.event) << ' '
+               << static_cast<unsigned>(entry.command) << ' ' << entry.acceptanceSequence << ' '
+               << entry.requestedCycles << ' ' << entry.actualCycles << ' ' << entry.payloadDigest
+               << ' ' << entry.resultDigest << ' ' << static_cast<unsigned>(entry.status) << ' '
+               << entry.safePoint.cpuCycles << ' ' << entry.safePoint.frameNumber << ' '
                << static_cast<unsigned>(entry.safePoint.state) << '\n';
     }
 }
@@ -1068,7 +1112,8 @@ void testC1PauseCompletesWithinOneAcceptedSlice() {
         const auto entries = runtime.ledger();
         if (std::any_of(entries.begin(), entries.end(), [](const auto& entry) {
                 return entry.event == beeb::LedgerEventKind::executionSlice;
-            })) break;
+            }))
+            break;
         std::this_thread::yield();
     }
 
@@ -1082,8 +1127,7 @@ void testC1PauseCompletesWithinOneAcceptedSlice() {
     CHECK(runtime.acceptedCommandCount() == acceptedBeforePause + 1);
 
     const auto atAcceptance = runtime.ledger();
-    const auto lastSequenceAtAcceptance =
-        atAcceptance.empty() ? 0 : atAcceptance.back().sequence;
+    const auto lastSequenceAtAcceptance = atAcceptance.empty() ? 0 : atAcceptance.back().sequence;
     const auto pauseStatus = pause.get();
     checkRuntimeOK(pauseStatus);
 
@@ -1124,13 +1168,9 @@ void testC1TransactionsFIFOAndNoAutoResume() {
     auto nextAcceptance = runtime.acceptedCommandCount() + 1;
     auto reset = std::async(std::launch::async, [&runtime] { return runtime.reset(); });
     waitForC1Acceptance(runtime, nextAcceptance++);
-    auto load = std::async(std::launch::async, [&runtime, &os] {
-        return runtime.loadOSROM(os);
-    });
+    auto load = std::async(std::launch::async, [&runtime, &os] { return runtime.loadOSROM(os); });
     waitForC1Acceptance(runtime, nextAcceptance++);
-    auto input = std::async(std::launch::async, [&runtime] {
-        return runtime.setKey(1, 2, true);
-    });
+    auto input = std::async(std::launch::async, [&runtime] { return runtime.setKey(1, 2, true); });
     waitForC1Acceptance(runtime, nextAcceptance++);
     auto stateBetween = std::async(std::launch::async, [&runtime] { return runtime.state(); });
     waitForC1Acceptance(runtime, nextAcceptance++);
@@ -1152,25 +1192,21 @@ void testC1TransactionsFIFOAndNoAutoResume() {
 
     const auto ledger = runtime.ledger();
     const std::array acceptanceOrder{
-        resetStatus.acceptanceSequence,
-        loadStatus.acceptanceSequence,
-        inputStatus.acceptanceSequence,
-        betweenResult.status.acceptanceSequence,
+        resetStatus.acceptanceSequence, loadStatus.acceptanceSequence,
+        inputStatus.acceptanceSequence, betweenResult.status.acceptanceSequence,
         startStatus.acceptanceSequence,
     };
     std::vector<beeb::RuntimeCommandKind> acceptedCommands;
     for (const auto& entry : ledger) {
         if (entry.event != beeb::LedgerEventKind::command) continue;
-        if (std::find(acceptanceOrder.begin(), acceptanceOrder.end(),
-                      entry.acceptanceSequence) != acceptanceOrder.end()) {
+        if (std::find(acceptanceOrder.begin(), acceptanceOrder.end(), entry.acceptanceSequence) !=
+            acceptanceOrder.end()) {
             acceptedCommands.push_back(entry.command);
         }
     }
     const std::vector expectedCommands{
-        beeb::RuntimeCommandKind::reset,
-        beeb::RuntimeCommandKind::loadOSROM,
-        beeb::RuntimeCommandKind::setKey,
-        beeb::RuntimeCommandKind::runtimeState,
+        beeb::RuntimeCommandKind::reset,  beeb::RuntimeCommandKind::loadOSROM,
+        beeb::RuntimeCommandKind::setKey, beeb::RuntimeCommandKind::runtimeState,
         beeb::RuntimeCommandKind::start,
     };
     CHECK(acceptedCommands == expectedCommands);
@@ -1190,9 +1226,8 @@ void testC1TransactionsRejectAtomicallyAndCopyInput() {
     CHECK(runtimeValue(runtime.runFor(2)) >= 2);
 
     const auto beforeCopy = runtime.acceptedCommandCount();
-    auto copiedLoad = std::async(std::launch::async, [&runtime, &source] {
-        return runtime.loadOSROM(source);
-    });
+    auto copiedLoad =
+        std::async(std::launch::async, [&runtime, &source] { return runtime.loadOSROM(source); });
     waitForC1Acceptance(runtime, beforeCopy + 1);
     source[0] = 0x02;
     checkRuntimeOK(copiedLoad.get());
@@ -1205,8 +1240,8 @@ void testC1TransactionsRejectAtomicallyAndCopyInput() {
     checkRuntimeOK(runtime.pause());
 }
 
-std::uint64_t c1PayloadDigest(
-    const beeb::MachineRuntime& runtime, std::uint64_t acceptanceSequence) {
+std::uint64_t c1PayloadDigest(const beeb::MachineRuntime& runtime,
+                              std::uint64_t acceptanceSequence) {
     const auto ledger = runtime.ledger();
     const auto entry = std::find_if(ledger.begin(), ledger.end(), [&](const auto& candidate) {
         return candidate.event == beeb::LedgerEventKind::command &&
@@ -1219,16 +1254,20 @@ std::uint64_t c1PayloadDigest(
 void testC1MediaTransactionsCopyAndRejectAtomically() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     auto os = makeNOPOSROM();
-    os[0] = 0xA9; os[1] = 0x03;             // LDA #3
-    os[2] = 0x8D; os[3] = 0x30; os[4] = 0xFE; // STA $FE30
-    os[5] = 0xAD; os[6] = 0x00; os[7] = 0x80; // LDA $8000
+    os[0] = 0xA9;
+    os[1] = 0x03; // LDA #3
+    os[2] = 0x8D;
+    os[3] = 0x30;
+    os[4] = 0xFE; // STA $FE30
+    os[5] = 0xAD;
+    os[6] = 0x00;
+    os[7] = 0x80; // LDA $8000
     checkRuntimeOK(runtime.loadOSROM(os));
 
     std::vector<std::uint8_t> sideways(0x4000, 0x42);
     const auto sidewaysAcceptance = runtime.acceptedCommandCount() + 1;
-    auto sidewaysLoad = std::async(std::launch::async, [&] {
-        return runtime.loadSidewaysROM(3, sideways);
-    });
+    auto sidewaysLoad =
+        std::async(std::launch::async, [&] { return runtime.loadSidewaysROM(3, sideways); });
     waitForC1Acceptance(runtime, sidewaysAcceptance);
     sideways[0] = 0x99;
     const auto sidewaysStatus = sidewaysLoad.get();
@@ -1256,8 +1295,7 @@ void testC1MediaTransactionsCopyAndRejectAtomically() {
     const std::array<std::uint8_t, 1> invalidDisc{0};
     CHECK(runtime.mountDisc(0, invalidDisc, beeb::DiscImage::Layout::SSD).code ==
           beeb::RuntimeStatusCode::invalidArgument);
-    const auto secondDiscStatus = runtime.mountDisc(
-        0, expectedDisc, beeb::DiscImage::Layout::SSD);
+    const auto secondDiscStatus = runtime.mountDisc(0, expectedDisc, beeb::DiscImage::Layout::SSD);
     checkRuntimeOK(secondDiscStatus);
     CHECK_EQ(c1PayloadDigest(runtime, firstDiscStatus.acceptanceSequence),
              c1PayloadDigest(runtime, secondDiscStatus.acceptanceSequence));
@@ -1266,11 +1304,19 @@ void testC1MediaTransactionsCopyAndRejectAtomically() {
 void testC1InputAndBreakSerializeWithReset() {
     beeb::MachineRuntime runtime({.enableLedger = true});
     auto os = makeNOPOSROM();
-    os[0] = 0xA9; os[1] = 0x7F;                // LDA #$7F
-    os[2] = 0x8D; os[3] = 0x43; os[4] = 0xFE; // STA $FE43 (VIA DDRA)
-    os[5] = 0xA9; os[6] = 0x21;                // column 1, row 2
-    os[7] = 0x8D; os[8] = 0x41; os[9] = 0xFE; // STA $FE41 (VIA ORA)
-    os[10] = 0xAD; os[11] = 0x41; os[12] = 0xFE; // LDA $FE41
+    os[0] = 0xA9;
+    os[1] = 0x7F; // LDA #$7F
+    os[2] = 0x8D;
+    os[3] = 0x43;
+    os[4] = 0xFE; // STA $FE43 (VIA DDRA)
+    os[5] = 0xA9;
+    os[6] = 0x21; // column 1, row 2
+    os[7] = 0x8D;
+    os[8] = 0x41;
+    os[9] = 0xFE; // STA $FE41 (VIA ORA)
+    os[10] = 0xAD;
+    os[11] = 0x41;
+    os[12] = 0xFE; // LDA $FE41
     checkRuntimeOK(runtime.loadOSROM(os));
     checkRuntimeOK(runtime.reset());
 
@@ -1315,25 +1361,32 @@ void testC1ObservationsReturnConsistentOwnedValues() {
     std::size_t cursor = 0;
     const auto emit = [&](std::uint8_t byte) { os[cursor++] = byte; };
     const auto loadImmediate = [&](std::uint8_t value) {
-        emit(0xA9); emit(value);
+        emit(0xA9);
+        emit(value);
     };
     const auto storeAbsolute = [&](std::uint16_t address) {
-        emit(0x8D); emit(static_cast<std::uint8_t>(address));
+        emit(0x8D);
+        emit(static_cast<std::uint8_t>(address));
         emit(static_cast<std::uint8_t>(address >> 8));
     };
     const auto setCRTC = [&](std::uint8_t reg, std::uint8_t value) {
-        loadImmediate(reg); storeAbsolute(0xFE00);
-        loadImmediate(value); storeAbsolute(0xFE01);
+        loadImmediate(reg);
+        storeAbsolute(0xFE00);
+        loadImmediate(value);
+        storeAbsolute(0xFE01);
     };
     setCRTC(1, 1);
     setCRTC(6, 1);
     setCRTC(9, 0);
     setCRTC(12, 0);
     setCRTC(13, 0);
-    loadImmediate(0x1C); storeAbsolute(0xFE20);
-    loadImmediate(0xA0); storeAbsolute(0x0000);
+    loadImmediate(0x1C);
+    storeAbsolute(0xFE20);
+    loadImmediate(0xA0);
+    storeAbsolute(0x0000);
     const auto idle = static_cast<std::uint16_t>(0xC000 + cursor);
-    emit(0x4C); emit(static_cast<std::uint8_t>(idle));
+    emit(0x4C);
+    emit(static_cast<std::uint8_t>(idle));
     emit(static_cast<std::uint8_t>(idle >> 8));
 
     checkRuntimeOK(runtime.loadOSROM(os));
@@ -1388,21 +1441,33 @@ void testC1RaceMixedCommands() {
             for (unsigned operation = 0; operation < operationsPerThread; ++operation) {
                 beeb::RuntimeStatus status;
                 switch ((thread + operation) % 5) {
-                case 0: status = runtime.start(); break;
-                case 1: status = runtime.pause(); break;
-                case 2: status = runtime.reset(); break;
-                case 3: status = runtime.setKey(
-                    static_cast<std::uint8_t>(thread),
-                    static_cast<std::uint8_t>(operation % 8),
-                    (operation & 1) != 0); break;
-                default: status = runtime.cpuState().status; break;
+                case 0:
+                    status = runtime.start();
+                    break;
+                case 1:
+                    status = runtime.pause();
+                    break;
+                case 2:
+                    status = runtime.reset();
+                    break;
+                case 3:
+                    status = runtime.setKey(static_cast<std::uint8_t>(thread),
+                                            static_cast<std::uint8_t>(operation % 8),
+                                            (operation & 1) != 0);
+                    break;
+                default:
+                    status = runtime.cpuState().status;
+                    break;
                 }
-                if (status.code == beeb::RuntimeStatusCode::ok) ++completed;
-                else ++failed;
+                if (status.code == beeb::RuntimeStatusCode::ok)
+                    ++completed;
+                else
+                    ++failed;
             }
         });
     }
-    for (auto& worker : workers) worker.join();
+    for (auto& worker : workers)
+        worker.join();
 
     CHECK_EQ(completed.load() + failed.load(), threadCount * operationsPerThread);
     CHECK_EQ(failed.load(), 0);
@@ -1429,31 +1494,26 @@ void testC1RaceShutdownDrainAndRejection() {
             ready.count_down();
             release.wait();
             if ((index & 1) == 0) return runtime.cpuState().status;
-            return runtime.setKey(
-                static_cast<std::uint8_t>(index % 16),
-                static_cast<std::uint8_t>((index / 16) % 16), true);
+            return runtime.setKey(static_cast<std::uint8_t>(index % 16),
+                                  static_cast<std::uint8_t>((index / 16) % 16), true);
         }));
     }
     ready.wait();
-    auto longRun = std::async(std::launch::async, [&runtime] {
-        return runtime.runFor(50'000'000);
-    });
+    auto longRun =
+        std::async(std::launch::async, [&runtime] { return runtime.runFor(50'000'000); });
     waitForC1Acceptance(runtime, baselineAcceptance + 1);
     release.count_down();
-    waitForC1Acceptance(
-        runtime, baselineAcceptance + beeb::MachineRuntime::commandCapacity);
+    waitForC1Acceptance(runtime, baselineAcceptance + beeb::MachineRuntime::commandCapacity);
 
     constexpr unsigned shutdownCallerCount = 4;
     std::vector<std::future<beeb::RuntimeStatus>> shutdowns;
     shutdowns.reserve(shutdownCallerCount);
     for (unsigned index = 0; index < shutdownCallerCount; ++index) {
-        shutdowns.emplace_back(std::async(std::launch::async, [&runtime] {
-            return runtime.shutdown();
-        }));
+        shutdowns.emplace_back(
+            std::async(std::launch::async, [&runtime] { return runtime.shutdown(); }));
     }
 
-    const auto waiterDeadline = std::chrono::steady_clock::now() +
-                                std::chrono::seconds(2);
+    const auto waiterDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     bool rejectedWaiterReady = false;
     while (!rejectedWaiterReady && std::chrono::steady_clock::now() < waiterDeadline) {
         rejectedWaiterReady = std::any_of(calls.begin(), calls.end(), [](auto& call) {
@@ -1473,8 +1533,7 @@ void testC1RaceShutdownDrainAndRejection() {
         const auto status = call.get();
         if (status.acceptanceSequence != 0) {
             checkRuntimeOK(status);
-            maximumAcceptedSequence = std::max(
-                maximumAcceptedSequence, status.acceptanceSequence);
+            maximumAcceptedSequence = std::max(maximumAcceptedSequence, status.acceptanceSequence);
             ++accepted;
         } else {
             CHECK(status.code == beeb::RuntimeStatusCode::unavailable);
@@ -1525,9 +1584,11 @@ int main(int argc, char** argv) {
         {"all 151 official opcodes decode", testAllOfficialOpcodesDecode},
         {"illegal opcode trap", testIllegalOpcodeTraps},
         {"trace observer failure is atomic", testTraceObserverFailureIsAtomic},
-        {"C 0.2: status out-parameters and nullability", testCAPI02StatusOutParametersAndNullability},
+        {"C 0.2: status out-parameters and nullability",
+         testCAPI02StatusOutParametersAndNullability},
         {"C 0.2: fault detail and reset recovery", testCAPI02FaultAndRecovery},
-        {"C 0.2: destroy waits for calls already inside", testCAPI02DestroyWaitsForCallsAlreadyInside},
+        {"C 0.2: destroy waits for calls already inside",
+         testCAPI02DestroyWaitsForCallsAlreadyInside},
         {"VIA timer and interrupt enable", testVIATimerAndInterruptEnable},
         {"VIA data direction and CA1 edge", testVIADataDirectionsAndEdges},
         {"CRTC frame timing", testCRTCFrameTiming},
@@ -1540,19 +1601,29 @@ int main(int argc, char** argv) {
         {"8271 sector read protocol", test8271SectorReadProtocol},
         {"BBC 8271 memory map", testBBCFDCMemoryMap},
         {"clean-room teletext rendering", testCleanRoomTeletextRendering},
-        {"teletext control cells use active background", testTeletextControlCellsUseActiveBackground},
+        {"teletext control cells use active background",
+         testTeletextControlCellsUseActiveBackground},
         {"C1 contract: lifecycle command matrix", testC1RuntimeContractLifecycleMatrix},
         {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
-        {"C1 contract: structured status isolation", testC1RuntimeContractStructuredStatusIsolation},
+        {"C1 contract: structured status isolation",
+         testC1RuntimeContractStructuredStatusIsolation},
         {"C1 replay: deterministic command and safe-point ledger", testC1ReplayDeterministicLedger},
-        {"C1 replay: captured concurrent ledger replays exactly", testC1ReplayCapturedConcurrentLedgerExactly},
-        {"C1 contract: fixed execution slices share ledger order", testC1RuntimeFixedExecutionSlices},
-        {"C1 lifecycle: accepted pause completes within one slice", testC1PauseCompletesWithinOneAcceptedSlice},
-        {"C1 transactions: FIFO reset load query and explicit resume", testC1TransactionsFIFOAndNoAutoResume},
-        {"C1 transactions: invalid input is atomic and payload is copied", testC1TransactionsRejectAtomicallyAndCopyInput},
-        {"C1 transactions: media payloads are copied and reject atomically", testC1MediaTransactionsCopyAndRejectAtomically},
-        {"C1 input: keyboard and BREAK serialize with reset", testC1InputAndBreakSerializeWithReset},
-        {"C1 observations: CPU frame and audio values are owned", testC1ObservationsReturnConsistentOwnedValues},
+        {"C1 replay: captured concurrent ledger replays exactly",
+         testC1ReplayCapturedConcurrentLedgerExactly},
+        {"C1 contract: fixed execution slices share ledger order",
+         testC1RuntimeFixedExecutionSlices},
+        {"C1 lifecycle: accepted pause completes within one slice",
+         testC1PauseCompletesWithinOneAcceptedSlice},
+        {"C1 transactions: FIFO reset load query and explicit resume",
+         testC1TransactionsFIFOAndNoAutoResume},
+        {"C1 transactions: invalid input is atomic and payload is copied",
+         testC1TransactionsRejectAtomicallyAndCopyInput},
+        {"C1 transactions: media payloads are copied and reject atomically",
+         testC1MediaTransactionsCopyAndRejectAtomically},
+        {"C1 input: keyboard and BREAK serialize with reset",
+         testC1InputAndBreakSerializeWithReset},
+        {"C1 observations: CPU frame and audio values are owned",
+         testC1ObservationsReturnConsistentOwnedValues},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
     };

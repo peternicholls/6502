@@ -9,7 +9,7 @@ namespace beeb {
 /// Implementations own the addressed storage and devices. CPU6502 calls tick()
 /// once after each complete instruction or interrupt sequence.
 class Bus {
-public:
+  public:
     /// Allows destruction through the interface.
     virtual ~Bus() = default;
 

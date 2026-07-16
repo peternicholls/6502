@@ -8,6 +8,7 @@ profile="auto"
 check=false
 debt_baseline=""
 changed_files=""
+docs_base="${DOCS_BASE:-}"
 
 usage() {
     cat <<'EOF'
@@ -70,6 +71,25 @@ case "${profile}" in
         ;;
 esac
 
+guard_removable_dir() {
+    local target="$1" parent name
+    parent="$(cd "$(dirname "${target}")" && pwd)"
+    name="$(basename "${target}")"
+    target="${parent}/${name}"
+    case "${target}" in
+        /|"${source_root}"|"${HOME}"|"${source_root}/.git"|"${source_root}/.git"/*)
+            printf 'refusing to remove protected directory: %s\n' "${target}" >&2
+            exit 2
+            ;;
+        "${source_root}/.build"/*) ;;
+        *)
+            if [[ -e "${target}" ]]; then
+                printf 'refusing to remove an existing unowned directory: %s\n' "${target}" >&2
+                exit 2
+            fi
+            ;;
+    esac
+}
 if [[ ! -d "${source_root}" ]]; then
     printf 'missing documentation source root: %s\n' "${source_root}" >&2
     exit 2
@@ -80,6 +100,7 @@ case "${output_dir}" in
         exit 2
         ;;
 esac
+guard_removable_dir "${output_dir}"
 
 if [[ -z "${debt_baseline}" ]]; then
     debt_baseline="${source_root}/Tests/Fixtures/C0/documentation-debt.txt"
@@ -88,7 +109,11 @@ if [[ -z "${changed_files}" ]]; then
     changed_files="$(mktemp "${TMPDIR:-/tmp}/beeb-docs-changed.XXXXXX")"
     trap 'rm -f -- "${changed_files}" "${doxygen_config:-}"' EXIT
     if git -C "${source_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        git -C "${source_root}" diff --name-only HEAD -- >"${changed_files}"
+        if [[ -n "${docs_base}" ]]; then
+            git -C "${source_root}" diff --name-only "${docs_base}"...HEAD -- >"${changed_files}"
+        else
+            git -C "${source_root}" diff --name-only HEAD -- >"${changed_files}"
+        fi
     fi
 fi
 
@@ -230,7 +255,11 @@ validate_changed_complex_code() {
         fi
         diff_text=""
         if git -C "${source_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-            diff_text="$(git -C "${source_root}" diff --unified=0 HEAD -- "${path}")"
+            if [[ -n "${docs_base}" ]]; then
+                diff_text="$(git -C "${source_root}" diff --unified=0 "${docs_base}"...HEAD -- "${path}")"
+            else
+                diff_text="$(git -C "${source_root}" diff --unified=0 HEAD -- "${path}")"
+            fi
         fi
         if [[ -n "${diff_text}" ]] && awk '
             /^\+\+\+|^---/ { next }

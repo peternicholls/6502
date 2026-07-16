@@ -26,14 +26,14 @@ extern "C" {
 
 /// Stable status categories shared one-to-one with the C++ runtime.
 typedef enum beeb_status_code {
-    BEEB_STATUS_OK = 0,              ///< Operation completed successfully.
-    BEEB_STATUS_INVALID_ARGUMENT = 1,///< Pointer, size, value, or output is invalid.
-    BEEB_STATUS_INVALID_STATE = 2,   ///< Command is not legal in the current state.
-    BEEB_STATUS_EXECUTION_FAILED = 3,///< Emulated execution faulted at a safe point.
-    BEEB_STATUS_RESOURCE_EXHAUSTED = 4,///< Required allocation or capacity failed.
-    BEEB_STATUS_UNAVAILABLE = 5,     ///< Runtime is shutting down or no longer accepts work.
-    BEEB_STATUS_REENTRANT_CALL = 6,  ///< Owner-thread re-entry would deadlock.
-    BEEB_STATUS_INTERNAL_FAILURE = 7 ///< Unexpected implementation failure was contained.
+    BEEB_STATUS_OK = 0,                 ///< Operation completed successfully.
+    BEEB_STATUS_INVALID_ARGUMENT = 1,   ///< Pointer, size, value, or output is invalid.
+    BEEB_STATUS_INVALID_STATE = 2,      ///< Command is not legal in the current state.
+    BEEB_STATUS_EXECUTION_FAILED = 3,   ///< Emulated execution faulted at a safe point.
+    BEEB_STATUS_RESOURCE_EXHAUSTED = 4, ///< Required allocation or capacity failed.
+    BEEB_STATUS_UNAVAILABLE = 5,        ///< Runtime is shutting down or no longer accepts work.
+    BEEB_STATUS_REENTRANT_CALL = 6,     ///< Owner-thread re-entry would deadlock.
+    BEEB_STATUS_INTERNAL_FAILURE = 7    ///< Unexpected implementation failure was contained.
 } beeb_status_code;
 
 /// Complete result of one C operation.
@@ -42,7 +42,7 @@ typedef enum beeb_status_code {
 /// a null-terminated, possibly truncated diagnostic owned by this value; later
 /// calls cannot overwrite it.
 typedef struct beeb_status {
-    beeb_status_code code;                       ///< Stable machine-readable category.
+    beeb_status_code code;                      ///< Stable machine-readable category.
     char message[BEEB_STATUS_MESSAGE_CAPACITY]; ///< Operation-owned UTF-8 diagnostic.
 } beeb_status;
 
@@ -55,10 +55,10 @@ typedef struct beeb_machine beeb_machine;
 
 /// Public lifecycle states observable at runtime safe points.
 typedef enum beeb_runtime_state {
-    BEEB_RUNTIME_STATE_PAUSED = 0,      ///< Quiescent and accepting commands.
-    BEEB_RUNTIME_STATE_RUNNING = 1,     ///< Executing deterministic slices.
-    BEEB_RUNTIME_STATE_FAULTED = 2,     ///< Execution failed; reset is required.
-    BEEB_RUNTIME_STATE_SHUTTING_DOWN = 3///< Acceptance stopped while work drains.
+    BEEB_RUNTIME_STATE_PAUSED = 0,       ///< Quiescent and accepting commands.
+    BEEB_RUNTIME_STATE_RUNNING = 1,      ///< Executing deterministic slices.
+    BEEB_RUNTIME_STATE_FAULTED = 2,      ///< Execution failed; reset is required.
+    BEEB_RUNTIME_STATE_SHUTTING_DOWN = 3 ///< Acceptance stopped while work drains.
 } beeb_runtime_state;
 
 /// Portable snapshot of the emulated 6502 programmer-visible state.
@@ -74,17 +74,17 @@ typedef struct beeb_cpu_state {
 
 /// Identity of a completed-instruction and fully advanced-device safe point.
 typedef struct beeb_safe_point {
-    uint64_t cpu_cycles;       ///< Total completed CPU cycles.
-    uint64_t frame_number;     ///< Latest completed CRTC frame number.
-    beeb_runtime_state state;  ///< Lifecycle state at this boundary.
-    uint64_t ledger_sequence;  ///< Latest total command/execution identity.
+    uint64_t cpu_cycles;      ///< Total completed CPU cycles.
+    uint64_t frame_number;    ///< Latest completed CRTC frame number.
+    beeb_runtime_state state; ///< Lifecycle state at this boundary.
+    uint64_t ledger_sequence; ///< Latest total command/execution identity.
 } beeb_safe_point;
 
 /// Owned fault observation returned by `beeb_get_fault()`.
 typedef struct beeb_fault_detail {
-    int available;                               ///< Non-zero only while faulted.
+    int available;                              ///< Non-zero only while faulted.
     char message[BEEB_STATUS_MESSAGE_CAPACITY]; ///< Retained execution diagnostic.
-    beeb_safe_point safe_point;                  ///< Boundary at which it is observed.
+    beeb_safe_point safe_point;                 ///< Boundary at which it is observed.
 } beeb_fault_detail;
 
 /// Caller-owned copy of the latest completed video frame.
@@ -94,12 +94,12 @@ typedef struct beeb_fault_detail {
 /// Initialize storage to zero before first use and release every successful
 /// value with `beeb_frame_release()` before overwriting or discarding it.
 typedef struct beeb_frame {
-    int available;       ///< Non-zero when a complete frame exists.
-    uint32_t width;      ///< Pixel width when available.
-    uint32_t height;     ///< Pixel height when available.
-    uint64_t number;     ///< Monotonic CRTC frame number.
-    uint8_t* rgba;       ///< Caller-owned packed 8-bit RGBA storage.
-    size_t rgba_size;    ///< Allocated byte count at `rgba`.
+    int available;    ///< Non-zero when a complete frame exists.
+    uint32_t width;   ///< Pixel width when available.
+    uint32_t height;  ///< Pixel height when available.
+    uint64_t number;  ///< Monotonic CRTC frame number.
+    uint8_t* rgba;    ///< Caller-owned packed 8-bit RGBA storage.
+    size_t rgba_size; ///< Allocated byte count at `rgba`.
 } beeb_frame;
 
 /// Returns the immutable library version string.
@@ -142,24 +142,22 @@ beeb_status beeb_reset(beeb_machine* machine);
 /// @param cycles Minimum CPU-cycle budget; zero performs no work.
 /// @param out_actual_cycles Required output, written only on success.
 /// @return Operation-scoped status.
-beeb_status beeb_run_cycles(
-    beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles);
+beeb_status beeb_run_cycles(beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles);
 
 /// Executes while paused until a frame completes or the budget is met.
 /// @param machine Live runtime token.
 /// @param maximum_cycles Maximum CPU-cycle budget.
 /// @param out_completed Required output receiving non-zero when a frame completed.
 /// @return Operation-scoped status.
-beeb_status beeb_run_until_frame(
-    beeb_machine* machine, uint64_t maximum_cycles, int* out_completed);
+beeb_status beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles,
+                                 int* out_completed);
 
 /// Copies and installs an exact 16 KiB operating-system ROM.
 /// @param machine Live runtime token.
 /// @param bytes Required readable source; copied during the call.
 /// @param count Byte count, which must be exactly 16,384.
 /// @return Operation-scoped status.
-beeb_status beeb_load_os_rom(
-    beeb_machine* machine, const uint8_t* bytes, size_t count);
+beeb_status beeb_load_os_rom(beeb_machine* machine, const uint8_t* bytes, size_t count);
 
 /// Copies and installs one sideways-ROM bank.
 /// @param machine Live runtime token.
@@ -167,8 +165,8 @@ beeb_status beeb_load_os_rom(
 /// @param bytes Required readable source; copied during the call.
 /// @param count Byte count in the inclusive range 0...16,384.
 /// @return Operation-scoped status.
-beeb_status beeb_load_sideways_rom(
-    beeb_machine* machine, uint8_t bank, const uint8_t* bytes, size_t count);
+beeb_status beeb_load_sideways_rom(beeb_machine* machine, uint8_t bank, const uint8_t* bytes,
+                                   size_t count);
 
 /// Copies and mounts one SSD- or DSD-layout disc image.
 /// @param machine Live runtime token.
@@ -178,9 +176,8 @@ beeb_status beeb_load_sideways_rom(
 /// @param double_sided Non-zero for interleaved DSD, zero for SSD.
 /// @param writable Non-zero to permit writes to the private copy.
 /// @return Operation-scoped status.
-beeb_status beeb_mount_disc(
-    beeb_machine* machine, unsigned drive, const uint8_t* bytes, size_t count,
-    int double_sided, int writable);
+beeb_status beeb_mount_disc(beeb_machine* machine, unsigned drive, const uint8_t* bytes,
+                            size_t count, int double_sided, int writable);
 
 /// Copies CPU registers and cycle count from one safe point.
 /// @param machine Live runtime token.
@@ -207,8 +204,8 @@ beeb_status beeb_frame_release(beeb_frame* frame);
 /// @param frames Number of samples; zero is permitted with a non-null pointer.
 /// @param sample_rate Finite positive sample rate in hertz.
 /// @return Operation-scoped status; the buffer is written only on success.
-beeb_status beeb_render_audio(
-    beeb_machine* machine, float* mono, size_t frames, double sample_rate);
+beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
+                              double sample_rate);
 
 /// Changes one keyboard-matrix bit in FIFO order.
 /// @param machine Live runtime token.
@@ -216,8 +213,7 @@ beeb_status beeb_render_audio(
 /// @param row Matrix row in the inclusive range 0...15.
 /// @param pressed Non-zero to press, zero to release.
 /// @return Operation-scoped status.
-beeb_status beeb_set_key(
-    beeb_machine* machine, uint8_t column, uint8_t row, int pressed);
+beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed);
 
 /// Changes BREAK state in FIFO order without inventing a lifecycle transition.
 /// @param machine Live runtime token.
@@ -229,8 +225,7 @@ beeb_status beeb_set_break(beeb_machine* machine, int pressed);
 /// @param machine Live runtime token.
 /// @param out_safe_point Required output, written only on success.
 /// @return Operation-scoped status.
-beeb_status beeb_get_safe_point(
-    beeb_machine* machine, beeb_safe_point* out_safe_point);
+beeb_status beeb_get_safe_point(beeb_machine* machine, beeb_safe_point* out_safe_point);
 
 /// Reads retained execution-fault detail; absence is a successful value.
 /// @param machine Live runtime token.

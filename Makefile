@@ -16,7 +16,7 @@ else
 SANITIZERS ?= address,undefined
 endif
 
-.PHONY: all test sanitize thread-sanitize test-c1 check-version demo-rom test-c0 verify-c0 \
+.PHONY: all test sanitize thread-sanitize test-c1 format-check check-version demo-rom test-c0 verify-c0 \
 	verify-c0-references update-c0-reference measure-c0 \
 	validate-c0-measurement docs docs-check clean
 
@@ -60,6 +60,10 @@ sanitize: | $(BUILD_DIR)
 
 thread-sanitize:
 	C1_ONLY_TSAN=1 Tests/C1/test-runtime-races.sh
+
+format-check:
+	@files="$$(find Sources Tests Tools -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print)"; \
+	clang-format --dry-run --Werror $$files
 
 test-c1:
 	@status=0; \

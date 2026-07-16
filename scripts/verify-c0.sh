@@ -49,6 +49,19 @@ esac
 case "${output_dir}" in
     ""|/) printf 'unsafe output directory: %s\n' "${output_dir}" >&2; exit 2 ;;
 esac
+output_parent="$(cd "$(dirname "${output_dir}")" && pwd)"
+output_target="${output_parent}/$(basename "${output_dir}")"
+case "${output_target}" in
+    "${root}"|"${HOME}"|/|"${root}/.git"|"${root}/.git"/*)
+        printf 'unsafe output directory: %s\n' "${output_target}" >&2; exit 2 ;;
+    "${root}/.build"/*) ;;
+    *)
+        [[ ! -e "${output_target}" ]] || {
+            printf 'refusing to remove an existing unowned directory: %s\n' "${output_target}" >&2
+            exit 2
+        }
+        ;;
+esac
 if [[ -n "${groups_file}" && ! -f "${groups_file}" ]]; then
     printf 'groups file does not exist: %s\n' "${groups_file}" >&2
     exit 2

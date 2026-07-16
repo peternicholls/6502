@@ -20,7 +20,8 @@ bool DiscImage::load(std::span<const std::uint8_t> bytes, Layout layout, bool wr
 }
 
 std::size_t DiscImage::sectorOffset(unsigned track, unsigned side, unsigned sector) const {
-    if (track >= tracks_ || side >= sides_ || sector >= 10) return std::numeric_limits<std::size_t>::max();
+    if (track >= tracks_ || side >= sides_ || sector >= 10)
+        return std::numeric_limits<std::size_t>::max();
     // DSD files interleave side 0 and side 1 for each physical track.
     return ((static_cast<std::size_t>(track) * sides_ + side) * 10 + sector) * 256;
 }
@@ -29,14 +30,16 @@ bool DiscImage::readSector(unsigned track, unsigned side, unsigned sector,
                            std::span<std::uint8_t> destination) const {
     const auto offset = sectorOffset(track, side, sector);
     if (offset == std::numeric_limits<std::size_t>::max() || destination.size() > 256) return false;
-    std::copy_n(bytes_.begin() + static_cast<std::ptrdiff_t>(offset), destination.size(), destination.begin());
+    std::copy_n(bytes_.begin() + static_cast<std::ptrdiff_t>(offset), destination.size(),
+                destination.begin());
     return true;
 }
 
 bool DiscImage::writeSector(unsigned track, unsigned side, unsigned sector,
                             std::span<const std::uint8_t> source) {
     const auto offset = sectorOffset(track, side, sector);
-    if (!writable_ || offset == std::numeric_limits<std::size_t>::max() || source.size() > 256) return false;
+    if (!writable_ || offset == std::numeric_limits<std::size_t>::max() || source.size() > 256)
+        return false;
     std::copy(source.begin(), source.end(), bytes_.begin() + static_cast<std::ptrdiff_t>(offset));
     return true;
 }

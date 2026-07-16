@@ -8,7 +8,7 @@ namespace beeb {
 
 /// Deterministic SN76489 register and mono waveform model.
 class SN76489 {
-public:
+  public:
     /// Restores register, phase, and noise-generator defaults.
     void reset();
     /// Applies one SN76489 latch/data protocol byte.
@@ -23,15 +23,19 @@ public:
     /// Returns a tone channel's programmed period.
     /// @param channel Channel selector reduced modulo three.
     /// @return Programmed ten-bit period.
-    [[nodiscard]] std::uint16_t tonePeriod(unsigned channel) const noexcept { return tone_[channel % 3]; }
+    [[nodiscard]] std::uint16_t tonePeriod(unsigned channel) const noexcept {
+        return tone_[channel % 3];
+    }
     /// Returns a channel's attenuation nibble, where 15 is silent.
     /// @param channel Channel selector reduced modulo four.
     /// @return Attenuation in the range 0...15.
-    [[nodiscard]] std::uint8_t volume(unsigned channel) const noexcept { return volume_[channel % 4]; }
+    [[nodiscard]] std::uint8_t volume(unsigned channel) const noexcept {
+        return volume_[channel % 4];
+    }
 
-private:
-    std::array<std::uint16_t, 3> tone_{1,1,1};
-    std::array<std::uint8_t, 4> volume_{15,15,15,15};
+  private:
+    std::array<std::uint16_t, 3> tone_{1, 1, 1};
+    std::array<std::uint8_t, 4> volume_{15, 15, 15, 15};
     std::array<double, 4> phase_{};
     std::uint8_t noise_ = 0;
     std::uint8_t latchedChannel_ = 0;

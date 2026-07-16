@@ -32,8 +32,8 @@ struct Options {
 
 void requireStatus(const beeb_status& status) {
     if (status.code == BEEB_STATUS_OK) return;
-    throw std::runtime_error(
-        status.message[0] != '\0' ? status.message : "emulator core operation failed");
+    throw std::runtime_error(status.message[0] != '\0' ? status.message
+                                                       : "emulator core operation failed");
 }
 
 /// Releases the evidence tool's C runtime on every exit path.
@@ -93,10 +93,14 @@ Options parseOptions(int argc, char** argv) {
             if (++index >= argc) throw std::runtime_error("missing option value");
             return argv[index];
         };
-        if (argument == "--rom") options.romPath = next();
-        else if (argument == "--workload") options.workload = next();
-        else if (argument == "--cycles") options.requestedCycles = positiveNumber(next());
-        else if (argument == "--output") options.outputs.push_back(parseOutput(next()));
+        if (argument == "--rom")
+            options.romPath = next();
+        else if (argument == "--workload")
+            options.workload = next();
+        else if (argument == "--cycles")
+            options.requestedCycles = positiveNumber(next());
+        else if (argument == "--output")
+            options.outputs.push_back(parseOutput(next()));
         else if (argument == "--help" || argument == "-h") {
             std::cout << "beeb-evidence --rom ROM --workload bitmap|mode7 --cycles N "
                          "--output state:PATH [--output frame:PATH]\n";
@@ -125,22 +129,21 @@ void writeState(const std::string& path, const Options& options, const beeb_cpu_
            << "workload=" << options.workload << '\n'
            << "requested_cycles=" << options.requestedCycles << '\n'
            << "actual_cycles=" << actualCycles << '\n'
-           << std::hex << std::uppercase << std::setfill('0')
-           << "pc=$" << std::setw(4) << state.pc << '\n'
+           << std::hex << std::uppercase << std::setfill('0') << "pc=$" << std::setw(4) << state.pc
+           << '\n'
            << "a=$" << std::setw(2) << static_cast<unsigned>(state.a) << '\n'
            << "x=$" << std::setw(2) << static_cast<unsigned>(state.x) << '\n'
            << "y=$" << std::setw(2) << static_cast<unsigned>(state.y) << '\n'
            << "sp=$" << std::setw(2) << static_cast<unsigned>(state.sp) << '\n'
            << "p=$" << std::setw(2) << static_cast<unsigned>(state.p) << '\n'
-           << std::dec
-           << "frame_number=" << frameNumber << '\n'
+           << std::dec << "frame_number=" << frameNumber << '\n'
            << "frame_width=" << width << '\n'
            << "frame_height=" << height << '\n';
     if (!output) throw std::runtime_error("cannot write state output: " + path);
 }
 
-void writeFrame(const std::string& path, const std::uint8_t* rgba,
-                std::uint32_t width, std::uint32_t height) {
+void writeFrame(const std::string& path, const std::uint8_t* rgba, std::uint32_t width,
+                std::uint32_t height) {
     if (!rgba || width == 0 || height == 0) throw std::runtime_error("no frame is available");
     std::ofstream output(path, std::ios::binary);
     if (!output) throw std::runtime_error("cannot write frame output: " + path);
@@ -160,8 +163,7 @@ int run(const Options& options) {
     requireStatus(beeb_load_os_rom(machine.get(), rom.data(), rom.size()));
     requireStatus(beeb_reset(machine.get()));
     std::uint64_t actualCycles = 0;
-    requireStatus(beeb_run_cycles(
-        machine.get(), options.requestedCycles, &actualCycles));
+    requireStatus(beeb_run_cycles(machine.get(), options.requestedCycles, &actualCycles));
 
     beeb_cpu_state state{};
     requireStatus(beeb_get_cpu_state(machine.get(), &state));
@@ -170,19 +172,16 @@ int run(const Options& options) {
 
     for (const auto& output : options.outputs) {
         if (output.kind == Output::Kind::State) {
-            writeState(output.path, options, state, actualCycles,
-                       frame.value.width, frame.value.height, frame.value.number);
+            writeState(output.path, options, state, actualCycles, frame.value.width,
+                       frame.value.height, frame.value.number);
         } else {
-            writeFrame(output.path, frame.value.rgba,
-                       frame.value.width, frame.value.height);
+            writeFrame(output.path, frame.value.rgba, frame.value.width, frame.value.height);
         }
     }
 
-    std::cout << "workload=" << options.workload
-              << " requested_cycles=" << options.requestedCycles
-              << " actual_cycles=" << actualCycles
-              << " frame=" << frame.value.number << ' ' << frame.value.width
-              << 'x' << frame.value.height << '\n';
+    std::cout << "workload=" << options.workload << " requested_cycles=" << options.requestedCycles
+              << " actual_cycles=" << actualCycles << " frame=" << frame.value.number << ' '
+              << frame.value.width << 'x' << frame.value.height << '\n';
     return 0;
 }
 

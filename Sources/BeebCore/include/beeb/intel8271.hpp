@@ -12,7 +12,7 @@ namespace beeb {
 
 /// Command, status, transfer, and timing model of the Intel 8271 FDC.
 class Intel8271 {
-public:
+  public:
     /// Observer invoked when the controller asserts its NMI condition.
     using NMICallback = std::function<void()>;
 
@@ -27,7 +27,8 @@ public:
     /// @param layout SSD or DSD byte ordering.
     /// @param writable Whether controller writes may modify the private image.
     /// @return Whether the drive and image were valid.
-    bool mount(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout, bool writable = false);
+    bool mount(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout,
+               bool writable = false);
     /// Returns one of the two mounted image slots.
     /// @param drive Drive selector; values are reduced modulo two.
     /// @return Borrowed drive image valid for this controller's lifetime.
@@ -52,7 +53,7 @@ public:
     /// @return Result byte.
     [[nodiscard]] std::uint8_t result() const noexcept { return result_; }
 
-private:
+  private:
     enum Status : std::uint8_t {
         Busy = 0x80,
         CommandFull = 0x40,

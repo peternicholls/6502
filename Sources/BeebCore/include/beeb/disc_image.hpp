@@ -12,7 +12,7 @@ namespace beeb {
 /// Loading copies the supplied bytes. Returned spans borrow this object's
 /// storage and remain valid until the next successful load or destruction.
 class DiscImage {
-public:
+  public:
     /// On-disk ordering of the image's sides.
     enum class Layout {
         SSD, ///< One side stored track by track.
@@ -47,19 +47,21 @@ public:
     /// @param sector Zero-based sector in the range 0...9.
     /// @param destination Writable destination of at most 256 bytes.
     /// @return `false` for invalid coordinates or an oversized destination.
-    bool readSector(unsigned track, unsigned side, unsigned sector, std::span<std::uint8_t> destination) const;
+    bool readSector(unsigned track, unsigned side, unsigned sector,
+                    std::span<std::uint8_t> destination) const;
     /// Copies up to one sector into a writable image.
     /// @param track Zero-based physical track.
     /// @param side Zero-based side.
     /// @param sector Zero-based sector in the range 0...9.
     /// @param source Source of at most 256 bytes; the span is not retained.
     /// @return `false` when read-only, out of range, or oversized.
-    bool writeSector(unsigned track, unsigned side, unsigned sector, std::span<const std::uint8_t> source);
+    bool writeSector(unsigned track, unsigned side, unsigned sector,
+                     std::span<const std::uint8_t> source);
     /// Borrows the complete current image bytes.
     /// @return Read-only span valid until successful load or destruction.
     [[nodiscard]] std::span<const std::uint8_t> bytes() const noexcept { return bytes_; }
 
-private:
+  private:
     std::vector<std::uint8_t> bytes_;
     Layout layout_ = Layout::SSD;
     unsigned tracks_ = 0;

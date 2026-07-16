@@ -68,74 +68,60 @@ struct AudioPayload {
 };
 
 /// Closed payload vocabulary kept in the same queue node as its completion.
-using CommandPayload = std::variant<
-    std::monostate,
-    std::uint64_t,
-    std::vector<std::uint8_t>,
-    SidewaysPayload,
-    DiscPayload,
-    KeyPayload,
-    bool,
-    AudioPayload>;
+using CommandPayload = std::variant<std::monostate, std::uint64_t, std::vector<std::uint8_t>,
+                                    SidewaysPayload, DiscPayload, KeyPayload, bool, AudioPayload>;
 
 /// Closed owned-result vocabulary returned through one caller-specific promise.
-using CompletionValue = std::variant<
-    std::monostate,
-    RuntimeState,
-    std::uint64_t,
-    bool,
-    CPUState,
-    OwnedFrame,
-    std::vector<float>,
-    SafePoint,
-    RuntimeFault>;
+using CompletionValue = std::variant<std::monostate, RuntimeState, std::uint64_t, bool, CPUState,
+                                     OwnedFrame, std::vector<float>, SafePoint, RuntimeFault>;
 
 std::uint64_t hashString(const std::string& value) noexcept {
-    return hashBytes(std::span(
-        reinterpret_cast<const std::uint8_t*>(value.data()), value.size()));
+    return hashBytes(std::span(reinterpret_cast<const std::uint8_t*>(value.data()), value.size()));
 }
 
 std::uint64_t completionDigest(const CompletionValue& value) noexcept {
-    return std::visit([](const auto& result) -> std::uint64_t {
-        using Result = std::decay_t<decltype(result)>;
-        if constexpr (std::is_same_v<Result, std::monostate>) {
-            return 0;
-        } else if constexpr (std::is_same_v<Result, RuntimeState>) {
-            return static_cast<std::uint64_t>(result) + 1;
-        } else if constexpr (std::is_same_v<Result, std::uint64_t>) {
-            return mix(1, result);
-        } else if constexpr (std::is_same_v<Result, bool>) {
-            return result ? 2 : 1;
-        } else if constexpr (std::is_same_v<Result, CPUState>) {
-            auto digest = mix(result.a, result.x);
-            digest = mix(digest, result.y);
-            digest = mix(digest, result.sp);
-            digest = mix(digest, result.p);
-            digest = mix(digest, result.pc);
-            return mix(digest, result.cycles);
-        } else if constexpr (std::is_same_v<Result, OwnedFrame>) {
-            auto digest = mix(result.available ? 1 : 0, result.width);
-            digest = mix(digest, result.height);
-            digest = mix(digest, result.number);
-            return mix(digest, hashBytes(result.rgba));
-        } else if constexpr (std::is_same_v<Result, std::vector<float>>) {
-            std::uint64_t digest = result.size();
-            for (const auto sample : result) {
-                digest = mix(digest, std::bit_cast<std::uint32_t>(sample));
+    return std::visit(
+        [](const auto& result) -> std::uint64_t {
+            using Result = std::decay_t<decltype(result)>;
+            if constexpr (std::is_same_v<Result, std::monostate>) {
+                return 0;
+            } else if constexpr (std::is_same_v<Result, RuntimeState>) {
+                return static_cast<std::uint64_t>(result) + 1;
+            } else if constexpr (std::is_same_v<Result, std::uint64_t>) {
+                return mix(1, result);
+            } else if constexpr (std::is_same_v<Result, bool>) {
+                return result ? 2 : 1;
+            } else if constexpr (std::is_same_v<Result, CPUState>) {
+                auto digest = mix(result.a, result.x);
+                digest = mix(digest, result.y);
+                digest = mix(digest, result.sp);
+                digest = mix(digest, result.p);
+                digest = mix(digest, result.pc);
+                return mix(digest, result.cycles);
+            } else if constexpr (std::is_same_v<Result, OwnedFrame>) {
+                auto digest = mix(result.available ? 1 : 0, result.width);
+                digest = mix(digest, result.height);
+                digest = mix(digest, result.number);
+                return mix(digest, hashBytes(result.rgba));
+            } else if constexpr (std::is_same_v<Result, std::vector<float>>) {
+                std::uint64_t digest = result.size();
+                for (const auto sample : result) {
+                    digest = mix(digest, std::bit_cast<std::uint32_t>(sample));
+                }
+                return digest;
+            } else if constexpr (std::is_same_v<Result, SafePoint>) {
+                auto digest = mix(result.cpuCycles, result.frameNumber);
+                digest = mix(digest, static_cast<std::uint64_t>(result.state));
+                return mix(digest, result.ledgerSequence);
+            } else if constexpr (std::is_same_v<Result, RuntimeFault>) {
+                auto digest = mix(result.available ? 1 : 0, hashString(result.message));
+                digest = mix(digest, result.safePoint.cpuCycles);
+                digest = mix(digest, result.safePoint.frameNumber);
+                digest = mix(digest, static_cast<std::uint64_t>(result.safePoint.state));
+                return mix(digest, result.safePoint.ledgerSequence);
             }
-            return digest;
-        } else if constexpr (std::is_same_v<Result, SafePoint>) {
-            auto digest = mix(result.cpuCycles, result.frameNumber);
-            digest = mix(digest, static_cast<std::uint64_t>(result.state));
-            return mix(digest, result.ledgerSequence);
-        } else if constexpr (std::is_same_v<Result, RuntimeFault>) {
-            auto digest = mix(result.available ? 1 : 0, hashString(result.message));
-            digest = mix(digest, result.safePoint.cpuCycles);
-            digest = mix(digest, result.safePoint.frameNumber);
-            digest = mix(digest, static_cast<std::uint64_t>(result.safePoint.state));
-            return mix(digest, result.safePoint.ledgerSequence);
-        }
-    }, value);
+        },
+        value);
 }
 
 /// One operation-scoped status and optional value, never shared between callers.
@@ -153,8 +139,7 @@ struct Request {
     std::promise<Completion> completion;
 };
 
-template <typename T>
-RuntimeResult<T> resultFromCompletion(Completion completion) {
+template <typename T> RuntimeResult<T> resultFromCompletion(Completion completion) {
     RuntimeResult<T> result;
     result.status = std::move(completion.status);
     if (!result.status.isOK()) return result;
@@ -162,10 +147,9 @@ RuntimeResult<T> resultFromCompletion(Completion completion) {
         result.value = std::move(*value);
         return result;
     }
-    result.status = status(
-        RuntimeStatusCode::internalFailure,
-        "runtime command completed without its declared result",
-        result.status.acceptanceSequence);
+    result.status = status(RuntimeStatusCode::internalFailure,
+                           "runtime command completed without its declared result",
+                           result.status.acceptanceSequence);
     return result;
 }
 
@@ -178,7 +162,7 @@ RuntimeResult<T> resultFromCompletion(Completion completion) {
 /// diagnostic ledger has a separate lock so tests can copy it without entering
 /// the command FIFO or granting access to machine state.
 class MachineRuntime::Impl final {
-public:
+  public:
     /// Starts the owner and blocks until BBCMicro construction succeeds or fails.
     /// @param options Controls opt-in in-memory ledger retention.
     explicit Impl(MachineRuntimeOptions options)
@@ -201,7 +185,8 @@ public:
             std::lock_guard lock(mutex_);
             if (std::this_thread::get_id() == ownerId_) {
                 return {status(RuntimeStatusCode::reentrantCall,
-                               "runtime commands cannot be submitted by the owner thread"), {}};
+                               "runtime commands cannot be submitted by the owner thread"),
+                        {}};
             }
         }
 
@@ -214,8 +199,9 @@ public:
             request->payloadDigest = payloadDigest;
             future = request->completion.get_future();
         } catch (const std::bad_alloc&) {
-            return {status(RuntimeStatusCode::resourceExhausted,
-                           "runtime command allocation failed"), {}};
+            return {
+                status(RuntimeStatusCode::resourceExhausted, "runtime command allocation failed"),
+                {}};
         } catch (const std::exception& error) {
             return {status(RuntimeStatusCode::internalFailure, error.what()), {}};
         }
@@ -226,14 +212,14 @@ public:
                 return !accepting_ || incomplete_ < MachineRuntime::commandCapacity;
             });
             if (!accepting_) {
-                return {status(RuntimeStatusCode::unavailable,
-                               "runtime is shutting down"), {}};
+                return {status(RuntimeStatusCode::unavailable, "runtime is shutting down"), {}};
             }
             try {
                 queue_.push_back(request);
             } catch (const std::bad_alloc&) {
-                return {status(RuntimeStatusCode::resourceExhausted,
-                               "runtime queue allocation failed"), {}};
+                return {
+                    status(RuntimeStatusCode::resourceExhausted, "runtime queue allocation failed"),
+                    {}};
             } catch (const std::exception& error) {
                 return {status(RuntimeStatusCode::internalFailure, error.what()), {}};
             }
@@ -256,8 +242,7 @@ public:
         try {
             std::unique_lock lock(mutex_);
             if (std::this_thread::get_id() == ownerId_) {
-                return status(RuntimeStatusCode::reentrantCall,
-                              "runtime owner cannot join itself");
+                return status(RuntimeStatusCode::reentrantCall, "runtime owner cannot join itself");
             }
             if (shutdownComplete_) return status(RuntimeStatusCode::ok);
             if (shutdownStarted_) {
@@ -270,9 +255,8 @@ public:
             capacityChanged_.notify_all();
             workAvailable_.notify_one();
 
-            capacityChanged_.wait(lock, [this] {
-                return incomplete_ < MachineRuntime::commandCapacity;
-            });
+            capacityChanged_.wait(lock,
+                                  [this] { return incomplete_ < MachineRuntime::commandCapacity; });
             acceptanceSequence = nextAcceptanceSequence_++;
             shutdownAcceptanceSequence_ = acceptanceSequence;
             ++incomplete_;
@@ -290,8 +274,8 @@ public:
         } catch (const std::exception& error) {
             return status(RuntimeStatusCode::internalFailure, error.what(), acceptanceSequence);
         } catch (...) {
-            return status(RuntimeStatusCode::internalFailure,
-                          "unknown shutdown failure", acceptanceSequence);
+            return status(RuntimeStatusCode::internalFailure, "unknown shutdown failure",
+                          acceptanceSequence);
         }
     }
 
@@ -314,7 +298,7 @@ public:
         }
     }
 
-private:
+  private:
     mutable std::mutex mutex_;
     std::condition_variable workAvailable_;
     std::condition_variable capacityChanged_;
@@ -400,9 +384,9 @@ private:
                 runtimeState_ = RuntimeState::shuttingDown;
                 const auto sequence = nextLedgerSequence_++;
                 const auto safePoint = currentSafePoint(sequence);
-                appendLedger({sequence, shutdownAcceptanceSequence_,
-                              LedgerEventKind::command, RuntimeCommandKind::shutdown,
-                              0, 0, 0, 0, RuntimeStatusCode::ok, safePoint});
+                appendLedger({sequence, shutdownAcceptanceSequence_, LedgerEventKind::command,
+                              RuntimeCommandKind::shutdown, 0, 0, 0, 0, RuntimeStatusCode::ok,
+                              safePoint});
                 {
                     std::lock_guard lock(mutex_);
                     shutdownMarkerReady_ = false;
@@ -427,8 +411,11 @@ private:
         } catch (const std::exception& error) {
             completion.status.code = RuntimeStatusCode::internalFailure;
             completion.status.acceptanceSequence = request.acceptanceSequence;
-            try { completion.status.message = error.what(); }
-            catch (...) { completion.status.message.clear(); }
+            try {
+                completion.status.message = error.what();
+            } catch (...) {
+                completion.status.message.clear();
+            }
         } catch (...) {
             completion.status.code = RuntimeStatusCode::internalFailure;
             completion.status.acceptanceSequence = request.acceptanceSequence;
@@ -441,14 +428,12 @@ private:
             completion.value = safePoint;
         }
         if (request.kind == RuntimeCommandKind::fault && completion.status.isOK()) {
-            completion.value = RuntimeFault{
-                runtimeState_ == RuntimeState::faulted, faultMessage_, safePoint};
+            completion.value =
+                RuntimeFault{runtimeState_ == RuntimeState::faulted, faultMessage_, safePoint};
         }
-        appendLedger({sequence, request.acceptanceSequence,
-                      LedgerEventKind::command, request.kind,
-                      requestedCycles(request), actualCycles(completion),
-                      request.payloadDigest, completionDigest(completion.value),
-                      completion.status.code, safePoint});
+        appendLedger({sequence, request.acceptanceSequence, LedgerEventKind::command, request.kind,
+                      requestedCycles(request), actualCycles(completion), request.payloadDigest,
+                      completionDigest(completion.value), completion.status.code, safePoint});
 
         try {
             request.completion.set_value(std::move(completion));
@@ -506,7 +491,8 @@ private:
             const auto& bytes = std::get<std::vector<std::uint8_t>>(request.payload);
             if (!machine_->loadOSROM(bytes)) {
                 return {status(RuntimeStatusCode::invalidArgument,
-                               "OS ROM must be exactly 16384 bytes", accepted), {}};
+                               "OS ROM must be exactly 16384 bytes", accepted),
+                        {}};
             }
             return ok();
         }
@@ -517,7 +503,8 @@ private:
             const auto& payload = std::get<SidewaysPayload>(request.payload);
             if (!machine_->loadSidewaysROM(payload.bank, payload.bytes)) {
                 return {status(RuntimeStatusCode::invalidArgument,
-                               "invalid sideways ROM bank or size", accepted), {}};
+                               "invalid sideways ROM bank or size", accepted),
+                        {}};
             }
             return ok();
         }
@@ -526,10 +513,11 @@ private:
                 return invalidState("cannot mount media while runtime is faulted");
             }
             const auto& payload = std::get<DiscPayload>(request.payload);
-            if (!machine_->mountDisc(payload.drive, payload.bytes,
-                                     payload.layout, payload.writable)) {
-                return {status(RuntimeStatusCode::invalidArgument,
-                               "invalid drive or disc image", accepted), {}};
+            if (!machine_->mountDisc(payload.drive, payload.bytes, payload.layout,
+                                     payload.writable)) {
+                return {status(RuntimeStatusCode::invalidArgument, "invalid drive or disc image",
+                               accepted),
+                        {}};
             }
             return ok();
         }
@@ -540,8 +528,8 @@ private:
             const auto payload = std::get<KeyPayload>(request.payload);
             if (payload.column >= 16 || payload.row >= 16) {
                 return {status(RuntimeStatusCode::invalidArgument,
-                               "keyboard coordinates must be in the range 0...15",
-                               accepted), {}};
+                               "keyboard coordinates must be in the range 0...15", accepted),
+                        {}};
             }
             machine_->setKey(payload.column, payload.row, payload.pressed);
             return ok();
@@ -577,8 +565,8 @@ private:
             const auto payload = std::get<AudioPayload>(request.payload);
             if (!std::isfinite(payload.sampleRate) || payload.sampleRate <= 0) {
                 return {status(RuntimeStatusCode::invalidArgument,
-                               "audio sample rate must be finite and positive",
-                               accepted), {}};
+                               "audio sample rate must be finite and positive", accepted),
+                        {}};
             }
             std::vector<float> samples(payload.frames);
             machine_->sound().render(samples.data(), samples.size(), payload.sampleRate);
@@ -587,13 +575,14 @@ private:
         case RuntimeCommandKind::shutdown:
             break;
         }
-        return {status(RuntimeStatusCode::internalFailure,
-                       "unhandled runtime command", accepted), {}};
+        return {status(RuntimeStatusCode::internalFailure, "unhandled runtime command", accepted),
+                {}};
     }
 
     Completion executeBounded(std::uint64_t cycles, std::uint64_t accepted) {
         const auto before = machine_->cpu().state();
-        const auto ramBefore = std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
+        const auto ramBefore =
+            std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runFor(cycles)};
         } catch (const std::exception& error) {
@@ -601,46 +590,45 @@ private:
             machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = error.what();
-            return {status(RuntimeStatusCode::executionFailed,
-                           faultMessage_, accepted), {}};
+            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
         } catch (...) {
             machine_->cpu().setState(before);
             machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = "unknown execution failure";
-            return {status(RuntimeStatusCode::executionFailed,
-                           faultMessage_, accepted), {}};
+            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
         }
     }
 
     Completion executeUntilFrame(std::uint64_t cycles, std::uint64_t accepted) {
         const auto before = machine_->cpu().state();
-        const auto ramBefore = std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
+        const auto ramBefore =
+            std::vector<std::uint8_t>(machine_->ram().begin(), machine_->ram().end());
         try {
-            return {status(RuntimeStatusCode::ok, {}, accepted),
-                    machine_->runUntilFrame(cycles)};
+            return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runUntilFrame(cycles)};
         } catch (const std::exception& error) {
             machine_->cpu().setState(before);
             machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = error.what();
-            return {status(RuntimeStatusCode::executionFailed,
-                           faultMessage_, accepted), {}};
+            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
         } catch (...) {
             machine_->cpu().setState(before);
             machine_->restoreRAM(ramBefore);
             runtimeState_ = RuntimeState::faulted;
             faultMessage_ = "unknown execution failure";
-            return {status(RuntimeStatusCode::executionFailed,
-                           faultMessage_, accepted), {}};
+            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
         }
     }
 
     void executeRunningSlice() noexcept {
         const auto before = machine_->cpu().state();
         std::vector<std::uint8_t> ramBefore;
-        try { ramBefore.assign(machine_->ram().begin(), machine_->ram().end()); }
-        catch (...) { ramBefore.clear(); }
+        try {
+            ramBefore.assign(machine_->ram().begin(), machine_->ram().end());
+        } catch (...) {
+            ramBefore.clear();
+        }
         RuntimeStatusCode code = RuntimeStatusCode::ok;
         std::uint64_t actual = 0;
         try {
@@ -665,15 +653,17 @@ private:
 
         const auto sequence = nextLedgerSequence_++;
         const auto safePoint = currentSafePoint(sequence);
-        appendLedger({sequence, 0, LedgerEventKind::executionSlice,
-                      RuntimeCommandKind::runCycles,
-                      MachineRuntime::executionSliceCycles, actual, 0,
-                      mix(1, actual), code, safePoint});
+        appendLedger({sequence, 0, LedgerEventKind::executionSlice, RuntimeCommandKind::runCycles,
+                      MachineRuntime::executionSliceCycles, actual, 0, mix(1, actual), code,
+                      safePoint});
     }
 
     void setFaultMessage(const char* message) noexcept {
-        try { faultMessage_ = message; }
-        catch (...) { faultMessage_.clear(); }
+        try {
+            faultMessage_ = message;
+        } catch (...) {
+            faultMessage_.clear();
+        }
     }
 
     SafePoint currentSafePoint(std::uint64_t ledgerSequence) const {
@@ -742,48 +732,41 @@ RuntimeStatus MachineRuntime::loadOSROM(std::span<const std::uint8_t> rom) {
     try {
         std::vector<std::uint8_t> copy(rom.begin(), rom.end());
         const auto digest = hashBytes(copy);
-        return impl_->submit(RuntimeCommandKind::loadOSROM,
-                             std::move(copy), digest).status;
+        return impl_->submit(RuntimeCommandKind::loadOSROM, std::move(copy), digest).status;
     } catch (const std::bad_alloc&) {
-        return status(RuntimeStatusCode::resourceExhausted,
-                      "OS ROM command copy failed");
+        return status(RuntimeStatusCode::resourceExhausted, "OS ROM command copy failed");
     }
 }
 
-RuntimeStatus MachineRuntime::loadSidewaysROM(
-    std::uint8_t bank, std::span<const std::uint8_t> rom) {
+RuntimeStatus MachineRuntime::loadSidewaysROM(std::uint8_t bank,
+                                              std::span<const std::uint8_t> rom) {
     try {
         SidewaysPayload payload{bank, {rom.begin(), rom.end()}};
         const auto digest = mix(hashBytes(payload.bytes), bank);
-        return impl_->submit(RuntimeCommandKind::loadSidewaysROM,
-                             std::move(payload), digest).status;
+        return impl_->submit(RuntimeCommandKind::loadSidewaysROM, std::move(payload), digest)
+            .status;
     } catch (const std::bad_alloc&) {
-        return status(RuntimeStatusCode::resourceExhausted,
-                      "sideways ROM command copy failed");
+        return status(RuntimeStatusCode::resourceExhausted, "sideways ROM command copy failed");
     }
 }
 
-RuntimeStatus MachineRuntime::mountDisc(
-    unsigned drive, std::span<const std::uint8_t> bytes,
-    DiscImage::Layout layout, bool writable) {
+RuntimeStatus MachineRuntime::mountDisc(unsigned drive, std::span<const std::uint8_t> bytes,
+                                        DiscImage::Layout layout, bool writable) {
     try {
         DiscPayload payload{drive, {bytes.begin(), bytes.end()}, layout, writable};
         auto digest = mix(hashBytes(payload.bytes), drive);
         digest = mix(digest, layout == DiscImage::Layout::DSD ? 1 : 0);
         digest = mix(digest, writable ? 1 : 0);
-        return impl_->submit(RuntimeCommandKind::mountDisc,
-                             std::move(payload), digest).status;
+        return impl_->submit(RuntimeCommandKind::mountDisc, std::move(payload), digest).status;
     } catch (const std::bad_alloc&) {
-        return status(RuntimeStatusCode::resourceExhausted,
-                      "disc command copy failed");
+        return status(RuntimeStatusCode::resourceExhausted, "disc command copy failed");
     }
 }
 
-RuntimeStatus MachineRuntime::setKey(
-    std::uint8_t column, std::uint8_t row, bool pressed) {
+RuntimeStatus MachineRuntime::setKey(std::uint8_t column, std::uint8_t row, bool pressed) {
     const auto digest = mix(mix(column, row), pressed ? 1 : 0);
-    return impl_->submit(RuntimeCommandKind::setKey,
-                         KeyPayload{column, row, pressed}, digest).status;
+    return impl_->submit(RuntimeCommandKind::setKey, KeyPayload{column, row, pressed}, digest)
+        .status;
 }
 
 RuntimeStatus MachineRuntime::setBreak(bool pressed) {
@@ -798,12 +781,11 @@ RuntimeResult<OwnedFrame> MachineRuntime::frame() {
     return resultFromCompletion<OwnedFrame>(impl_->submit(RuntimeCommandKind::frame));
 }
 
-RuntimeResult<std::vector<float>> MachineRuntime::renderAudio(
-    std::size_t frames, double sampleRate) {
+RuntimeResult<std::vector<float>> MachineRuntime::renderAudio(std::size_t frames,
+                                                              double sampleRate) {
     auto digest = mix(frames, std::bit_cast<std::uint64_t>(sampleRate));
     return resultFromCompletion<std::vector<float>>(
-        impl_->submit(RuntimeCommandKind::renderAudio,
-                      AudioPayload{frames, sampleRate}, digest));
+        impl_->submit(RuntimeCommandKind::renderAudio, AudioPayload{frames, sampleRate}, digest));
 }
 
 RuntimeResult<SafePoint> MachineRuntime::safePoint() {

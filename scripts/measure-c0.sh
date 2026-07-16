@@ -27,6 +27,19 @@ case "${samples}" in *[!0-9]*|0|'') printf 'samples must be a positive integer\n
 
 mkdir -p "$(dirname "${output}")"
 work_dir="$(dirname "${output}")/.measurement-work"
+work_parent="$(cd "$(dirname "${work_dir}")" && pwd)"
+work_target="${work_parent}/$(basename "${work_dir}")"
+case "${work_target}" in
+    /|"${root}"|"${HOME}"|"${root}/.git"|"${root}/.git"/*)
+        printf 'unsafe measurement work directory: %s\n' "${work_target}" >&2; exit 2 ;;
+    "${root}/.build"/*) ;;
+    *)
+        [[ ! -e "${work_target}" ]] || {
+            printf 'refusing to remove an existing unowned directory: %s\n' "${work_target}" >&2
+            exit 2
+        }
+        ;;
+esac
 rm -rf -- "${work_dir}"
 mkdir -p "${work_dir}"
 sample_records="${work_dir}/samples.txt"

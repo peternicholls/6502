@@ -36,7 +36,7 @@ enum class RuntimeStatusCode {
 /// Operation-owned status with no borrowed diagnostic storage.
 struct RuntimeStatus {
     RuntimeStatusCode code = RuntimeStatusCode::ok; ///< Stable category.
-    std::string message; ///< Operation-owned diagnostic; empty for success.
+    std::string message;                  ///< Operation-owned diagnostic; empty for success.
     std::uint64_t acceptanceSequence = 0; ///< FIFO identity, or zero if never accepted.
 
     /// Reports whether this operation completed successfully.
@@ -51,18 +51,17 @@ struct RuntimeStatus {
 };
 
 /// Status plus an output that exists only for a successful operation.
-template <typename T>
-struct RuntimeResult {
-    RuntimeStatus status; ///< Operation-owned outcome.
+template <typename T> struct RuntimeResult {
+    RuntimeStatus status;   ///< Operation-owned outcome.
     std::optional<T> value; ///< Present only when status is successful.
 };
 
 /// Caller-owned copy of the most recently completed frame.
 struct OwnedFrame {
-    bool available = false; ///< Whether one complete frame exists.
-    std::uint32_t width = 0; ///< Pixel width when available.
-    std::uint32_t height = 0; ///< Pixel height when available.
-    std::uint64_t number = 0; ///< CRTC frame identity.
+    bool available = false;         ///< Whether one complete frame exists.
+    std::uint32_t width = 0;        ///< Pixel width when available.
+    std::uint32_t height = 0;       ///< Pixel height when available.
+    std::uint64_t number = 0;       ///< CRTC frame identity.
     std::vector<std::uint8_t> rgba; ///< Packed 8-bit RGBA bytes owned by this value.
 
     /// Compares availability, metadata, and all owned RGBA bytes.
@@ -71,10 +70,10 @@ struct OwnedFrame {
 
 /// Identity of a completed-instruction and fully advanced-device boundary.
 struct SafePoint {
-    std::uint64_t cpuCycles = 0; ///< Completed CPU cycles.
-    std::uint64_t frameNumber = 0; ///< Latest completed frame identity.
+    std::uint64_t cpuCycles = 0;               ///< Completed CPU cycles.
+    std::uint64_t frameNumber = 0;             ///< Latest completed frame identity.
     RuntimeState state = RuntimeState::paused; ///< Lifecycle state at this boundary.
-    std::uint64_t ledgerSequence = 0; ///< Latest total command/slice identity.
+    std::uint64_t ledgerSequence = 0;          ///< Latest total command/slice identity.
 
     /// Compares the complete externally observable safe-point identity.
     friend bool operator==(const SafePoint&, const SafePoint&) = default;
@@ -83,8 +82,8 @@ struct SafePoint {
 /// Stable query result for a contained execution failure.
 struct RuntimeFault {
     bool available = false; ///< Whether the runtime is faulted.
-    std::string message; ///< Stable owned execution diagnostic.
-    SafePoint safePoint; ///< Last complete boundary retained with the fault.
+    std::string message;    ///< Stable owned execution diagnostic.
+    SafePoint safePoint;    ///< Last complete boundary retained with the fault.
 
     /// Compares availability, diagnostic, and contained safe point.
     friend bool operator==(const RuntimeFault&, const RuntimeFault&) = default;
@@ -119,16 +118,16 @@ enum class LedgerEventKind {
 
 /// Opt-in in-memory evidence for accepted order and emulated execution work.
 struct LedgerEntry {
-    std::uint64_t sequence = 0; ///< Total owner execution order.
-    std::uint64_t acceptanceSequence = 0; ///< FIFO identity; zero for internal slices.
+    std::uint64_t sequence = 0;                       ///< Total owner execution order.
+    std::uint64_t acceptanceSequence = 0;             ///< FIFO identity; zero for internal slices.
     LedgerEventKind event = LedgerEventKind::command; ///< Command or execution slice.
     RuntimeCommandKind command = RuntimeCommandKind::runtimeState; ///< Command identity.
-    std::uint64_t requestedCycles = 0; ///< Emulated budget where applicable.
-    std::uint64_t actualCycles = 0; ///< Whole-instruction work completed.
-    std::uint64_t payloadDigest = 0; ///< Deterministic copied-input signature.
-    std::uint64_t resultDigest = 0; ///< Deterministic owned-result signature.
+    std::uint64_t requestedCycles = 0;                ///< Emulated budget where applicable.
+    std::uint64_t actualCycles = 0;                   ///< Whole-instruction work completed.
+    std::uint64_t payloadDigest = 0;                  ///< Deterministic copied-input signature.
+    std::uint64_t resultDigest = 0;                   ///< Deterministic owned-result signature.
     RuntimeStatusCode status = RuntimeStatusCode::ok; ///< Operation category.
-    SafePoint safePoint; ///< Boundary after this event.
+    SafePoint safePoint;                              ///< Boundary after this event.
 
     /// Compares every recorded input, result, order, and safe-point field.
     friend bool operator==(const LedgerEntry&, const LedgerEntry&) = default;
@@ -146,7 +145,7 @@ struct MachineRuntimeOptions {
 /// escapes. `docs/code/runtime-ownership.md` owns the lifecycle and ordering model.
 /// Documentation rationale: that guide also owns safe-point and replay constraints.
 class MachineRuntime final {
-public:
+  public:
     /// Maximum accepted commands that may remain incomplete.
     static constexpr std::size_t commandCapacity = 64;
     /// Minimum whole-instruction budget selected during sustained execution.
@@ -196,24 +195,22 @@ public:
     /// @param bank Bank in the inclusive range 0...15.
     /// @param rom Source bytes up to 16 KiB, copied before acceptance.
     /// @return Validation, resource, lifecycle, or success status.
-    [[nodiscard]] RuntimeStatus loadSidewaysROM(
-        std::uint8_t bank, std::span<const std::uint8_t> rom);
+    [[nodiscard]] RuntimeStatus loadSidewaysROM(std::uint8_t bank,
+                                                std::span<const std::uint8_t> rom);
     /// Copies and mounts one validated DFS image on the owner.
     /// @param drive Drive 0 or 1.
     /// @param bytes Complete image bytes copied before acceptance.
     /// @param layout SSD or DSD byte ordering.
     /// @param writable Whether the runtime-owned copy permits writes.
     /// @return Validation, resource, lifecycle, or success status.
-    [[nodiscard]] RuntimeStatus mountDisc(
-        unsigned drive, std::span<const std::uint8_t> bytes,
-        DiscImage::Layout layout, bool writable = false);
+    [[nodiscard]] RuntimeStatus mountDisc(unsigned drive, std::span<const std::uint8_t> bytes,
+                                          DiscImage::Layout layout, bool writable = false);
     /// Changes one keyboard-matrix bit in FIFO order.
     /// @param column Matrix column in the inclusive range 0...15.
     /// @param row Matrix row in the inclusive range 0...15.
     /// @param pressed Whether the key is pressed.
     /// @return Validation, lifecycle, or success status.
-    [[nodiscard]] RuntimeStatus setKey(
-        std::uint8_t column, std::uint8_t row, bool pressed);
+    [[nodiscard]] RuntimeStatus setKey(std::uint8_t column, std::uint8_t row, bool pressed);
     /// Changes BREAK state without inventing a start or pause transition.
     /// @param pressed Whether BREAK is held.
     /// @return Lifecycle or success status.
@@ -228,8 +225,8 @@ public:
     /// @param frames Number of samples to return.
     /// @param sampleRate Finite positive sample rate in hertz.
     /// @return Owned samples or validation/lifecycle/resource failure.
-    [[nodiscard]] RuntimeResult<std::vector<float>> renderAudio(
-        std::size_t frames, double sampleRate);
+    [[nodiscard]] RuntimeResult<std::vector<float>> renderAudio(std::size_t frames,
+                                                                double sampleRate);
     /// Queries the current completed-instruction/device-tick identity in FIFO order.
     /// @return Safe-point identity on success.
     [[nodiscard]] RuntimeResult<SafePoint> safePoint();
@@ -250,7 +247,7 @@ public:
     /// @return Monotonic accepted-command count, including an accepted shutdown marker.
     [[nodiscard]] std::uint64_t acceptedCommandCount() const noexcept;
 
-private:
+  private:
     /// Hides the machine, synchronization, queue, owner, and diagnostic ledger.
     class Impl;
     std::unique_ptr<Impl> impl_;

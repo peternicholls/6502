@@ -25,10 +25,14 @@ unsigned VideoULA::bitsPerPixel() const noexcept {
     // ULA bits 2-3 select 10/20/40/80-character serializer rates. The normal
     // bitmap modes use the latter three as 4/2/1 bits per logical pixel.
     switch ((control_ >> 2) & 0x03) {
-        case 1: return 4;
-        case 2: return 2;
-        case 3: return 1;
-        default: return 1;
+    case 1:
+        return 4;
+    case 2:
+        return 2;
+    case 3:
+        return 1;
+    default:
+        return 1;
     }
 }
 
