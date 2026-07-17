@@ -5,6 +5,7 @@
 #include "beeb/runtime.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <condition_variable>
 #include <cstring>
 #include <exception>
@@ -565,6 +566,28 @@ beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
         *out_diagnostics = output;
         return makeStatus(BEEB_STATUS_OK);
     });
+}
+
+beeb_status beeb_calculate_emulation_rate(const beeb_output_diagnostics* before,
+                                          const beeb_output_diagnostics* after, double host_seconds,
+                                          double* out_rate) {
+    if (!before) return missingOutput("earlier output diagnostics are null");
+    if (!after) return missingOutput("later output diagnostics are null");
+    if (!out_rate) return missingOutput("emulation-rate output is null");
+    if (!std::isfinite(host_seconds) || host_seconds <= 0.0)
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "host observation interval must be finite and positive");
+    if (after->total_cycles < before->total_cycles)
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "emulated cycle observations must not regress");
+
+    constexpr double emulatedCyclesPerSecond = 2'000'000.0;
+    const auto cycleDelta = after->total_cycles - before->total_cycles;
+    const auto rate = (static_cast<double>(cycleDelta) / emulatedCyclesPerSecond) / host_seconds;
+    if (!std::isfinite(rate))
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "emulation-rate observation is not finite");
+    *out_rate = rate;
+    return makeStatus(BEEB_STATUS_OK);
 }
 
 beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {

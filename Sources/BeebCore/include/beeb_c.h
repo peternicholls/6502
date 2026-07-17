@@ -328,6 +328,17 @@ beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity
 beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
                                         beeb_output_diagnostics* out_diagnostics);
 
+/// Calculates informational emulation speed from two host observations.
+/// @param before Earlier diagnostic observation.
+/// @param after Later diagnostic observation with a nondecreasing cycle count.
+/// @param host_seconds Positive finite elapsed host-observation seconds.
+/// @param out_rate Required output receiving emulated seconds per host second.
+/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for null pointers,
+/// regressing cycles, a non-positive/non-finite interval, or non-finite result.
+beeb_status beeb_calculate_emulation_rate(const beeb_output_diagnostics* before,
+                                          const beeb_output_diagnostics* after, double host_seconds,
+                                          double* out_rate);
+
 /// Changes one keyboard-matrix bit in FIFO order.
 /// @param machine Live runtime token.
 /// @param column Matrix column in the inclusive range 0...15.
