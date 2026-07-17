@@ -6,7 +6,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/testlib.sh"
 c2_prepare_paths
 source_path="${c2_fixture_dir}/output-races.cpp"
 binary_path="${c2_build_dir}/output-races"
+tsan_binary_path="${c2_build_dir}/output-races-tsan"
 cat >"${source_path}" <<'CPP'
+#include "beeb_c.h"
 #include "beeb/runtime.hpp"
 
 #include <array>
@@ -41,6 +43,80 @@ bool valid(const beeb::OutputDiagnostics& value) {
            value.counters.audioSamplesProduced ==
                value.counters.audioSamplesConsumed + value.counters.audioSamplesOverrun +
                    value.audioDepth;
+}
+
+bool valid(const beeb_output_diagnostics& value) {
+    return value.frame_depth <= value.frame_capacity &&
+           value.audio_depth <= value.audio_capacity &&
+           value.frames_produced ==
+               value.frames_consumed + value.frames_dropped + value.frame_depth &&
+           value.audio_samples_produced == value.audio_samples_consumed +
+                                               value.audio_samples_overrun + value.audio_depth;
+}
+
+/// Exercises the public C admission/serialization boundary with independent
+/// caller-owned result storage on every producer and consumer thread.
+bool runCBoundaryRace() {
+    beeb_machine* machine = nullptr;
+    if (beeb_create(&machine).code != BEEB_STATUS_OK || !machine) return false;
+    const auto rom = closedLoopROM();
+    if (beeb_load_os_rom(machine, rom.data(), rom.size()).code != BEEB_STATUS_OK ||
+        beeb_reset(machine).code != BEEB_STATUS_OK) {
+        (void)beeb_destroy(machine);
+        return false;
+    }
+
+    std::atomic<unsigned> failures{0};
+    std::jthread producer([&] {
+        for (unsigned iteration = 0; iteration < 200; ++iteration) {
+            std::uint64_t actual = 0;
+            const auto result = beeb_run_cycles(machine, 2'048, &actual);
+            if (result.code != BEEB_STATUS_OK || actual < 2'048) ++failures;
+        }
+    });
+    std::array<std::jthread, 4> consumers;
+    for (auto& consumer : consumers) {
+        consumer = std::jthread([&] {
+            std::uint64_t previousCycles = 0;
+            for (unsigned iteration = 0; iteration < 200; ++iteration) {
+                beeb_output_diagnostics observed{};
+                if (beeb_get_output_diagnostics(machine, &observed).code != BEEB_STATUS_OK ||
+                    !valid(observed) || observed.total_cycles < previousCycles) {
+                    ++failures;
+                } else {
+                    previousCycles = observed.total_cycles;
+                }
+
+                std::array<float, 64> audio{};
+                beeb_audio_drain_result drained{};
+                const auto audioStatus = beeb_drain_audio(machine, audio.data(), audio.size(),
+                                                          &drained);
+                if ((audioStatus.code != BEEB_STATUS_OK &&
+                     audioStatus.code != BEEB_STATUS_UNDERRUN) ||
+                    drained.copied + drained.shortfall != audio.size())
+                    ++failures;
+
+                beeb_frame frame{};
+                const auto frameStatus = beeb_dequeue_frame(machine, &frame);
+                if (frameStatus.code == BEEB_STATUS_OK) {
+                    if (!frame.available || !frame.rgba ||
+                        beeb_frame_release(&frame).code != BEEB_STATUS_OK)
+                        ++failures;
+                } else if (frameStatus.code != BEEB_STATUS_EMPTY) {
+                    ++failures;
+                }
+            }
+        });
+    }
+    producer.join();
+    for (auto& consumer : consumers)
+        consumer.join();
+
+    beeb_output_diagnostics final{};
+    const bool success = failures.load() == 0 &&
+                         beeb_get_output_diagnostics(machine, &final).code == BEEB_STATUS_OK &&
+                         valid(final);
+    return beeb_destroy(machine).code == BEEB_STATUS_OK && success;
 }
 
 } // namespace
@@ -109,10 +185,42 @@ int main() {
     if (!runtime.shutdown().isOK()) return 8;
 
     const auto rejected = runtime.outputDiagnostics();
-    return rejected.status.code == beeb::RuntimeStatusCode::unavailable && !rejected.value ? 0 : 9;
+    if (rejected.status.code != beeb::RuntimeStatusCode::unavailable || rejected.value) return 9;
+    return runCBoundaryRace() ? 0 : 10;
 }
 CPP
 
-"${c2_cxx}" "${c2_common_flags[@]}" \
-    "${c2_core_sources[@]}" "${source_path}" -o "${binary_path}"
-"${binary_path}"
+c2_tsan_supported() {
+    # A successful link is not enough on hosts where the TSan runtime cannot
+    # reserve its shadow address space, so support is established by execution.
+    local probe_source="${c2_build_dir}/tsan-probe.cpp"
+    local probe_binary="${c2_build_dir}/tsan-probe"
+    printf '%s\n' \
+        '#include <thread>' \
+        'int main() { int value = 0; std::thread worker([&] { value = 1; }); worker.join(); return value == 1 ? 0 : 1; }' \
+        >"${probe_source}"
+    if ! "${c2_cxx}" -std=c++20 -fsanitize=thread -pthread \
+        "${probe_source}" -o "${probe_binary}" >/dev/null 2>&1; then
+        return 1
+    fi
+    sh -c 'TSAN_OPTIONS="halt_on_error=1:exitcode=66" "$1" >/dev/null 2>&1' \
+        c2-tsan-probe "${probe_binary}" >/dev/null 2>&1
+}
+
+if [[ "${C2_ONLY_TSAN:-0}" != "1" ]]; then
+    "${c2_cxx}" "${c2_common_flags[@]}" \
+        "${c2_core_sources[@]}" "${source_path}" -o "${binary_path}"
+    "${binary_path}"
+fi
+
+if c2_tsan_supported; then
+    "${c2_cxx}" "${c2_common_flags[@]}" -fsanitize=thread -fno-omit-frame-pointer \
+        "${c2_core_sources[@]}" "${source_path}" -o "${tsan_binary_path}"
+    TSAN_OPTIONS="halt_on_error=1:exitcode=66" "${tsan_binary_path}"
+elif [[ "${C2_REQUIRE_TSAN:-0}" == "1" ]]; then
+    printf 'ERROR: C2 ThreadSanitizer is required but is not supported by %s on this host\n' \
+        "${c2_cxx}" >&2
+    exit 1
+else
+    printf 'N/A: C2 ThreadSanitizer is not supported by %s on this host\n' "${c2_cxx}"
+fi

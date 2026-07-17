@@ -8,6 +8,15 @@ import BeebCore
 /// Validates the Swift wrapper's typed errors, lifecycle/concurrency contract,
 /// and owned CPU/video observations against the C runtime boundary.
 final class BeebMachineTests: XCTestCase {
+    /// Cross-boundary values retained after C storage is released, used to prove
+    /// complete Swift replay determinism rather than only status-category mapping.
+    private struct OutputReplay: Equatable {
+        let frameNumber: UInt64
+        let rgba: Data
+        let audio: BeebAudioDrain
+        let diagnostics: BeebOutputDiagnostics
+    }
+
     private func validOSROM() -> Data {
         var bytes = [UInt8](repeating: 0xEA, count: 16 * 1024)
         bytes[0x3FFC] = 0x00
@@ -66,6 +75,26 @@ final class BeebMachineTests: XCTestCase {
             XCTAssertEqual(category, expected, file: file, line: line)
             XCTAssertFalse(message.isEmpty, file: file, line: line)
         }
+    }
+
+    /// Runs the same bounded producer/consumer sequence on one fresh runtime and
+    /// returns only independently owned Swift values for exact replay comparison.
+    private func captureOutputReplay() throws -> OutputReplay {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(outputOSROM())
+        try machine.reset()
+        for _ in 0..<6 {
+            XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
+        }
+        _ = try machine.run(cycles: 2_000_000)
+        let frame = try machine.dequeueVideoFrame()
+        let audio = try machine.drainAudio(maximumSamples: 4_096)
+        return OutputReplay(
+            frameNumber: frame.number,
+            rgba: frame.rgba,
+            audio: audio,
+            diagnostics: try machine.outputDiagnostics()
+        )
     }
 
     func testPublicVersionMatchesReleaseVersion() {
@@ -421,5 +450,55 @@ final class BeebMachineTests: XCTestCase {
         assertCoreStatus(.invalidArgument) {
             _ = try BeebMachine.emulationRate(from: after, to: before, hostSeconds: 1.0)
         }
+    }
+
+    func testC2OutputReplayIsExactAcrossFreshSwiftRuntimes() throws {
+        let first = try captureOutputReplay()
+        let second = try captureOutputReplay()
+        XCTAssertGreaterThan(first.frameNumber, 0)
+        XCTAssertFalse(first.rgba.isEmpty)
+        XCTAssertEqual(first, second)
+    }
+
+    func testC2ConcurrentSwiftOutputProductionAndConsumption() async throws {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(outputOSROM())
+        try machine.reset()
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                for _ in 0..<200 { _ = try machine.run(cycles: 2_048) }
+            }
+            for _ in 0..<4 {
+                group.addTask {
+                    for _ in 0..<200 {
+                        _ = try machine.outputDiagnostics()
+                        do {
+                            _ = try machine.drainAudio(maximumSamples: 64)
+                        } catch BeebError.audioPressure(.underrun, _) {
+                            // Partial owned samples are the documented recoverable result.
+                        }
+                        do {
+                            _ = try machine.dequeueVideoFrame()
+                        } catch BeebError.coreStatus(.empty, _) {
+                            // Polling before the next complete frame is ordinary pressure.
+                        }
+                    }
+                }
+            }
+            try await group.waitForAll()
+        }
+
+        let diagnostics = try machine.outputDiagnostics()
+        XCTAssertEqual(
+            diagnostics.counters.framesProduced,
+            diagnostics.counters.framesConsumed + diagnostics.counters.framesDropped
+                + UInt64(diagnostics.frameDepth)
+        )
+        XCTAssertEqual(
+            diagnostics.counters.audioSamplesProduced,
+            diagnostics.counters.audioSamplesConsumed
+                + diagnostics.counters.audioSamplesOverrun + UInt64(diagnostics.audioDepth)
+        )
     }
 }
