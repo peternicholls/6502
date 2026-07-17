@@ -107,6 +107,7 @@ final class BeebMachineTests: XCTestCase {
 
     func testEveryCoreStatusCategoryMapsDirectly() {
         let cases: [(beeb_status_code, BeebStatusCategory)] = [
+            (BEEB_STATUS_OK, .ok),
             (BEEB_STATUS_EMPTY, .empty),
             (BEEB_STATUS_UNDERRUN, .underrun),
             (BEEB_STATUS_OVERRUN, .overrun),
