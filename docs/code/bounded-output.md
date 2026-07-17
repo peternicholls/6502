@@ -80,11 +80,47 @@ SN76489 production, changes demand, or advances emulated state.
 
 ## Diagnostics and recovery
 
-One consistent snapshot exposes emulated progress, queue depths and capacities,
-audio demand, and pressure counters. Host helpers calculate an informational
-emulation-rate ratio from explicit observations; host time is not retained by
-BeebCore. Empty, pressure, lifecycle, and production failures remain structured
-and recoverable at each language boundary.
+`MachineRuntime::outputDiagnostics()` is a serialized owner command. Its
+consistency point is after every earlier accepted command or execution slice
+and before any later one. It copies completed CPU cycles, latest published frame
+identity, both queue depths and fixed capacities, audio demand, every monotonic
+flow counter, and the latest output status into one owned value. The query
+performs no machine, device, queue, demand, counter, or status mutation and is
+available while paused, running, or faulted. C copies the same fields into
+`beeb_output_diagnostics`; Swift maps them into owned `Sendable` values without
+adding a lock.
+
+The snapshot itself is the consistency scope for both conservation equations:
+
+```text
+frames produced = frames consumed + frames dropped + frame depth
+audio samples produced = audio samples consumed + audio samples overrun + audio depth
+```
+
+All counters are cumulative and monotonic for the runtime lifetime, including
+across device reset. `last_status` / `lastStatus` records the latest output
+publication or consumption outcome at that boundary. A later output operation
+may replace it, while cumulative counters retain the history needed to detect
+pressure. Empty frame output means retry after emulated progress. Audio
+underrun returns valid partial samples and exact demand so the host can consume
+the partial value and request again. Overrun means the documented oldest data
+has already been discarded; the host can continue with retained newest output
+and use the counter delta to report loss. Faulted and shutting-down lifecycle
+statuses remain distinct from those recoverable output conditions.
+
+Host-observed speed is deliberately separate from the snapshot command. Given
+two observations and a positive finite host interval, C and Swift calculate:
+
+```text
+rate = ((later total cycles - earlier total cycles) / 2,000,000)
+       / elapsed host seconds
+```
+
+The unit is emulated seconds per host second: `1.0` is real time and `2.0` is
+twice real time. Regressing cycle observations and non-positive or non-finite
+intervals are invalid without changing the caller's result. Synthetic evidence
+must be within 0.1% of its expected ratio. The helper stores no timestamp,
+advances no core state, and gives host time no authority over production.
 
 ## Evidence
 

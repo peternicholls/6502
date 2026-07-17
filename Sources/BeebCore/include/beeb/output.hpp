@@ -110,6 +110,12 @@ struct OutputCounters {
 };
 
 /// Consistent owned observation of emulated progress and output pressure.
+///
+/// `MachineRuntime` captures every field on its owner after all earlier
+/// accepted work and before any later work. Reading a snapshot does not mutate
+/// machine, queue, counter, demand, or status state. Counters remain monotonic
+/// across device reset for the runtime lifetime, and the frame/audio produced
+/// equations include the depths carried by this same value.
 struct OutputDiagnostics {
     std::uint64_t totalCycles = 0;       ///< Completed emulated CPU cycles.
     std::uint64_t latestFrameNumber = 0; ///< Latest complete emulated frame identity.

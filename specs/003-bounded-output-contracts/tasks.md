@@ -72,7 +72,7 @@
 - [x] T031 [US3] Expose total cycles, depths, capacities, demand, and counters through the C boundary in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`
 - [x] T032 [US3] Implement the pure C host-observation emulation-rate helper without core host-time state in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`
 - [x] T033 [US3] Map diagnostic snapshots and the pure rate calculation into Swift values in `Sources/BeebKit/BeebMachine.swift`
-- [ ] T034 [US3] Document consistency points, counter equations, rate units/tolerance, and recovery guidance in `Sources/BeebCore/include/beeb_c.h`, `Sources/BeebCore/include/beeb/output.hpp`, and `docs/code/bounded-output.md`
+- [x] T034 [US3] Document consistency points, counter equations, rate units/tolerance, and recovery guidance in `Sources/BeebCore/include/beeb_c.h`, `Sources/BeebCore/include/beeb/output.hpp`, and `docs/code/bounded-output.md`
 
 **Checkpoint**: All C2 output stories are independently testable and verified in a Lore commit before Xcode elevation.
 

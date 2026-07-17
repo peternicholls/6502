@@ -127,6 +127,13 @@ typedef struct beeb_audio_drain_result {
 } beeb_audio_drain_result;
 
 /// Value-only observation of emulated progress and bounded output state.
+///
+/// Every field is copied by one runtime-owner command: earlier accepted work is
+/// visible and later work is not. The value never aliases core storage and the
+/// query changes no emulated or output state. Counters are monotonic for the
+/// runtime lifetime, including device reset. `last_status` tells a host whether
+/// the latest output outcome was ordinary success/empty, recoverable pressure,
+/// or a production condition; a later output operation may replace it.
 typedef struct beeb_output_diagnostics {
     uint64_t total_cycles;           ///< Completed emulated CPU cycles.
     uint64_t latest_frame_number;    ///< Latest complete output-frame identity.
@@ -320,6 +327,10 @@ beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity
                              beeb_audio_drain_result* out_result);
 
 /// Copies one owner-consistent bounded-output diagnostic observation.
+/// The query is valid while paused, running, or faulted. On success,
+/// `frames_produced == frames_consumed + frames_dropped + frame_depth` and
+/// `audio_samples_produced == audio_samples_consumed + audio_samples_overrun +
+/// audio_depth` within the one returned value.
 /// @param machine Live runtime token.
 /// @param out_diagnostics Required output, written only on success.
 /// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
@@ -329,6 +340,11 @@ beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
                                         beeb_output_diagnostics* out_diagnostics);
 
 /// Calculates informational emulation speed from two host observations.
+/// The pure calculation is
+/// `((after.total_cycles - before.total_cycles) / 2000000) / host_seconds`.
+/// A result of 1.0 is real-time emulation; 2.0 is twice real time. Verification
+/// accepts synthetic expected values within 0.1%; the helper performs no
+/// rounding and stores neither observation nor host time.
 /// @param before Earlier diagnostic observation.
 /// @param after Later diagnostic observation with a nondecreasing cycle count.
 /// @param host_seconds Positive finite elapsed host-observation seconds.
