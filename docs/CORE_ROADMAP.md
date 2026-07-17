@@ -49,14 +49,15 @@ host-agnostic boundary in [ARCHITECTURE.md](ARCHITECTURE.md).
 | --- | --- | --- | --- | --- |
 | C0 — Baseline evidence | Complete | Machine foundation | Current verified core | Compatibility fixture research |
 | C1 — Runtime ownership | Complete | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
-| C2 — Bounded output contracts | Ready | Horizon 1: continuous video and audio | C1 | C3 implementation |
+| C2 — Bounded output contracts | Active | Horizon 1: continuous video and audio | C1 | C3 implementation |
 | C3 — Session continuity | Ready | Horizon 1: background and restore | C1 safe-point contract | C2 implementation |
 | C4 — Bus-cycle timing | Queued | Compatibility and timing fidelity | C1; C3 snapshot invariant | Pull-based compatibility fixtures |
 | C5 — Dependable media core | Later | Horizon 2: Media | C1; slice-specific timing prerequisites | Curated device fixtures |
 | C6 — Inspection and editor bridge | Later | Horizon 3: Editor | C1 and C3 | Read-only inspector research |
 
-The default next phase is C2. C3 may proceed beside C2 because C1 now defines
-and verifies the quiescent safe point. C4 implementation begins only after the
+The default work is C2 exit verification. C3 may proceed beside it because C1
+defines and verifies the quiescent safe point; C3 becomes the default next core
+phase when C2 completion is recorded. C4 implementation begins only after the
 snapshot invariant described in C3 is fixed. C5 and C6 do not enter the active
 Machine critical path.
 
@@ -178,7 +179,7 @@ producer queues or C3's versioned snapshot format.
 
 ## Phase C2 — bounded frame, audio and diagnostic contracts
 
-**Status:** Ready
+**Status:** Active
 
 **Outcome:** Give decoupled host consumers stable, bounded output without
 making host timing authoritative.
@@ -227,6 +228,17 @@ accepted.
 - The committed Xcode project builds the macOS app, iOS Simulator app, and test
   scheme from a clean checkout through `xcodebuild`, without duplicating core
   sources or weakening the Makefile/Swift Package gates.
+
+The implemented `003-bounded-output-contracts` slice has passed its required
+measurement gate: 10,000 frames transferred with retained-value immutability;
+separate 10,000-item pressure stress reached but did not exceed capacities 3
+and 4,096; a 10-second warm-up plus 120,000,060 measured cycles balanced both
+conservation equations; RSS growth was 32,768 bytes against a 16 MiB limit; and
+the synthetic rate error was zero against a 0.1% tolerance. Shared Xcode
+schemes build macOS and generic iOS Simulator apps and run all 14 Swift tests,
+while Swift Package Manager and Make remain independently green. Final full
+validation and documentation generation remain the exit checkpoint before the
+phase status becomes Complete.
 
 ### Non-goals
 

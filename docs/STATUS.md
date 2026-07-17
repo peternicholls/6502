@@ -18,6 +18,8 @@ is governed separately by the [product strand](product/README.md).
 | Core build | GCC 13, C++20, warnings promoted to errors | Green |
 | Swift package | BeebKit tests and full package build on Apple Swift 6.2 | Green |
 | C1 runtime ownership | One owner, capacity-64 FIFO, safe-point lifecycle, exact replay, structured C/Swift recovery | Green; local TSan N/A |
+| C2 bounded output | Owned frame/audio queues, exact diagnostics, 10,000-frame lifetime transfer, 60-second sustained measurement | Measured green; final aggregate pending |
+| Xcode project | Shared macOS, iOS Simulator, and test schemes over the local package and existing demo source | Green clean-checkout contract |
 | C0 aggregate evidence | `make verify-c0`: all 11 macOS groups; explicit portable profile passes with Swift groups N/A | Green |
 | Lawful exact references | Ten identical clean-room runs; exact CPU state plus 320×200 bitmap and 480×500 Mode 7 PPMs | Green |
 | Code documentation | Generated public Doxygen + DocC references; branch-aware internal named-abstraction checks; separate public/internal debt baselines at zero | Green within enforced scope |
@@ -120,15 +122,38 @@ removing an existing `.build` directory. C and Swift evidence covers resource
 recovery and shutdown unavailability, and fault/reset recovery runs while
 observers contend for the runtime FIFO.
 
+## C2 measured candidate evidence
+
+The `003-bounded-output-contracts` candidate passed its measurement gate on
+2026-07-17 before any C2 completion claim was added. The committed harness
+writes the run record to ignored `.build/c2/measurements/latest.txt`; the
+reproducible workload and pass/fail thresholds remain tracked in
+`Tests/C2/test-output-measurement.sh`.
+
+| Evidence | Exact result |
+| --- | --- |
+| Owned-frame lifetime | 10,000 frames produced and 10,000 consumed; zero drops; the retained first value remained unchanged |
+| Queue pressure stress | 10,000 frame and 10,000 audio publications; maximum depths reached and never exceeded 3 frames / 4,096 samples; exact consumed+dropped/overrun accounting |
+| Sustained duration | 10 emulated warm-up seconds followed by 120,000,060 measured cycles, exceeding the required 60 emulated seconds |
+| Runtime conservation | 46,666,683 frames produced = 71 consumed + 46,666,610 dropped + 2 retained; 3,360,001 samples produced = 286,720 consumed + 3,073,281 overrun + 0 retained |
+| Memory | Peak RSS grew 32,768 bytes after warm-up, within the 16,777,216-byte tolerance |
+| Host-observed rate | Expected 2.0, observed 2.0, relative error 0; the helper left runtime diagnostics unchanged |
+| Xcode delivery | All three shared schemes listed; macOS and generic iOS Simulator builds succeeded; the test scheme ran 14 tests with zero failures |
+| Independent build paths | The Xcode contract also passed `swift build`, `swift test`, and `make test` without source duplication or user/signing metadata |
+
+Focused output, replay, lifetime, race, documentation-negative, aggregate, and
+Xcode contracts are green. The phase remains a measured candidate until the
+final documentation and full validation tasks record their results; local
+ThreadSanitizer remains N/A rather than a pass.
+
 ## Release state
 
-Version 0.2.0 remains an unreleased development candidate. Live verification on
-2026-07-16 found no tags from `git ls-remote --tags origin`, no `v0.2.0` entry
-through the GitHub release API, and no releases or tags on the public repository
-pages. The annotated tag and published notes required by
-[RELEASING.md](RELEASING.md) therefore do not exist. `CHANGELOG.md` keeps the
-0.2.0 section explicitly `Unreleased`; no tag or release was created during
-remediation.
+Version 0.3.0 is the current unreleased development candidate for the additive
+C2 public contracts. The earlier 0.2.0 C1 candidate also remains recorded as
+`Unreleased`; live verification on 2026-07-16 found no remote 0.2.0 tag or
+release. This branch created no tag or published release. Recheck remote state
+before following [RELEASING.md](RELEASING.md); do not treat the prior remote
+observation as current release proof.
 
 ## C1 verified outcome
 
@@ -144,10 +169,9 @@ C1 is complete at the architectural and public-boundary level:
 - accepted-before-shutdown work drains, new entries reject, and destruction
   waits calls already inside the C boundary.
 
-This evidence unlocks C2 bounded-output specification as the default next core
-work and C3 session-continuity specification as an allowed parallel path. It
-does not claim bounded frame/audio production, snapshot persistence, or
-bus-cycle fidelity.
+This C1 evidence is now consumed by the C2 owner-only output implementation;
+the separate measured-candidate section owns those newer output claims. C1
+still does not claim snapshot persistence or bus-cycle fidelity.
 
 Approved evidence is clean-room and byte exact:
 
@@ -189,7 +213,7 @@ latency, release, or product-performance guarantee.
 | Video ULA | Serializer modes, palette and flash | Exact cursor/clock edge behaviour |
 | Bitmap video | 1/2/4-bit interleave, mode-sized output, wrap | Cycle raster, mid-line changes, rigorous hardware-scroll cases |
 | Mode 7 | Text, colours, flash, contiguous/separated mosaics | Double-height pairs, hold/release, conceal, precise control-code latency |
-| SN76489 | Tone/noise registers and sample output | Band-limiting, exact LFSR variant confirmation, host audio queue |
+| SN76489 | Tone/noise registers, deterministic sample generation and bounded continuous output | Band-limiting, exact LFSR variant confirmation, host audio-device integration |
 | 8271 | SSD/DSD sector read/write, seek, status, special registers, NMI bytes | Full command/timing/error model, formatting, deleted sectors, flux |
 | Keyboard | Matrix injection through System VIA | Complete host-to-BBC key map and all IC32 nuances |
 | Cassette | — | 6850, Serial ULA, UEF chunks, WAV edge decoder, motor timing |
@@ -197,11 +221,12 @@ latency, release, or product-performance guarantee.
 ## Current core focus
 
 C0 baseline evidence and C1 runtime ownership are complete. C2 bounded frame,
-audio, and diagnostic contracts are the default next Spec Kit source. C3
-session continuity may be specified and implemented in parallel because the C1
-completed-instruction safe point is fixed. Bus-cycle implementation remains
-queued until C3 fixes the version-1 snapshot invariant, so it cannot
-accidentally invalidate public session state.
+audio, diagnostics, and Xcode delivery are implemented and measured; final
+documentation and validation are the remaining phase gates. C3 session
+continuity may be specified in parallel and becomes the default next core
+source after C2 closes. Bus-cycle implementation remains queued until C3 fixes
+the version-1 snapshot invariant, so it cannot accidentally invalidate public
+session state.
 
 The [core roadmap](CORE_ROADMAP.md) owns technical sequence; the tables above
 own verified hardware-fidelity status. The C0 evidence does not close any gap in
