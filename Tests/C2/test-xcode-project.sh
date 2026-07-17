@@ -6,10 +6,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/testlib.sh"
 c2_prepare_paths
 project="${repo_root}/Beeb6502.xcodeproj"
 pbxproj="${project}/project.pbxproj"
-derived="${c2_build_dir}/xcode-derived"
 evidence="${c2_evidence_dir}/xcode"
 mkdir -p "${evidence}"
-rm -rf "${derived}"
+derived="$(mktemp -d "${c2_build_dir}/xcode-derived.XXXXXX")"
+trap 'rm -rf -- "${derived}"' EXIT
 
 test -f "${pbxproj}"
 for scheme in BeebDemo-macOS BeebDemo-iOS Beeb6502-Tests; do
@@ -37,10 +37,16 @@ if git -C "${repo_root}" check-ignore -q --no-index \
     exit 1
 fi
 
-if find "${project}" -type d -name xcuserdata -print -quit | rg -q .; then
-    printf 'Xcode project contains user-specific xcuserdata\n' >&2
-    exit 1
-fi
+# Xcode creates local xcuserdata during ordinary use. It is safe only while the
+# repository ignore contract contains every such path; tracked state was
+# rejected above and unignored state would escape into a contributor's diff.
+while IFS= read -r user_data; do
+    relative="${user_data#"${repo_root}/"}"
+    if ! git -C "${repo_root}" check-ignore -q -- "${relative}/"; then
+        printf 'Xcode project contains unignored user state: %s\n' "${relative}" >&2
+        exit 1
+    fi
+done < <(find "${project}" -type d -name xcuserdata -print)
 if rg -n '/Users/|/home/|/tmp/|DEVELOPMENT_TEAM|PROVISIONING_PROFILE|CODE_SIGN_IDENTITY' \
     "${project}" >"${evidence}/forbidden-metadata.txt"; then
     printf 'Xcode project contains checkout-, user-, or signing-specific metadata\n' >&2
@@ -93,3 +99,11 @@ run_logged test-macos xcodebuild -project "${project}" -scheme Beeb6502-Tests \
 run_logged swift-build swift build --package-path "${repo_root}"
 run_logged swift-test swift test --package-path "${repo_root}"
 run_logged make-test make -C "${repo_root}" test
+
+# Maintained project metadata must already use the canonical format accepted by
+# the supported Xcode toolchain. A validation run must not rewrite tracked input.
+if ! git -C "${repo_root}" diff --quiet -- Beeb6502.xcodeproj; then
+    printf 'Xcode validation rewrote maintained project metadata\n' >&2
+    git -C "${repo_root}" diff -- Beeb6502.xcodeproj >&2
+    exit 1
+fi

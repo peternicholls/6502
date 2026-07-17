@@ -102,6 +102,15 @@
 
 **Checkpoint**: C2 completion is committed with exact evidence; unsupported local TSan is N/A but supported CI execution is required.
 
+## Phase 8: Post-Review Remediation
+
+- [x] T048 Make Xcode validation repeatable after ordinary local use, reject only tracked or unignored user state, avoid fixed-path destructive cleanup, and prove `xcodebuild` leaves maintained metadata unchanged in `Tests/C2/test-xcode-project.sh` and `Beeb6502.xcodeproj/project.pbxproj`
+- [ ] T049 Add actual concurrent producer/consumer and repeated deterministic output evidence through the C ABI and Swift boundary in `Tests/C2/test-output-races.sh`, `Tests/C2/test-output-replay.sh`, and `Tests/BeebKitTests/BeebMachineTests.swift`
+- [ ] T050 Make caller-owned C frame transfer allocation-safe before destructive dequeue, strengthen the release-token ownership boundary, and update inline/public/conceptual documentation in `Sources/BeebCore/include/beeb_c.h`, `Sources/BeebCore/src/beeb_c.cpp`, `Tests/C2/test-output-contract.sh`, `Tests/test_main.cpp`, and `docs/code/bounded-output.md`
+- [ ] T051 Require the full C2 aggregate in supported CI and reconcile the feature contracts, quickstart, architecture, status, roadmap, changelog, and contributor guidance with the remediated evidence in `.github/workflows/ci.yml`, `specs/003-bounded-output-contracts/`, `docs/`, `CHANGELOG.md`, and `CONTRIBUTING.md`
+
+**Checkpoint**: Review findings are closed with test-first evidence, wider documentation remains honest, and the complete branch exit matrix is rerun.
+
 ## Dependencies & Execution Order
 
 - Setup precedes Foundational; Foundational blocks all story implementation.
@@ -110,6 +119,8 @@
 - US3 consumes the exact queue/status counters from US1 and US2.
 - US4 depends on stable package products and may begin after Foundational, but its final build evidence runs after US1–US3 integration.
 - Polish depends on all four stories.
+- Post-review remediation runs T048 -> T049 -> T050 -> T051 so repeatable Apple
+  evidence and cross-boundary tests exist before CI and completion claims change.
 - T001, T002, and T004 are parallel; tests marked `[P]` within each story use different files and can be authored before implementation.
 
 ## Implementation Strategy
