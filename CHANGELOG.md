@@ -6,7 +6,41 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 
 ## [Unreleased]
 
-No post-0.2.0-candidate changes have been assigned to a later version.
+No post-0.3.0-candidate changes have been assigned to a later version.
+
+## [0.3.0] - Unreleased
+
+This is the current development candidate. It has not been published as an
+annotated `v0.3.0` tag or GitHub release; complete the release checklist before
+replacing `Unreleased` with a date.
+
+### Added
+
+- Owner-only bounded output with a capacity-three completed-frame FIFO and a
+  capacity-4,096 continuous mono Float32 audio ring driven at 48 kHz from
+  committed emulated cycles.
+- Owned C++, caller-owned C, and independently owned Swift frame/audio values,
+  with exact empty, underrun, overrun, capacity, and production-failure status
+  categories.
+- Non-mutating output diagnostics with exact conservation counters, depths,
+  capacities, demand, latest output status, and a pure host-observed emulation
+  rate calculation.
+- Lifetime, replay, concurrent-consumer, allocation-recovery, bounded-capacity,
+  aggregate, and documentation-negative C2 evidence.
+- A committed `Beeb6502.xcodeproj` with shared macOS, iOS Simulator, and test
+  schemes plus matching clean-checkout CI gates.
+
+### Changed
+
+- **Breaking:** Expanded the pre-1.0 C and Swift status vocabularies for bounded
+  output pressure and added a recoverable Swift audio error that carries valid
+  partial samples and exact shortfall accounting.
+- Made completed-frame publication and continuous audio production part of the
+  existing `MachineRuntime` owner transaction without adding host clocks,
+  callbacks, locks, or borrowed producer storage.
+- Elevated the committed Xcode project to the primary Apple development entry
+  point while retaining Swift Package Manager and Make as independent required
+  build surfaces.
 
 ## [0.2.0] - Unreleased
 

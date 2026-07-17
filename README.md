@@ -10,7 +10,7 @@ No operating-system, BASIC, filing-system, game or character ROM is included.
 The demo deliberately loads user-supplied ROMs and media through the platform
 document picker.
 
-The current development version is **0.2.0**. Public releases use Semantic
+The current development version is **0.3.0**. Public releases use Semantic
 Versioning and `vMAJOR.MINOR.PATCH` Git tags.
 
 ## What works now

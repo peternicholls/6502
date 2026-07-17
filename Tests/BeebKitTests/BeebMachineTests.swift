@@ -69,7 +69,7 @@ final class BeebMachineTests: XCTestCase {
     }
 
     func testPublicVersionMatchesReleaseVersion() {
-        XCTAssertEqual(BeebVersion.current, "0.2.0")
+        XCTAssertEqual(BeebVersion.current, "0.3.0")
     }
 
     func testLifecycleStateStartPauseAndIdempotence() throws {
