@@ -21,6 +21,8 @@ Disposition meanings:
 | Legacy position | Disposition | Current direction |
 | --- | --- | --- |
 | The product combines Machine, Media and Editor experiences. | Retained | This is the central product model in `VISION.md`; the emulator is its foundation. |
+| The primary journey powers on the machine, enters a BASIC program and runs it. | Retained | This is now the M1 end-to-end application gate rather than an implied result of completing emulator subsystems. |
+| A user can inspect CPU registers and memory. | Refined | C6 supplies race-free core observations; a separate product slice owns the accessible read-only inspector. Time travel remains outside scope without a new decision. |
 | Primary users are creators, collectors, educators and technically curious users. | Retained | Reframed around creator, preservation and exploration jobs. |
 | The application is native to iPhone, iPad and macOS. | Retained | SwiftUI-first with platform-specific adaptation where necessary. |
 | Authenticity and accessibility should coexist with modern convenience. | Retained | Modern tools may assist input and editing but must preserve authentic execution. |
@@ -32,6 +34,7 @@ Disposition meanings:
 | Freemium conversion, download and retention targets. | Open | Treat as hypotheses until a beta, analytics policy and monetization decision exist. |
 | Specific 20–26 week milestone dates. | Superseded | `ROADMAP.md` uses evidence-based capability horizons without schedule promises. |
 | BBC Model B wording is suitable as the final store name. | Open | Final naming requires trademark-safe product review. |
+| The archived product targets only BBC Model B. | Refined | Model B remains the first working and permanent regression profile; the new post-C6 planning target is a separately evidenced Model B+ 64K profile, not an implied rename. |
 
 ## Core and integration decisions
 
@@ -60,6 +63,7 @@ Disposition meanings:
 | Mode 7 should use an embedded character ROM lookup. | Superseded | The repository uses a clean-room host font. Exact SAA5050 behavior remains a fidelity track without copying proprietary glyph data. |
 | Golden frames compare output with a reference emulator. | Refined | Retain layered unit/integration/golden testing, but fixtures must have documented provenance and legally usable inputs. |
 | Low audio latency and zero underruns can be assumed from AVAudioEngine. | Refined | C2 now supplies a measured capacity-4,096 continuous ring with exact demand, overrun and underrun accounting. Device latency and zero-underrun claims still require sustained AVAudioEngine integration tests. |
+| `±0.1 FPS` video stability and `<10 ms` audio latency are fixed product requirements. | Refined | Treat them as archived hypotheses. Each host-integration specification must select current fixtures, observation intervals and tolerances before making a claim. |
 
 ## UX and platform decisions
 

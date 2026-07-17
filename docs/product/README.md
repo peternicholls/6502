@@ -6,6 +6,9 @@ experiences should mature.
 
 - [Vision](VISION.md) defines durable product intent and success outcomes.
 - [Roadmap](ROADMAP.md) sequences user-facing capability horizons.
+- [Machine application delivery plan](MACHINE_DELIVERY_PLAN.md) defines the
+  cross-strand specifications and evidence gates from the core foundation to a
+  running Model B application and the post-C6 Model B+ Developer Preview.
 - [Legacy decision register](LEGACY_DECISIONS.md) interprets design material
   imported from the abandoned product implementation.
 

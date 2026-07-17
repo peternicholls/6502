@@ -10,6 +10,7 @@ serves and the Machine, Media and Editor experiences:
 
 - [Product vision](product/VISION.md)
 - [Product roadmap](product/ROADMAP.md)
+- [Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md)
 - [Legacy decision register](product/LEGACY_DECISIONS.md)
 
 ## Emulator core strand

@@ -1,7 +1,8 @@
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at specs/003-bounded-output-contracts/plan.md
+No Spec Kit feature is currently active. Use
+docs/product/MACHINE_DELIVERY_PLAN.md to select the next bounded slice, then
+create its feature branch and verify .specify/feature.json before running plan,
+tasks or implementation workflows.
 <!-- SPECKIT END -->
 
 ## Git Checkpoints

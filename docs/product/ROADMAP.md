@@ -1,7 +1,7 @@
 # Product roadmap
 
 **Status:** Canonical planning document  
-**Updated:** 2026-07-15
+**Updated:** 2026-07-17
 
 This roadmap sequences product capabilities rather than promising dates. A
 horizon advances when its exit outcomes are demonstrated; parallel fidelity
@@ -38,6 +38,26 @@ Foundation exit condition:
 
 Detailed hardware fidelity remains tracked in [core status](../STATUS.md), and
 technical sequencing belongs to the [core roadmap](../CORE_ROADMAP.md).
+
+## Application delivery gates
+
+The [Machine application delivery plan](MACHINE_DELIVERY_PLAN.md) connects the
+product horizons to bounded core, host and cross-strand specifications. It
+defines three cumulative evidence gates:
+
+1. **M1 — Running Model B Machine:** firmware import, BASIC boot and input,
+   continuous C2-backed video/audio, controls and diagnostics. M1 may complete
+   before C3 and must not wait for Media or Editor work.
+2. **M2 — Continuity-complete Machine:** M1 plus C3-backed backgrounding and
+   safe session restoration.
+3. **M3 — Post-C6 Model B+ Developer Preview:** M2 remains green for Model B;
+   the same working application flow runs on the separately evidenced Model B+
+   64K profile, demonstrates selected C4 and C5 progress, and consumes the
+   completed C6 bridge contracts through bounded product demonstrations.
+
+These gates prevent a collection of completed subsystems from being mistaken
+for a working application. Every implementation slice still requires its own
+Spec Kit feature artifacts.
 
 ## Horizon 1 — complete Machine experience
 
@@ -82,6 +102,22 @@ presentation loop.
   runs.
 - Establish a curated compatibility set with documented content provenance.
 
+### Horizon 1 specification order
+
+1. `machine-target-profile`
+2. `machine-firmware-onboarding`
+3. `machine-runtime-presentation`
+4. `machine-audio-output`
+5. `machine-keyboard-controls`
+6. `machine-mvp-validation`
+7. the four C3 core snapshot slices
+8. `machine-session-lifecycle`
+
+The presentation, audio, input and onboarding slices may be prepared in
+parallel where their contracts do not overlap. `machine-mvp-validation` is the
+M1 gate and `machine-session-lifecycle` is the M2 gate; neither is an umbrella
+implementation feature.
+
 Exit outcomes:
 
 - A user can import firmware, boot, type and run a simple BASIC program.
@@ -115,6 +151,15 @@ Exit outcomes:
 - Measure success against a maintained recording corpus before publishing a
   reliability claim.
 
+### Horizon 2 product specifications
+
+1. `machine-disk-workflow`: mount/eject, protection, state, errors and explicit
+   export over the selected C5 disk/controller capability.
+2. `machine-tape-file-workflow`: UEF/WAV import, progress, motor state and
+   recoverable decoding over the selected C5 cassette capability.
+3. `machine-live-tape-capture`: microphone permission, DSP, feedback and corpus
+   evidence only after the file workflow is dependable.
+
 Exit outcomes:
 
 - Users can understand, mount, protect and export DFS media safely.
@@ -144,6 +189,15 @@ Exit outcomes:
 - Show a semantic diff when RAM and source diverge.
 - Require explicit conflict resolution; never discard either representation
   silently.
+
+### Horizon 3 product specifications
+
+1. `machine-inspector`: accessible read-only CPU, memory and device inspection
+   over C6 stable observations.
+2. `basic-source-transformation`: deterministic BASIC II tokenization,
+   detokenization and label mapping.
+3. `basic-editing-workflow`: edit, inject, run, retrieve, diff and explicit
+   conflict resolution over C6 transactions and program boundaries.
 
 Exit outcomes:
 
@@ -189,6 +243,10 @@ The following require explicit decisions before they enter delivery planning:
 ## Sequencing rules
 
 - Deliver vertical user workflows, not isolated subsystems.
+- Make M1 the first working-application gate; do not defer host adoption until
+  C5 or C6.
+- Preserve Model B as a regression profile while Model B+ 64K enters only
+  through its explicit machine-profile specifications and evidence.
 - Do not let host refresh timing become the source of emulated machine time.
 - Stabilize file-based tape loading before microphone capture.
 - Establish transactional memory/state APIs before building the editor.

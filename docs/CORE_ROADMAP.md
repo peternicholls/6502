@@ -3,9 +3,10 @@
 **Status:** Canonical core planning document  
 **Updated:** 2026-07-17
 
-This roadmap governs the portable BBC Model B emulation foundation and its
-public host boundary. It does not define the wider application experience;
-those priorities live in the [product strand](product/README.md).
+This roadmap governs the portable BBC Model B emulation foundation, the planned
+evidence-led Model B+ 64K profile and their public host boundary. It does not
+define the wider application experience; those priorities live in the
+[product strand](product/README.md).
 
 ## How to use this roadmap
 
@@ -50,15 +51,35 @@ host-agnostic boundary in [ARCHITECTURE.md](ARCHITECTURE.md).
 | C0 — Baseline evidence | Complete | Machine foundation | Current verified core | Compatibility fixture research |
 | C1 — Runtime ownership | Complete | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
 | C2 — Bounded output contracts | Complete | Horizon 1: continuous video and audio | C1 | C3 implementation |
-| C3 — Session continuity | Ready | Horizon 1: background and restore | C1 safe-point contract | C2 implementation |
+| C3 — Session continuity | Ready | Horizon 1: background and restore | C1 safe-point contract; `machine-target-profile` identity | M1 host slices |
 | C4 — Bus-cycle timing | Queued | Compatibility and timing fidelity | C1; C3 snapshot invariant | Pull-based compatibility fixtures |
 | C5 — Dependable media core | Later | Horizon 2: Media | C1; slice-specific timing prerequisites | Curated device fixtures |
 | C6 — Inspection and editor bridge | Later | Horizon 3: Editor | C1 and C3 | Read-only inspector research |
+| P+ — Model B+ 64K profile | Queued | M3: post-C6 Developer Preview | C3 profile-aware snapshots; relevant C4 timing foundation | C5/C6 product evidence |
 
-The default next phase is C3. C2 is complete, and C1 defines and verifies the
-quiescent safe point that C3 consumes. C4 implementation begins only after the
-snapshot invariant described in C3 is fixed. C5 and C6 do not enter the active
-Machine critical path.
+The default next core phase is C3 after the bounded `machine-target-profile`
+slice fixes the identifiers that its snapshot envelope records. C2 is complete,
+and C1 defines and verifies the quiescent safe point that C3 consumes. The
+remaining cross-strand M1 application slices may proceed from C1/C2 in parallel
+with C3. C4 implementation begins only after the snapshot invariant described
+in C3 is fixed. C5 and C6 do not block the first running Machine application,
+but selected C4/C5 evidence, completed C6 contracts and the P+ profile feed the
+post-C6 M3 gate.
+
+### Cross-strand application hooks
+
+Core phases unlock product capabilities; they do not silently complete the
+application that consumes them. The canonical
+[Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md) defines:
+
+- **M1:** a running Model B application consuming C1/C2 runtime and output;
+- **M2:** the same application with C3-backed session continuity; and
+- **M3:** a post-C6 Model B+ 64K Developer Preview demonstrating selected
+  timing and Media progress through the completed C6 inspection/editor bridge.
+
+Each core slice names the product or cross-strand specification it unlocks. M1
+must become green before C5 or C6 can be presented as progress in a usable
+application.
 
 ## Phase C0 — baseline evidence
 
@@ -273,14 +294,16 @@ reject incompatible or damaged state safely.
 **Product capability unlocked:** Backgrounding and session restoration for the
 Machine experience.
 
-**Depends on:** The C1 safe-point contract.
+**Depends on:** The C1 safe-point contract and the stable identifiers and
+cross-profile rejection policy from `machine-target-profile`.
 
-**Parallelism:** May run beside C2.
+**Parallelism:** Its slices may run beside the remaining M1 host work after
+`machine-target-profile` completes.
 
 ### Candidate Spec Kit slices
 
 1. `snapshot-format-v1`: format envelope, version policy and architectural
-   state model.
+   state model, including stable machine-profile identity.
 2. `snapshot-round-trip`: CPU, memory, ROM selection and device state.
 3. `snapshot-mounted-media`: mounted-media identity and modified in-memory
    media state.
@@ -294,16 +317,23 @@ not an in-progress CPU micro-operation. C4 MUST preserve this safe point. A
 future requirement for mid-instruction snapshots requires a new format version
 and an explicit compatibility or migration plan.
 
+Version 1 also identifies the machine profile explicitly. A snapshot may restore
+only into a compatible profile; host selection or a filename must never silently
+reinterpret Model B state as Model B+ state or vice versa.
+
 ### Entry criteria
 
 - The quiescent safe point is tested and documented.
 - The specification defines compatibility policy, size limits, corruption
   handling and whether unknown optional data can be skipped.
+- `machine-target-profile` has fixed the stable profile identifiers and
+  cross-profile rejection behavior.
 
 ### Exit evidence
 
 - Snapshot round trips reproduce CPU, memory, selected ROM, device and mounted
   media state exactly at the safe point.
+- Cross-profile restore rejects before mutation with a structured diagnostic.
 - Continuing both the original and restored machines for the same emulated
   interval produces matching state and observable outputs.
 - Truncated, corrupt and unsupported-version input is rejected without
@@ -394,6 +424,67 @@ Each completed slice MUST pass its focused regression, preserve unrelated
 suites, improve its named compatibility case, and update `STATUS.md`. Flux and
 copy-protection remain outside the current horizon.
 
+## Model B+ 64K profile workstream
+
+**Status:** Queued
+
+**Product trace:** M3 — Post-C6 Model B+ Developer Preview.
+
+**Outcome:** Add a separately selectable and testable Model B+ 64K profile
+without weakening the verified Model B profile or treating the two machines as
+interchangeable.
+
+**Depends on:** C1 ownership; C3 snapshot machine-profile identity; the C4 bus
+trace/sequencer foundation required by the selected processor and device cases.
+
+This profile workstream is not C7 and does not reopen completed Model B phases.
+It may overlap selected C5/C6 work after its machine identity and primary
+references are fixed.
+
+### Candidate Spec Kit sequence
+
+1. `bplus-profile-selection`: extend the stable `machine-target-profile`
+   identity through core/C/Swift selection, firmware compatibility and snapshot
+   rejection rules.
+2. `bplus-processor-contract`: primary-reference opcode, interrupt, reset and
+   bus-trace expectations for the selected Model B+ 64K hardware revision.
+3. `bplus-memory-display-map`: main, shadow and paged RAM selection plus CRTC
+   display sourcing and checkpoint coverage.
+4. `bplus-firmware-boot`: user-owned compatible firmware loading and a
+   reproducible boot/BASIC-ready fixture strategy without committed ROM bytes.
+5. `bplus-storage-profile`: only the disc-controller behavior required by the
+   selected lawful Media fixtures; alternative controller variants remain
+   explicit rather than guessed.
+6. `bplus-compatibility-gate`: curated Model B+ software/trace cases and the M3
+   end-to-end application proof.
+
+### Entry criteria
+
+- The target is Model B+ 64K; 128K expansion is an explicit non-goal.
+- Primary references identify the selected processor, memory/display paging,
+  firmware and disc-controller behavior.
+- C3 snapshots encode and validate machine-profile identity.
+- Every difference from Model B begins with a focused failing fixture or trace.
+
+### Exit evidence
+
+- Model B and Model B+ 64K are independently selectable and retain separate
+  regression fixtures and known-limitations records.
+- The B+ profile boots compatible user-owned firmware to BASIC-ready state and
+  runs the M1 input/video/audio workflow.
+- Main, shadow and paged RAM behavior matches the agreed reference fixtures.
+- Snapshot restore continues deterministically only into a compatible profile;
+  cross-profile restore rejects without mutation.
+- The selected controller/media case works through C5 boundaries on its named
+  supported profile; unsupported B+ controller cases report a structured
+  profile-specific limitation.
+
+### Non-goals
+
+- Model B+ 128K, BBC Master, Tube, Econet or universal controller support.
+- Bundled MOS, BASIC, filing-system or commercial software ROMs.
+- Claiming compatibility beyond the maintained fixture set.
+
 ## Phase C5 — dependable media core
 
 **Status:** Later
@@ -409,8 +500,8 @@ prerequisite.
 ### Candidate Spec Kit sequence
 
 1. `writable-disk-export`: explicit export of modified in-memory SSD/DSD data.
-2. `dfs-controller-compatibility`: only the 8271 behavior required by the
-   curated Media fixture set.
+2. `dfs-controller-compatibility`: only the profile-specific 8271 or 1770
+   behavior required by the curated Media fixture set.
 3. `cassette-chipset`: 6850 ACIA, Serial ULA and motor timing.
 4. `uef-media-primitives`: required UEF data, carrier and gap chunks.
 5. `wav-edge-decoder`: deterministic edge fixtures after file-based UEF loading
@@ -420,6 +511,7 @@ prerequisite.
 
 - The corresponding Product Horizon 2 slice is selected.
 - Fixture provenance and supported media boundaries are documented.
+- The selected machine/controller profile is explicit.
 - Import, in-memory mutation and explicit export ownership are specified.
 
 ### Exit evidence
@@ -519,4 +611,55 @@ documentation debt.
 - Update this roadmap for technical priority changes and `STATUS.md` only when
   implementation evidence changes.
 
-## Post-Phase C6 - Working Basic Computer Application
+## Post-phase C6 — working Model B+ application synthesis gate
+
+**Status:** Later
+
+**Product trace:** M3 in the
+[Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md).
+
+**Outcome:** Demonstrate a limited but real native application running the
+separately evidenced Model B+ 64K profile while making progress toward the full
+Machine, Media and Editor vision visible and honest.
+
+This is a synthesis and evidence gate, not a new core phase or an umbrella
+implementation feature. The first working Model B application must already have
+passed M1, and C3-backed continuity must already have passed M2.
+
+### Required contributing specifications
+
+- the M1 firmware, runtime presentation, audio, input and validation slices;
+- all C3 snapshot slices and `machine-session-lifecycle`;
+- the Model B+ 64K profile sequence;
+- the C4 compatibility case named by the M3 feature;
+- a selected C5 Media workflow with safe mount, protection and explicit export;
+  and
+- all four C6 contracts: stable inspection snapshots, breakpoint/watchpoint
+  control, atomic memory transactions and BASIC program boundaries, plus their
+  bounded product demonstrations.
+
+### Exit evidence
+
+- The Model B M2 regression remains green.
+- The application selects Model B+ 64K, accepts compatible user-owned firmware,
+  boots to BASIC-ready state, types and runs the M1 program, and presents
+  continuous bounded video and audio.
+- Run, pause, reset, BREAK, background and restore retain their verified
+  semantics on the B+ profile.
+- One C4 timing case, one selected Media case, and demonstrations of all four
+  C6 contracts are reproducible through the application or its maintained
+  acceptance harness.
+- The application exposes its active profile, version, runtime health and a
+  route to current fidelity limitations. `STATUS.md` remains the authority for
+  those limitations.
+- The complete portable, C, Swift, app, sanitizer, documentation and supported
+  CI matrix passes without bundled proprietary content.
+
+### Explicit limitations at this gate
+
+- M3 is a Developer Preview, not a preservation-grade compatibility claim.
+- Model B+ 128K, complete controller variants, live tape capture and the full
+  label-aware Editor may remain later slices unless separately promoted into
+  the M3 acceptance specification.
+- Completion of C6 core contracts alone does not satisfy M3; the product and
+  cross-strand evidence above is mandatory.

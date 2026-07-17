@@ -1,14 +1,16 @@
 # Product vision
 
 **Status:** Canonical  
-**Updated:** 2026-07-15
+**Updated:** 2026-07-17
 
 ## North star
 
-Beeb6502 is a native Apple retro-computing environment that makes the BBC
-Model B approachable, useful and faithful on modern devices. It combines an
-authentic machine, preservation-oriented media tools and a modern programming
-workflow without hiding the character of the original computer.
+Beeb6502 is a native Apple retro-computing environment that makes the BBC Model
+B family approachable, useful and faithful on modern devices. It starts with
+the verified Model B profile and progresses to a planned Model B+ 64K profile
+without weakening the original regression baseline. It combines an authentic
+machine, preservation-oriented media tools and a modern programming workflow
+without hiding the character of the original computer.
 
 The 6502 and hardware emulation are foundational capabilities, not the whole
 product. Product decisions should be evaluated by the experience they enable
@@ -52,10 +54,11 @@ an emulator expert.**
 
 ### Machine
 
-The primary experience is an immediately recognizable BBC Model B: predictable
+The primary experience is an immediately recognizable BBC Micro: predictable
 boot, accurate display and audio, authentic keyboard behavior and dependable
-session continuity. The machine view should feel focused rather than like a
-developer test harness.
+session continuity. Model identity and known compatibility limits must remain
+visible rather than presenting Model B and Model B+ behavior as interchangeable.
+The machine view should feel focused rather than like a developer test harness.
 
 Key qualities:
 
@@ -127,9 +130,10 @@ Key qualities:
 
 ## Product boundary
 
-The product includes BBC Model B emulation, user-owned media workflows, a BBC
-BASIC-oriented editor and educational inspection capabilities. It has no
-server dependency and does not download executable content.
+The product includes verified BBC Model B emulation, a planned BBC Model B+ 64K
+profile, user-owned media workflows, a BBC BASIC-oriented editor and educational
+inspection capabilities. It has no server dependency and does not download
+executable content.
 
 The following are not current product commitments:
 
@@ -137,6 +141,8 @@ The following are not current product commitments:
 - JIT or dynamically downloaded native code;
 - preservation-grade flux emulation and copy-protection support;
 - BBC Master, Tube, Econet or other expansion systems;
+- the Model B+ 128K expansion until a separate product and compatibility case
+  approves it;
 - a content marketplace or cloud community;
 - simulated CRT artefacts as a default visual treatment.
 
@@ -163,10 +169,12 @@ claims before measurement is available.
 
 ## Current strategic focus
 
-The next product objective is a complete Machine experience built on the
-existing emulator foundation: host frame presentation, real-time audio,
-keyboard mapping, machine controls, observable health and save/restore. The
-[roadmap](ROADMAP.md) defines the capability sequence.
+The next product objective is the M1 Running Model B Machine built on the
+existing emulator foundation: firmware onboarding, host frame presentation,
+real-time audio, keyboard mapping, machine controls and observable health. C3
+then adds continuity, while the post-C6 target extends the same proven workflow
+to Model B+ 64K and demonstrates measured Media and Editor progress. The
+[delivery plan](MACHINE_DELIVERY_PLAN.md) defines the cross-strand gates.
 
 ## Open product decisions
 
@@ -178,3 +186,5 @@ keyboard mapping, machine controls, observable health and save/restore. The
   remain free.
 - The balance between a simple keyboard overlay and an optional graphical
   keyboard on each device class.
+- Which primary-reference and compatibility fixture set will ratify the exact
+  processor and disc-controller variants for the Model B+ 64K profile.

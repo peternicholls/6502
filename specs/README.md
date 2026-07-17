@@ -15,6 +15,9 @@ Classify the work as one of:
 
 Use the current documents as sources of truth:
 
+- Cross-strand Machine-application work starts with the canonical
+  [Machine delivery plan](../docs/product/MACHINE_DELIVERY_PLAN.md), then traces
+  its named core and product dependencies to the authorities below.
 - Product work starts with [the product vision](../docs/product/VISION.md) and
   [product roadmap](../docs/product/ROADMAP.md).
 - Core work starts with [the core roadmap](../docs/CORE_ROADMAP.md),
@@ -41,6 +44,23 @@ Each feature directory may contain `spec.md`, `plan.md`, `research.md`,
 `data-model.md`, `contracts/`, `quickstart.md`, `tasks.md`, and focused
 checklists. Keep decisions in the feature artifacts; update the project-level
 status, architecture, roadmaps, and changelog when delivery changes them.
+
+### Feature lifecycle
+
+- `Draft` means requirements are still being shaped and are not approved for
+  implementation.
+- `Ready` means the complete spec/plan/tasks stack has passed analysis and its
+  dependencies are satisfied.
+- `Active` means implementation has begun on the selected feature branch.
+- `Complete` means acceptance evidence passes and the relevant roadmap/status
+  authorities record closure.
+
+`.specify/feature.json` names only the currently selected feature. It is empty
+when no feature is active; completed feature directories remain as decision and
+evidence history. Before running `/speckit-plan`, `/speckit-tasks` or
+`/speckit-implement`, create or select a fresh bounded feature and verify that
+the pointer names it. Never leave the pointer on a completed feature merely to
+make prerequisite scripts pass.
 
 Every coding feature must treat code documentation as part of the changed
 contract. Its specification states the affected public surfaces,
