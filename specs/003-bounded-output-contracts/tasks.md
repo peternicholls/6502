@@ -108,6 +108,7 @@
 - [x] T049 Add actual concurrent producer/consumer and repeated deterministic output evidence through the C ABI and Swift boundary in `Tests/C2/test-output-races.sh`, `Tests/C2/test-output-replay.sh`, and `Tests/BeebKitTests/BeebMachineTests.swift`
 - [x] T050 Make caller-owned C frame transfer allocation-safe before destructive dequeue, strengthen the release-token ownership boundary, and update inline/public/conceptual documentation in `Sources/BeebCore/include/beeb_c.h`, `Sources/BeebCore/src/beeb_c.cpp`, `Tests/C2/test-output-contract.sh`, `Tests/test_main.cpp`, and `docs/code/bounded-output.md`
 - [ ] T051 Require the full C2 aggregate in supported CI and reconcile the feature contracts, quickstart, architecture, status, roadmap, changelog, and contributor guidance with the remediated evidence in `.github/workflows/ci.yml`, `specs/003-bounded-output-contracts/`, `docs/`, `CHANGELOG.md`, and `CONTRIBUTING.md`
+- [x] T052 Replace scheduler-timing inference in the C destroy-overlap regression with direct, private observation of active-call admission in `Sources/BeebCore/src/beeb_c.cpp` and `Tests/test_main.cpp`
 
 **Checkpoint**: Review findings are closed with test-first evidence, wider documentation remains honest, and the complete branch exit matrix is rerun.
 

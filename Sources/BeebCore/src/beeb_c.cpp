@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <cstring>
 #include <exception>
+#include <latch>
 #include <memory>
 #include <mutex>
 #include <new>
@@ -332,6 +333,17 @@ beeb_status createMachine(beeb_machine** out_machine, beeb::MachineRuntimeOption
 beeb_status beeb_test_create_with_allocation_failure(beeb_machine** out_machine,
                                                      beeb::RuntimeAllocationFailurePoint point) {
     return createMachine(out_machine, {.failAllocationAt = point});
+}
+
+/// Holds a private operation after normal admission so lifetime tests can
+/// prove destroy overlap without inferring it from scheduler timing.
+beeb_status beeb_test_hold_admitted_call(beeb_machine* machine, std::latch& admitted,
+                                         std::latch& release) {
+    return operation(machine, [&](beeb::MachineRuntime&) {
+        admitted.count_down();
+        release.wait();
+        return makeStatus(BEEB_STATUS_OK);
+    });
 }
 
 extern "C" {

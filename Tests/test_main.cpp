@@ -30,6 +30,7 @@
 
 beeb_status beeb_test_create_with_allocation_failure(beeb_machine**,
                                                      beeb::RuntimeAllocationFailurePoint);
+beeb_status beeb_test_hold_admitted_call(beeb_machine*, std::latch&, std::latch&);
 
 namespace {
 
@@ -622,15 +623,12 @@ void testCAPI02DestroyWaitsForCallsAlreadyInside() {
     checkCStatus(beeb_load_os_rom(machine, os.data(), os.size()), BEEB_STATUS_OK);
     checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
 
-    std::latch entered(1);
-    auto run = std::async(std::launch::async, [&] {
-        entered.count_down();
-        std::uint64_t actual = 0;
-        const auto status = beeb_run_cycles(machine, 50'000'000, &actual);
-        return std::pair{status, actual};
+    std::latch admitted(1);
+    std::latch release(1);
+    auto heldCall = std::async(std::launch::async, [&] {
+        return beeb_test_hold_admitted_call(machine, admitted, release);
     });
-    entered.wait();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    admitted.wait();
     auto destroy = std::async(std::launch::async, [&] { return beeb_destroy(machine); });
     beeb_runtime_state unavailableState = BEEB_RUNTIME_STATE_FAULTED;
     beeb_status unavailable{};
@@ -643,10 +641,10 @@ void testCAPI02DestroyWaitsForCallsAlreadyInside() {
     } while (std::chrono::steady_clock::now() < unavailableDeadline);
     checkCStatus(unavailable, BEEB_STATUS_UNAVAILABLE);
     CHECK(unavailableState == BEEB_RUNTIME_STATE_FAULTED);
-    const auto [runStatus, actual] = run.get();
+    release.count_down();
+    const auto heldStatus = heldCall.get();
     const auto destroyed = destroy.get();
-    checkCStatus(runStatus, BEEB_STATUS_OK);
-    CHECK(actual >= 50'000'000);
+    checkCStatus(heldStatus, BEEB_STATUS_OK);
     checkCStatus(destroyed, BEEB_STATUS_OK);
 }
 
