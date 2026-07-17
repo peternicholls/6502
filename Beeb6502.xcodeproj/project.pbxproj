@@ -1,0 +1,206 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00000000000000000000020 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000010 /* main.swift */; };
+		A00000000000000000000021 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000010 /* main.swift */; };
+		A00000000000000000000022 /* BeebMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* BeebMachineTests.swift */; };
+		A00000000000000000000023 /* BeebKit in Frameworks */ = {isa = PBXBuildFile; productRef = A00000000000000000000071 /* BeebKit */; };
+		A00000000000000000000024 /* BeebKit in Frameworks */ = {isa = PBXBuildFile; productRef = A00000000000000000000072 /* BeebKit */; };
+		A00000000000000000000025 /* BeebKit in Frameworks */ = {isa = PBXBuildFile; productRef = A00000000000000000000073 /* BeebKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00000000000000000000010 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		A00000000000000000000011 /* BeebMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeebMachineTests.swift; sourceTree = "<group>"; };
+		A00000000000000000000012 /* BeebDemo-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BeebDemo-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000013 /* BeebDemo-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BeebDemo-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000014 /* BeebKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BeebKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000000000030 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (A00000000000000000000023 /* BeebKit in Frameworks */,);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A00000000000000000000033 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (A00000000000000000000024 /* BeebKit in Frameworks */,);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A00000000000000000000036 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (A00000000000000000000025 /* BeebKit in Frameworks */,);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000004 /* BeebDemo */,
+				A00000000000000000000005 /* BeebKitTests */,
+				A00000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000012 /* BeebDemo-macOS.app */,
+				A00000000000000000000013 /* BeebDemo-iOS.app */,
+				A00000000000000000000014 /* BeebKitTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000004 /* BeebDemo */ = {
+			isa = PBXGroup;
+			children = (A00000000000000000000010 /* main.swift */,);
+			name = BeebDemo;
+			path = Sources/BeebDemo;
+			sourceTree = SOURCE_ROOT;
+		};
+		A00000000000000000000005 /* BeebKitTests */ = {
+			isa = PBXGroup;
+			children = (A00000000000000000000011 /* BeebMachineTests.swift */,);
+			name = BeebKitTests;
+			path = Tests/BeebKitTests;
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000000000040 /* BeebDemo-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000061 /* Build configuration list for PBXNativeTarget "BeebDemo-macOS" */;
+			buildPhases = (
+				A00000000000000000000031 /* Sources */,
+				A00000000000000000000030 /* Frameworks */,
+				A00000000000000000000032 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = "BeebDemo-macOS";
+			packageProductDependencies = (A00000000000000000000071 /* BeebKit */,);
+			productName = BeebDemo;
+			productReference = A00000000000000000000012 /* BeebDemo-macOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A00000000000000000000041 /* BeebDemo-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000062 /* Build configuration list for PBXNativeTarget "BeebDemo-iOS" */;
+			buildPhases = (
+				A00000000000000000000034 /* Sources */,
+				A00000000000000000000033 /* Frameworks */,
+				A00000000000000000000035 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = "BeebDemo-iOS";
+			packageProductDependencies = (A00000000000000000000072 /* BeebKit */,);
+			productName = BeebDemo;
+			productReference = A00000000000000000000013 /* BeebDemo-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A00000000000000000000042 /* BeebKitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000063 /* Build configuration list for PBXNativeTarget "BeebKitTests" */;
+			buildPhases = (
+				A00000000000000000000037 /* Sources */,
+				A00000000000000000000036 /* Frameworks */,
+				A00000000000000000000038 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = BeebKitTests;
+			packageProductDependencies = (A00000000000000000000073 /* BeebKit */,);
+			productName = BeebKitTests;
+			productReference = A00000000000000000000014 /* BeebKitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					A00000000000000000000040 = {CreatedOnToolsVersion = 26.3; };
+					A00000000000000000000041 = {CreatedOnToolsVersion = 26.3; };
+					A00000000000000000000042 = {CreatedOnToolsVersion = 26.3; };
+				};
+			};
+			buildConfigurationList = A00000000000000000000060 /* Build configuration list for PBXProject "Beeb6502" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base,);
+			mainGroup = A00000000000000000000002;
+			packageReferences = (A00000000000000000000070 /* XCLocalSwiftPackageReference "." */,);
+			productRefGroup = A00000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000000000040 /* BeebDemo-macOS */,
+				A00000000000000000000041 /* BeebDemo-iOS */,
+				A00000000000000000000042 /* BeebKitTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000000000032 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000035 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000038 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000031 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000020 /* main.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000034 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000021 /* main.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000037 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000022 /* BeebMachineTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00000000000000000000050 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_CXX_LANGUAGE_STANDARD = "gnu++20"; SWIFT_VERSION = 5.0; }; name = Debug; };
+		A00000000000000000000051 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_CXX_LANGUAGE_STANDARD = "gnu++20"; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_VERSION = 5.0; }; name = Release; };
+		A00000000000000000000052 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; OTHER_SWIFT_FLAGS = "-parse-as-library"; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.demo.macos; PRODUCT_NAME = BeebDemo; SDKROOT = macosx; SUPPORTED_PLATFORMS = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Debug; };
+		A00000000000000000000053 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; OTHER_SWIFT_FLAGS = "-parse-as-library"; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.demo.macos; PRODUCT_NAME = BeebDemo; SDKROOT = macosx; SUPPORTED_PLATFORMS = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Release; };
+		A00000000000000000000054 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 16.0; OTHER_SWIFT_FLAGS = "-parse-as-library"; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.demo.ios; PRODUCT_NAME = BeebDemo; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+		A00000000000000000000055 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 16.0; OTHER_SWIFT_FLAGS = "-parse-as-library"; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.demo.ios; PRODUCT_NAME = BeebDemo; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+		A00000000000000000000056 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; ENABLE_TESTABILITY = YES; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SUPPORTED_PLATFORMS = macosx; SWIFT_VERSION = 5.0; }; name = Debug; };
+		A00000000000000000000057 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SUPPORTED_PLATFORMS = macosx; SWIFT_VERSION = 5.0; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00000000000000000000060 /* Build configuration list for PBXProject "Beeb6502" */ = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000050 /* Debug */, A00000000000000000000051 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000061 /* Build configuration list for PBXNativeTarget "BeebDemo-macOS" */ = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000052 /* Debug */, A00000000000000000000053 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000062 /* Build configuration list for PBXNativeTarget "BeebDemo-iOS" */ = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000054 /* Debug */, A00000000000000000000055 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000063 /* Build configuration list for PBXNativeTarget "BeebKitTests" */ = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000056 /* Debug */, A00000000000000000000057 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A00000000000000000000070 /* XCLocalSwiftPackageReference "." */ = {isa = XCLocalSwiftPackageReference; relativePath = .; };
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A00000000000000000000071 /* BeebKit */ = {isa = XCSwiftPackageProductDependency; package = A00000000000000000000070 /* XCLocalSwiftPackageReference "." */; productName = BeebKit; };
+		A00000000000000000000072 /* BeebKit */ = {isa = XCSwiftPackageProductDependency; package = A00000000000000000000070 /* XCLocalSwiftPackageReference "." */; productName = BeebKit; };
+		A00000000000000000000073 /* BeebKit */ = {isa = XCSwiftPackageProductDependency; package = A00000000000000000000070 /* XCLocalSwiftPackageReference "." */; productName = BeebKit; };
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A00000000000000000000001 /* Project object */;
+}

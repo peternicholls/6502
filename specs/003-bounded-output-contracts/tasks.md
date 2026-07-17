@@ -82,7 +82,7 @@
 **Independent Test**: `Tests/C2/test-xcode-project.sh` lists all shared schemes, builds macOS and generic iOS Simulator destinations, runs tests, rejects user/absolute-path state, and then proves Swift Package and Makefile independence.
 
 - [x] T035 [US4] Add a failing clean-checkout Xcode project/scheme/source-duplication contract in `Tests/C2/test-xcode-project.sh`
-- [ ] T036 [US4] Create the source-relative project and macOS/iOS app target metadata in `Beeb6502.xcodeproj/project.pbxproj`
+- [x] T036 [US4] Create the source-relative project and macOS/iOS app target metadata in `Beeb6502.xcodeproj/project.pbxproj`
 - [ ] T037 [US4] Add shared macOS app, iOS Simulator app, and package-test schemes in `Beeb6502.xcodeproj/xcshareddata/xcschemes/BeebDemo-macOS.xcscheme`, `Beeb6502.xcodeproj/xcshareddata/xcschemes/BeebDemo-iOS.xcscheme`, and `Beeb6502.xcodeproj/xcshareddata/xcschemes/Beeb6502-Tests.xcscheme`
 - [ ] T038 [US4] Exclude user-specific Xcode state and derived products while retaining shared project metadata in `.gitignore`
 - [ ] T039 [US4] Add macOS build, generic iOS Simulator build, and test-scheme gates to `.github/workflows/ci.yml`

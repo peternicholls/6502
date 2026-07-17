@@ -142,5 +142,11 @@ struct ContentView: View {
 @main
 /// Application root owning the single-window scene for the demo.
 struct BeebDemoApp: App {
-    var body: some Scene { WindowGroup { ContentView() }.defaultSize(width: 900, height: 700) }
+    var body: some Scene {
+        #if os(macOS)
+        WindowGroup { ContentView() }.defaultSize(width: 900, height: 700)
+        #else
+        WindowGroup { ContentView() }
+        #endif
+    }
 }
