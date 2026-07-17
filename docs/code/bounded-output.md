@@ -16,10 +16,34 @@ held.
 
 ## Completed video frames
 
-The frame contract covers the packed RGBA format, monotonic emulated frame
-identity, capacity-three FIFO, oldest-first dequeue, drop-oldest overflow, and
-exact discard accounting. It also defines how empty and lifecycle outcomes map
-across C++, C, and Swift.
+Each complete frame contains positive dimensions and exactly four packed
+8-bit components per pixel in row-major red, green, blue, alpha order. Its
+frame number is assigned when the runtime publishes the observation and is
+strictly increasing for that runtime's lifetime, including across a device
+reset. The identifier comes from emulated frame completion, never host time.
+
+`MachineRuntime` copies the machine-owned render only after the instruction
+that completed the frame and the corresponding aggregate device tick. It then
+moves that value into a three-slot owner-only FIFO. Consumers dequeue the
+oldest retained frame. When all three slots are occupied, publication replaces
+exactly the oldest unconsumed frame, retains the newest three, reports overrun,
+and increments the dropped-frame counter. At every observation:
+
+```text
+frames produced = frames consumed + frames dropped + retained frame depth
+```
+
+C++ dequeue transfers an owned `CompletedFrame`. C dequeue allocates a fresh
+`beeb_frame` whose caller releases it with `beeb_frame_release()`. Swift copies
+those bytes into `Data` before releasing the C allocation. None of these values
+aliases the renderer, the FIFO, another result, or a later publication, so a
+consumer may retain it while production continues.
+
+An empty FIFO returns the structured empty category without mutating caller
+output. Faulted and shutting-down lifecycles remain distinguishable from
+ordinary emptiness. No callback or host lock participates in publication or
+dequeue; both producer and consumer operations remain serialized by the C1
+runtime owner.
 
 ## Continuous audio
 

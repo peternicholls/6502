@@ -61,6 +61,12 @@ struct OutputStatus {
 };
 
 /// Complete immutable-in-transit RGBA observation owned by its result value.
+///
+/// Bytes are packed row-major red, green, blue, alpha with one byte per
+/// component and exactly `width * height * 4` bytes. The runtime-lifetime frame
+/// number identifies safe-point publication and remains strictly increasing
+/// across device reset. Moving or copying this value never exposes producer or
+/// queue storage.
 struct CompletedFrame {
     std::uint64_t number = 0;                            ///< Monotonic emulated frame identity.
     std::uint32_t width = 0;                             ///< Positive pixel width.
@@ -125,6 +131,9 @@ struct FrameDequeueResult {
 /// Publishing and dequeueing are serialized by `MachineRuntime`; this type has
 /// no internal lock and exposes no callback or borrowed storage. Moving a frame
 /// out leaves every retained consumer value independent of later publication.
+/// Dequeue is oldest-first. Publishing at capacity replaces exactly the oldest
+/// unconsumed frame, reports overrun, and increments `framesDropped`, preserving
+/// `framesProduced == framesConsumed + framesDropped + depth()`.
 class CompletedFrameQueue final {
   public:
     /// Validates and publishes a strictly newer complete frame.

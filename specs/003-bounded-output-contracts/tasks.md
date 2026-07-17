@@ -38,7 +38,7 @@
 - [x] T013 [US1] Publish completed frames from the C1 instruction/device safe point in `Sources/BeebCore/src/runtime.cpp`
 - [x] T014 [US1] Expose caller-owned frame dequeue/release operations in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`
 - [x] T015 [US1] Map dequeued C frames into independently owned Swift values in `Sources/BeebKit/BeebMachine.swift`
-- [ ] T016 [US1] Document RGBA format, ownership, capacity three, drop-oldest behavior, counters, and safe-point rationale in `Sources/BeebCore/include/beeb/output.hpp`, `Sources/BeebCore/include/beeb_c.h`, and `docs/code/bounded-output.md`
+- [x] T016 [US1] Document RGBA format, ownership, capacity three, drop-oldest behavior, counters, and safe-point rationale in `Sources/BeebCore/include/beeb/output.hpp`, `Sources/BeebCore/include/beeb_c.h`, and `docs/code/bounded-output.md`
 
 **Checkpoint**: US1 is independently demonstrable and verified in a Lore commit before US2.
 

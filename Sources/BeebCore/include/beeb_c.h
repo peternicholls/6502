@@ -98,6 +98,8 @@ typedef struct beeb_fault_detail {
 ///
 /// A successful unavailable value has `available == 0`, null `rgba`, and zero
 /// metadata. An available value owns exactly `rgba_size` allocated bytes.
+/// Bytes are row-major red, green, blue, alpha with one byte per component and
+/// `rgba_size == width * height * 4`; no byte aliases runtime or queue storage.
 /// Initialize storage to zero before first use and release every successful
 /// value with `beeb_frame_release()` before overwriting or discarding it.
 typedef struct beeb_frame {
@@ -233,6 +235,10 @@ beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state)
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame);
 
 /// Transfers the oldest retained completed frame into caller-owned storage.
+/// Frames are published only after a complete instruction and its aggregate
+/// device tick. The queue retains at most three frames and drops exactly the
+/// oldest unconsumed frame on overflow; successful values never alias producer
+/// storage and remain unchanged while emulation continues.
 /// @param machine Live runtime token.
 /// @param out_frame Required zero-initialized output, written only on success and
 /// subsequently released with `beeb_frame_release()`.
