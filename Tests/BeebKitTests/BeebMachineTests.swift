@@ -361,4 +361,64 @@ final class BeebMachineTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(drain.demand, 0)
         }
     }
+
+    func testC2DiagnosticMappingRecoveryAndRateTolerance() throws {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(outputOSROM())
+        try machine.reset()
+        XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
+        _ = try machine.run(cycles: 2_000_000)
+
+        XCTAssertThrowsError(try machine.drainAudio(maximumSamples: 5_000)) { error in
+            guard case let BeebError.audioPressure(category, drain) = error else {
+                return XCTFail("Expected recoverable pressure, got \(error)")
+            }
+            XCTAssertEqual(category, .underrun)
+            XCTAssertEqual(drain.samples.count + drain.shortfall, 5_000)
+        }
+
+        let pressured = try machine.outputDiagnostics()
+        XCTAssertEqual(pressured.totalCycles, try machine.cpuState().cycles)
+        XCTAssertGreaterThanOrEqual(pressured.latestFrameNumber, 1)
+        XCTAssertLessThanOrEqual(pressured.frameDepth, pressured.frameCapacity)
+        XCTAssertEqual(pressured.frameCapacity, 3)
+        XCTAssertEqual(pressured.audioDepth, 0)
+        XCTAssertEqual(pressured.audioCapacity, 4_096)
+        XCTAssertEqual(pressured.audioDemand, 2_048)
+        XCTAssertEqual(pressured.lastStatus, .underrun)
+        XCTAssertEqual(
+            pressured.counters.framesProduced,
+            pressured.counters.framesConsumed + pressured.counters.framesDropped
+                + UInt64(pressured.frameDepth)
+        )
+        XCTAssertEqual(
+            pressured.counters.audioSamplesProduced,
+            pressured.counters.audioSamplesConsumed + pressured.counters.audioSamplesOverrun
+                + UInt64(pressured.audioDepth)
+        )
+        XCTAssertGreaterThan(pressured.counters.audioSamplesOverrun, 0)
+        XCTAssertGreaterThan(pressured.counters.audioSamplesUnderrun, 0)
+        XCTAssertEqual(try machine.outputDiagnostics(), pressured)
+
+        let before = pressured
+        _ = try machine.run(cycles: 4_000_000)
+        let after = try machine.outputDiagnostics()
+        let delta = after.totalCycles - before.totalCycles
+        let hostSeconds = Double(delta) / 3_000_000.0
+        XCTAssertEqual(
+            try BeebMachine.emulationRate(from: before, to: after, hostSeconds: hostSeconds),
+            1.5,
+            accuracy: 0.0015
+        )
+
+        for invalid in [0.0, -1.0, Double.nan, Double.infinity] {
+            assertCoreStatus(.invalidArgument) {
+                _ = try BeebMachine.emulationRate(
+                    from: before, to: after, hostSeconds: invalid)
+            }
+        }
+        assertCoreStatus(.invalidArgument) {
+            _ = try BeebMachine.emulationRate(from: after, to: before, hostSeconds: 1.0)
+        }
+    }
 }
