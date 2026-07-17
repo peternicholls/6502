@@ -96,19 +96,22 @@ typedef struct beeb_fault_detail {
 
 /// Caller-owned copy of one completed video frame.
 ///
-/// A successful unavailable value has `available == 0`, null `rgba`, and zero
-/// metadata. An available value owns exactly `rgba_size` allocated bytes.
+/// A successful unavailable value has `available == 0`, null `rgba`, null
+/// `release_context`, and zero metadata. An available value owns exactly
+/// `rgba_size` bytes through its opaque release context.
 /// Bytes are row-major red, green, blue, alpha with one byte per component and
 /// `rgba_size == width * height * 4`; no byte aliases runtime or queue storage.
 /// Initialize storage to zero before first use and release every successful
-/// value with `beeb_frame_release()` before overwriting or discarding it.
+/// value with `beeb_frame_release()` before overwriting or discarding it. Callers
+/// may read `rgba` but MUST NOT free it or inspect/change `release_context`.
 typedef struct beeb_frame {
-    int available;    ///< Non-zero when a complete frame exists.
-    uint32_t width;   ///< Pixel width when available.
-    uint32_t height;  ///< Pixel height when available.
-    uint64_t number;  ///< Monotonic CRTC frame number.
-    uint8_t* rgba;    ///< Caller-owned packed 8-bit RGBA storage.
-    size_t rgba_size; ///< Allocated byte count at `rgba`.
+    int available;         ///< Non-zero when a complete frame exists.
+    uint32_t width;        ///< Pixel width when available.
+    uint32_t height;       ///< Pixel height when available.
+    uint64_t number;       ///< Monotonic CRTC frame number.
+    uint8_t* rgba;         ///< Caller-owned packed RGBA view, valid until release.
+    size_t rgba_size;      ///< Owned byte count at `rgba`.
+    void* release_context; ///< Private ownership token; pass back unchanged on release.
 } beeb_frame;
 
 /// Atomic metadata returned with one caller-buffer continuous-audio drain.
@@ -287,14 +290,17 @@ beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame);
 /// `BEEB_STATUS_INVALID_ARGUMENT` for a bad token, null output, or unreleased
 /// output value, `BEEB_STATUS_INVALID_STATE` when faulted,
 /// `BEEB_STATUS_RESOURCE_EXHAUSTED` when command or frame storage cannot be
-/// allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+/// allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown. Frame release
+/// storage is allocated before destructive dequeue, so resource failure leaves
+/// caller output, queue depth, and consumed accounting unchanged.
 beeb_status beeb_dequeue_frame(beeb_machine* machine, beeb_frame* out_frame);
 
 /// Releases one frame value and clears all of its fields.
 /// @param frame Required frame previously initialized to zero or returned by
 /// `beeb_get_frame()` or `beeb_dequeue_frame()`; null is invalid.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for an invalid
-/// frame pointer/value.
+/// frame pointer/value or changed ownership fields. The function clears every
+/// field on success; a rejected value remains unchanged for diagnosis.
 beeb_status beeb_frame_release(beeb_frame* frame);
 
 /// Renders mono audio synchronously without advancing CPU time.

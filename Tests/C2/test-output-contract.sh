@@ -15,6 +15,9 @@ cat >"${source_path}" <<'C'
 #include <stdlib.h>
 #include <string.h>
 
+/* Private failure-injection seam implemented by the C++ adapter test build. */
+void beeb_test_fail_next_frame_storage_allocation(void);
+
 static int expect(beeb_status status, beeb_status_code code) {
     return status.code == code && status.message[BEEB_STATUS_MESSAGE_CAPACITY - 1] == '\0';
 }
@@ -56,6 +59,12 @@ int main(void) {
     if (!expect(beeb_create(&machine), BEEB_STATUS_OK) || machine == NULL) return 3;
     if (!expect(beeb_dequeue_frame(machine, NULL), BEEB_STATUS_INVALID_ARGUMENT)) return 4;
 
+    beeb_frame occupied = {0};
+    occupied.release_context = &occupied;
+    if (!expect(beeb_dequeue_frame(machine, &occupied), BEEB_STATUS_INVALID_ARGUMENT) ||
+        occupied.release_context != &occupied)
+        return 5;
+
     untouched.width = 77;
     if (!expect(beeb_dequeue_frame(machine, &untouched), BEEB_STATUS_EMPTY)) return 5;
     if (untouched.width != 77 || untouched.rgba != NULL) return 6;
@@ -80,9 +89,32 @@ int main(void) {
     if (!expect(beeb_reset(machine), BEEB_STATUS_OK)) return 8;
     if (!produce_frame(machine)) return 8;
 
+    beeb_output_diagnostics before_frame_failure = {0};
+    if (!expect(beeb_get_output_diagnostics(machine, &before_frame_failure), BEEB_STATUS_OK))
+        return 9;
+    beeb_frame failed_frame = {0};
+    failed_frame.width = 77;
+    beeb_test_fail_next_frame_storage_allocation();
+    if (!expect(beeb_dequeue_frame(machine, &failed_frame), BEEB_STATUS_RESOURCE_EXHAUSTED))
+        return 10;
+    if (failed_frame.width != 77 || failed_frame.rgba != NULL) return 11;
+    beeb_output_diagnostics after_frame_failure = {0};
+    if (!expect(beeb_get_output_diagnostics(machine, &after_frame_failure), BEEB_STATUS_OK))
+        return 12;
+    if (after_frame_failure.frame_depth != before_frame_failure.frame_depth ||
+        after_frame_failure.frames_consumed != before_frame_failure.frames_consumed)
+        return 13;
+
     beeb_frame first = {0};
-    if (!expect(beeb_dequeue_frame(machine, &first), BEEB_STATUS_OK)) return 9;
-    if (!first.available || first.rgba == NULL || first.rgba_size == 0) return 10;
+    if (!expect(beeb_dequeue_frame(machine, &first), BEEB_STATUS_OK)) return 14;
+    if (!first.available || first.rgba == NULL || first.rgba_size == 0 ||
+        first.release_context == NULL)
+        return 15;
+    beeb_output_diagnostics after_frame_transfer = {0};
+    if (!expect(beeb_get_output_diagnostics(machine, &after_frame_transfer), BEEB_STATUS_OK) ||
+        after_frame_transfer.frames_consumed != before_frame_failure.frames_consumed + 1 ||
+        after_frame_transfer.frame_depth + 1 != before_frame_failure.frame_depth)
+        return 16;
     uint8_t* retained = malloc(first.rgba_size);
     if (retained == NULL) return 11;
     memcpy(retained, first.rgba, first.rgba_size);
@@ -96,7 +128,9 @@ int main(void) {
 
     free(retained);
     if (!expect(beeb_frame_release(&first), BEEB_STATUS_OK)) return 17;
-    if (first.available || first.rgba != NULL || first.rgba_size != 0) return 18;
+    if (first.available || first.rgba != NULL || first.rgba_size != 0 ||
+        first.release_context != NULL)
+        return 18;
     if (!expect(beeb_frame_release(&second), BEEB_STATUS_OK)) return 19;
 
     uint64_t actual_cycles = 0;

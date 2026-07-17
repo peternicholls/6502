@@ -2242,6 +2242,21 @@ void testC2CompletedFrameFIFOAndAccounting() {
              counters.framesConsumed + counters.framesDropped + queue.depth());
 }
 
+void testC2CFrameReleaseRequiresOwnershipToken() {
+    beeb_frame empty{};
+    checkCStatus(beeb_frame_release(&empty), BEEB_STATUS_OK);
+
+    std::uint8_t foreignByte = 0;
+    beeb_frame foreign{};
+    foreign.available = 1;
+    foreign.rgba = &foreignByte;
+    foreign.rgba_size = 1;
+    checkCStatus(beeb_frame_release(&foreign), BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(foreign.rgba == &foreignByte);
+    CHECK_EQ(foreign.rgba_size, 1U);
+    CHECK(foreign.release_context == nullptr);
+}
+
 void testC2AudioFIFOPressureDemandAndAccounting() {
     beeb::AudioSampleQueue queue;
     CHECK_EQ(queue.capacity(), 4'096U);
@@ -2419,6 +2434,8 @@ int main(int argc, char** argv) {
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
         {"C2 frames: FIFO overflow ownership and accounting",
          testC2CompletedFrameFIFOAndAccounting},
+        {"C2 frames: C release requires the matching ownership token",
+         testC2CFrameReleaseRequiresOwnershipToken},
         {"C2 audio: FIFO pressure demand and accounting",
          testC2AudioFIFOPressureDemandAndAccounting},
         {"C2 diagnostics: consistent observational pressure snapshot",

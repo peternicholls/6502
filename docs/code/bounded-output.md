@@ -33,11 +33,15 @@ and increments the dropped-frame counter. At every observation:
 frames produced = frames consumed + frames dropped + retained frame depth
 ```
 
-C++ dequeue transfers an owned `CompletedFrame`. C dequeue allocates a fresh
-`beeb_frame` whose caller releases it with `beeb_frame_release()`. Swift copies
-those bytes into `Data` before releasing the C allocation. None of these values
-aliases the renderer, the FIFO, another result, or a later publication, so a
-consumer may retain it while production continues.
+C++ dequeue transfers an owned `CompletedFrame`. Before C requests that
+destructive transfer, the adapter allocates a small opaque release context. It
+then moves the result's pixel vector into that context without another pixel
+allocation or copy and returns a `beeb_frame` whose caller releases it with
+`beeb_frame_release()`. If context allocation fails, dequeue never occurs,
+caller output is unchanged, and frame depth/consumed accounting are unchanged.
+Swift copies the bytes into `Data` before releasing the C context. None of these
+values aliases the renderer, the FIFO, another result, or a later publication,
+so a consumer may retain it while production continues.
 
 An empty FIFO returns the structured empty category without mutating caller
 output. Faulted and shutting-down lifecycles remain distinguishable from

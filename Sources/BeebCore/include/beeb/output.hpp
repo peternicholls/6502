@@ -1,5 +1,8 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/bounded-output.md owns the cross-language queue,
+// pressure-accounting, safe-point publication, and recovery architecture.
+
 #include <array>
 #include <cstddef>
 #include <cstdint>

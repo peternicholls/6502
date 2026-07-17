@@ -1,5 +1,8 @@
 #include "beeb/output.hpp"
 
+// C0-DOC-RATIONALE: docs/code/bounded-output.md owns the queue mutation,
+// conservation equations, pressure policy, and owned-result rationale.
+
 #include <algorithm>
 #include <limits>
 #include <type_traits>

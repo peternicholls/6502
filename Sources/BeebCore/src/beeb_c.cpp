@@ -5,6 +5,7 @@
 #include "beeb/runtime.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <condition_variable>
 #include <cstring>
@@ -14,8 +15,10 @@
 #include <new>
 #include <span>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 /// @cond INTERNAL
 /// Opaque allocation used only as a stable registry key; machine state lives in HandleState.
@@ -23,6 +26,39 @@ struct beeb_machine final {};
 /// @endcond
 
 namespace {
+
+/// Adapter-owned frame allocation whose vector buffer transfers from the
+/// runtime without a second pixel allocation after destructive dequeue.
+struct CFrameStorage final {
+    std::vector<std::uint8_t> rgba;
+};
+static_assert(std::is_nothrow_move_assignable_v<std::vector<std::uint8_t>>);
+
+/// One-shot private test seam used to prove allocation happens before dequeue.
+std::atomic<bool> failNextFrameStorageAllocation{false};
+
+/// Allocates the C release context before any runtime output can be consumed.
+std::unique_ptr<CFrameStorage> allocateFrameStorage() {
+    if (failNextFrameStorageAllocation.exchange(false, std::memory_order_relaxed))
+        throw std::bad_alloc();
+    return std::make_unique<CFrameStorage>();
+}
+
+/// Moves one already-owned C++ frame buffer into a C release context without
+/// allocating or copying pixels; metadata and bytes remain caller-owned.
+template <typename Frame>
+beeb_frame transferFrameToC(Frame& frame, std::unique_ptr<CFrameStorage> storage) noexcept {
+    storage->rgba = std::move(frame.rgba);
+    const beeb_frame output{1,
+                            frame.width,
+                            frame.height,
+                            frame.number,
+                            storage->rgba.data(),
+                            storage->rgba.size(),
+                            storage.get()};
+    (void)storage.release();
+    return output;
+}
 
 /// Creates a zero-filled, null-terminated operation status without throwing.
 beeb_status makeStatus(beeb_status_code code, std::string_view message = {}) noexcept {
@@ -300,6 +336,11 @@ beeb_status beeb_test_create_with_allocation_failure(beeb_machine** out_machine,
 
 extern "C" {
 
+/// Arms the private C-adapter failure seam for one pre-dequeue allocation.
+void beeb_test_fail_next_frame_storage_allocation(void) {
+    failNextFrameStorageAllocation.store(true, std::memory_order_relaxed);
+}
+
 const char* beeb_version_string(void) {
     return BEEB_VERSION_STRING;
 }
@@ -447,25 +488,17 @@ beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state)
 
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame) {
     if (!out_frame) return missingOutput("frame output is null");
-    if (out_frame->rgba != nullptr) {
+    if (out_frame->rgba != nullptr || out_frame->release_context != nullptr) {
         return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
                           "frame output must be released before reuse");
     }
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto storage = allocateFrameStorage();
         auto result = runtime.frame();
         if (!result.status) return translateStatus(result.status);
-        const auto& frame = *result.value;
+        auto& frame = *result.value;
         beeb_frame output{};
-        if (frame.available) {
-            auto bytes = std::make_unique<uint8_t[]>(frame.rgba.size());
-            std::copy(frame.rgba.begin(), frame.rgba.end(), bytes.get());
-            output.available = 1;
-            output.width = frame.width;
-            output.height = frame.height;
-            output.number = frame.number;
-            output.rgba_size = frame.rgba.size();
-            output.rgba = bytes.release();
-        }
+        if (frame.available) output = transferFrameToC(frame, std::move(storage));
         *out_frame = output;
         return makeStatus(BEEB_STATUS_OK);
     });
@@ -473,33 +506,39 @@ beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame) {
 
 beeb_status beeb_dequeue_frame(beeb_machine* machine, beeb_frame* out_frame) {
     if (!out_frame) return missingOutput("frame output is null");
-    if (out_frame->rgba != nullptr) {
+    if (out_frame->rgba != nullptr || out_frame->release_context != nullptr) {
         return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
                           "frame output must be released before reuse");
     }
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto storage = allocateFrameStorage();
         auto result = runtime.dequeueFrame();
         if (!result.status.isOK()) return translateOutputStatus(result.status);
         if (!result.frame) {
             return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
                               "frame dequeue succeeded without an owned value");
         }
-        auto bytes = std::make_unique<uint8_t[]>(result.frame->rgba.size());
-        std::copy(result.frame->rgba.begin(), result.frame->rgba.end(), bytes.get());
-        const beeb_frame output{1,
-                                result.frame->width,
-                                result.frame->height,
-                                result.frame->number,
-                                bytes.release(),
-                                result.frame->rgba.size()};
-        *out_frame = output;
+        *out_frame = transferFrameToC(*result.frame, std::move(storage));
         return makeStatus(BEEB_STATUS_OK);
     });
 }
 
 beeb_status beeb_frame_release(beeb_frame* frame) {
     if (!frame) return missingOutput("frame is null");
-    delete[] frame->rgba;
+    if (!frame->release_context) {
+        if (frame->rgba) {
+            return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                              "frame RGBA storage has no release context");
+        }
+        *frame = {};
+        return makeStatus(BEEB_STATUS_OK);
+    }
+    auto* storage = static_cast<CFrameStorage*>(frame->release_context);
+    if (frame->rgba != storage->rgba.data() || frame->rgba_size != storage->rgba.size()) {
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "frame ownership fields were changed before release");
+    }
+    delete storage;
     *frame = {};
     return makeStatus(BEEB_STATUS_OK);
 }

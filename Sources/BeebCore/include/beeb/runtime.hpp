@@ -1,5 +1,9 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/runtime-ownership.md and
+// docs/code/bounded-output.md own the serialized lifecycle, safe-point, and
+// output-command architecture declared here.
+
 #include "beeb/cpu6502.hpp"
 #include "beeb/disc_image.hpp"
 #include "beeb/output.hpp"
