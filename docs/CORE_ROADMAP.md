@@ -503,3 +503,5 @@ documentation debt.
 - Avoid new dependencies unless they materially improve validation or safety.
 - Update this roadmap for technical priority changes and `STATUS.md` only when
   implementation evidence changes.
+
+## Post-Phase C6 - Working Basic Computer Application
