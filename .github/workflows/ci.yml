@@ -45,6 +45,24 @@ jobs:
         run: swift test
       - name: Build the SwiftUI demo
         run: swift build
+      - name: Build the macOS app scheme
+        run: >-
+          xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-macOS
+          -destination 'platform=macOS'
+          -derivedDataPath "$RUNNER_TEMP/beeb6502-macos"
+          CODE_SIGNING_ALLOWED=NO build
+      - name: Build the iOS Simulator app scheme
+        run: >-
+          xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-iOS
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/beeb6502-ios"
+          CODE_SIGNING_ALLOWED=NO build
+      - name: Run the shared macOS test scheme
+        run: >-
+          xcodebuild -project Beeb6502.xcodeproj -scheme Beeb6502-Tests
+          -destination 'platform=macOS'
+          -derivedDataPath "$RUNNER_TEMP/beeb6502-tests"
+          CODE_SIGNING_ALLOWED=NO test
       - name: Validate complete code documentation
         run: DOCS_BASE=origin/develop make docs-check DOCS_PROFILE=macos
 
