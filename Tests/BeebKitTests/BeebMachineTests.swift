@@ -23,6 +23,36 @@ final class BeebMachineTests: XCTestCase {
         return Data(bytes)
     }
 
+    private func outputOSROM() -> Data {
+        var bytes = [UInt8](validOSROM())
+        var cursor = 0
+        func emit(_ byte: UInt8) { bytes[cursor] = byte; cursor += 1 }
+        func load(_ value: UInt8) { emit(0xA9); emit(value) }
+        func store(_ address: UInt16) {
+            emit(0x8D)
+            emit(UInt8(truncatingIfNeeded: address))
+            emit(UInt8(truncatingIfNeeded: address >> 8))
+        }
+        func setCRTC(_ register: UInt8, _ value: UInt8) {
+            load(register)
+            store(0xFE00)
+            load(value)
+            store(0xFE01)
+        }
+        setCRTC(1, 1)
+        setCRTC(6, 1)
+        setCRTC(9, 0)
+        setCRTC(12, 0)
+        setCRTC(13, 0)
+        load(0x1C)
+        store(0xFE20)
+        let idle = UInt16(0xC000 + cursor)
+        emit(0x4C)
+        emit(UInt8(truncatingIfNeeded: idle))
+        emit(UInt8(truncatingIfNeeded: idle >> 8))
+        return Data(bytes)
+    }
+
     private func assertCoreStatus(
         _ expected: BeebStatusCategory,
         file: StaticString = #filePath,
@@ -77,6 +107,11 @@ final class BeebMachineTests: XCTestCase {
 
     func testEveryCoreStatusCategoryMapsDirectly() {
         let cases: [(beeb_status_code, BeebStatusCategory)] = [
+            (BEEB_STATUS_EMPTY, .empty),
+            (BEEB_STATUS_UNDERRUN, .underrun),
+            (BEEB_STATUS_OVERRUN, .overrun),
+            (BEEB_STATUS_CAPACITY_EXCEEDED, .capacityExceeded),
+            (BEEB_STATUS_OUTPUT_FAILED, .outputProductionFailed),
             (BEEB_STATUS_INVALID_ARGUMENT, .invalidArgument),
             (BEEB_STATUS_INVALID_STATE, .invalidState),
             (BEEB_STATUS_EXECUTION_FAILED, .executionFailed),
@@ -258,7 +293,7 @@ final class BeebMachineTests: XCTestCase {
 
     func testC2DequeuedFrameIsIndependentlyOwned() throws {
         let machine = try BeebMachine()
-        try machine.loadOSROM(loopingOSROM())
+        try machine.loadOSROM(outputOSROM())
         try machine.reset()
         XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
 

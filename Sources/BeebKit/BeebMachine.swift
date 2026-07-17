@@ -5,6 +5,16 @@ import Foundation
 
 /// Stable Swift mapping of the C runtime status categories.
 public enum BeebStatusCategory: Sendable, Equatable {
+    /// No complete output value is currently retained.
+    case empty
+    /// Partial output was returned with an exact demand shortfall.
+    case underrun
+    /// Oldest bounded output was discarded under producer pressure.
+    case overrun
+    /// A caller or fixed output capacity was exceeded.
+    case capacityExceeded
+    /// Output conversion or production failed without corrupting the runtime.
+    case outputProductionFailed
     /// A pointer, size, value, or output was invalid.
     case invalidArgument
     /// The command was not legal in the current lifecycle state.
@@ -293,6 +303,33 @@ public final class BeebMachine: @unchecked Sendable {
         )
     }
 
+    /// Transfers the oldest retained completed frame into independent Swift storage.
+    /// - Returns: A complete packed-RGBA frame owned by the returned value.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` with typed empty, lifecycle,
+    /// allocation, or output-failure status. No runtime or C storage is borrowed.
+    public func dequeueVideoFrame() throws -> BeebVideoFrame {
+        var frame = beeb_frame()
+        try Self.check(beeb_dequeue_frame(handle, &frame))
+        defer { _ = beeb_frame_release(&frame) }
+        guard frame.available != 0, let bytes = frame.rgba else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C frame dequeue succeeded without RGBA storage")
+        }
+        let width = Int(frame.width)
+        let height = Int(frame.height)
+        let expectedSize = width * height * 4
+        guard frame.rgba_size == expectedSize else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C frame byte count did not match its dimensions")
+        }
+        return BeebVideoFrame(
+            width: width,
+            height: height,
+            number: frame.number,
+            rgba: Data(bytes: bytes, count: expectedSize)
+        )
+    }
+
     /// Renders independently owned mono samples without advancing CPU time.
     /// - Parameters:
     ///   - frames: Positive number of samples.
@@ -361,6 +398,11 @@ public final class BeebMachine: @unchecked Sendable {
     /// Maps the closed C category vocabulary into the public Swift vocabulary.
     static func statusCategory(_ code: beeb_status_code) -> BeebStatusCategory {
         switch code {
+        case BEEB_STATUS_EMPTY: return .empty
+        case BEEB_STATUS_UNDERRUN: return .underrun
+        case BEEB_STATUS_OVERRUN: return .overrun
+        case BEEB_STATUS_CAPACITY_EXCEEDED: return .capacityExceeded
+        case BEEB_STATUS_OUTPUT_FAILED: return .outputProductionFailed
         case BEEB_STATUS_INVALID_ARGUMENT: return .invalidArgument
         case BEEB_STATUS_INVALID_STATE: return .invalidState
         case BEEB_STATUS_EXECUTION_FAILED: return .executionFailed
