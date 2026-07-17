@@ -111,6 +111,20 @@ typedef struct beeb_frame {
     size_t rgba_size; ///< Allocated byte count at `rgba`.
 } beeb_frame;
 
+/// Atomic metadata returned with one caller-buffer continuous-audio drain.
+///
+/// `copied` samples at the start of the caller buffer are valid on OK or
+/// UNDERRUN. `shortfall` is exactly `requested - copied`; demand and cumulative
+/// pressure counters are observed after that same drain operation.
+typedef struct beeb_audio_drain_result {
+    uint64_t first_sample;   ///< Emulated sequence of the first copied sample.
+    size_t copied;           ///< Valid Float32 values written to the caller buffer.
+    size_t shortfall;        ///< Requested values unavailable for this drain.
+    size_t demand;           ///< Post-drain samples needed to reach the 2,048 target.
+    uint64_t overrun_count;  ///< Cumulative oldest samples discarded at capacity.
+    uint64_t underrun_count; ///< Cumulative exact requested-sample shortfall.
+} beeb_audio_drain_result;
+
 /// Returns the immutable library version string.
 /// @return Borrowed process-owned semantic-version string; never null.
 const char* beeb_version_string(void);
@@ -267,6 +281,19 @@ beeb_status beeb_frame_release(beeb_frame* frame);
 /// `BEEB_STATUS_UNAVAILABLE` during shutdown; output changes only on success.
 beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
                               double sample_rate);
+
+/// Drains continuous 48 kHz mono Float32 output into caller storage.
+/// @param machine Live runtime token.
+/// @param mono Writable storage for `capacity` samples; required when capacity is nonzero.
+/// @param capacity Maximum samples to copy and the requested drain count.
+/// @param out_result Required metadata, written with the buffer only on OK or UNDERRUN.
+/// @return `BEEB_STATUS_OK` when all requested samples were copied,
+/// `BEEB_STATUS_UNDERRUN` with a valid partial copy and exact shortfall,
+/// `BEEB_STATUS_INVALID_ARGUMENT` for bad pointers, `BEEB_STATUS_INVALID_STATE`
+/// when faulted, `BEEB_STATUS_RESOURCE_EXHAUSTED` if result storage cannot be
+/// allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity,
+                             beeb_audio_drain_result* out_result);
 
 /// Changes one keyboard-matrix bit in FIFO order.
 /// @param machine Live runtime token.

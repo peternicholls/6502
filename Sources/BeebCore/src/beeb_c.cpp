@@ -484,6 +484,30 @@ beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
     });
 }
 
+beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity,
+                             beeb_audio_drain_result* out_result) {
+    if (capacity != 0 && !mono) return missingOutput("audio output buffer is null");
+    if (!out_result) return missingOutput("audio drain result is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto result = runtime.drainAudio(capacity);
+        if (result.status.code != beeb::OutputStatusCode::ok &&
+            result.status.code != beeb::OutputStatusCode::underrun)
+            return translateOutputStatus(result.status);
+        if (result.chunk.samples.size() > capacity ||
+            result.chunk.shortfall != capacity - result.chunk.samples.size())
+            return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
+                              "audio drain returned inconsistent copy accounting");
+        std::copy(result.chunk.samples.begin(), result.chunk.samples.end(), mono);
+        *out_result = {result.chunk.firstSample,
+                       result.chunk.samples.size(),
+                       result.chunk.shortfall,
+                       result.demand,
+                       result.counters.audioSamplesOverrun,
+                       result.counters.audioSamplesUnderrun};
+        return translateOutputStatus(result.status);
+    });
+}
+
 beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         return translateStatus(runtime.setKey(column, row, pressed != 0));

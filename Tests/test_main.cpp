@@ -1518,6 +1518,20 @@ C1ReplayOutcome replayC1Ledger(const std::vector<beeb::LedgerEntry>& ledger) {
     auto previousAcceptance = std::uint64_t{0};
     beeb::SafePoint finalSafePoint{};
     const auto os = makeNOPOSROM();
+    std::uint64_t audioRemainder = 0;
+    const auto publishAudio = [&](std::uint64_t cycles) {
+        const auto fractional = audioRemainder + (cycles % 125) * 3;
+        std::uint64_t remaining = (cycles / 125) * 3 + fractional / 125;
+        audioRemainder = fractional % 125;
+        std::array<float, beeb::audioSampleCapacity> samples{};
+        while (remaining != 0) {
+            const auto count =
+                static_cast<std::size_t>(std::min<std::uint64_t>(remaining, samples.size()));
+            machine.sound().render(samples.data(), count,
+                                   static_cast<double>(beeb::audioSampleRate));
+            remaining -= count;
+        }
+    };
 
     for (const auto& entry : ledger) {
         CHECK(entry.sequence > previousSequence);
@@ -1529,6 +1543,7 @@ C1ReplayOutcome replayC1Ledger(const std::vector<beeb::LedgerEntry>& ledger) {
             CHECK(state == beeb::RuntimeState::running);
             CHECK_EQ(entry.requestedCycles, beeb::MachineRuntime::executionSliceCycles);
             CHECK_EQ(machine.runFor(entry.requestedCycles), entry.actualCycles);
+            publishAudio(entry.actualCycles);
         } else {
             CHECK(entry.acceptanceSequence > previousAcceptance);
             previousAcceptance = entry.acceptanceSequence;
