@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -117,6 +118,38 @@ struct OutputDiagnostics {
 struct FrameDequeueResult {
     OutputStatus status;                 ///< Empty, lifecycle, failure, or success outcome.
     std::optional<CompletedFrame> frame; ///< Present only when one frame transfers.
+};
+
+/// Owner-thread-only capacity-three FIFO for complete immutable-in-transit frames.
+///
+/// Publishing and dequeueing are serialized by `MachineRuntime`; this type has
+/// no internal lock and exposes no callback or borrowed storage. Moving a frame
+/// out leaves every retained consumer value independent of later publication.
+class CompletedFrameQueue final {
+  public:
+    /// Validates and publishes a strictly newer complete frame.
+    /// @param frame Owned RGBA value moved into bounded storage.
+    /// @return Success, overrun when the oldest frame was dropped, or invalid input.
+    [[nodiscard]] OutputStatus publish(CompletedFrame frame) noexcept;
+    /// Transfers the oldest retained frame.
+    /// @return An owned frame, or a structured empty result.
+    [[nodiscard]] FrameDequeueResult dequeue() noexcept;
+    /// Reports retained frame count.
+    /// @return A value in the inclusive range zero to `completedFrameCapacity`.
+    [[nodiscard]] std::size_t depth() const noexcept { return size_; }
+    /// Copies exact frame-flow counters; audio fields remain unchanged.
+    /// @return Monotonic produced, consumed, and dropped values.
+    [[nodiscard]] OutputCounters counters() const noexcept { return counters_; }
+    /// Reports the latest successfully published output identity.
+    /// @return Latest identity, or zero before the first frame.
+    [[nodiscard]] std::uint64_t latestFrameNumber() const noexcept;
+
+  private:
+    std::array<std::optional<CompletedFrame>, completedFrameCapacity> slots_;
+    std::size_t head_ = 0;
+    std::size_t size_ = 0;
+    std::optional<std::uint64_t> lastPublished_;
+    OutputCounters counters_;
 };
 
 /// Owned result of one FIFO audio drain, including a possible partial chunk.

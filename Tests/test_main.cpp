@@ -2147,33 +2147,33 @@ void testC2CompletedFrameFIFOAndAccounting() {
     beeb::CompletedFrameQueue queue;
 
     const auto empty = queue.dequeue();
-    CHECK_EQ(empty.status.code, beeb::OutputStatusCode::empty);
+    CHECK(empty.status.code == beeb::OutputStatusCode::empty);
     CHECK(!empty.frame.has_value());
 
-    CHECK_EQ(queue.publish(c2Frame(10)).code, beeb::OutputStatusCode::ok);
-    CHECK_EQ(queue.publish(c2Frame(11)).code, beeb::OutputStatusCode::ok);
-    CHECK_EQ(queue.publish(c2Frame(12)).code, beeb::OutputStatusCode::ok);
+    CHECK(queue.publish(c2Frame(10)).code == beeb::OutputStatusCode::ok);
+    CHECK(queue.publish(c2Frame(11)).code == beeb::OutputStatusCode::ok);
+    CHECK(queue.publish(c2Frame(12)).code == beeb::OutputStatusCode::ok);
     CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
 
     auto retained = queue.dequeue();
-    CHECK_EQ(retained.status.code, beeb::OutputStatusCode::ok);
+    CHECK(retained.status.code == beeb::OutputStatusCode::ok);
     CHECK(retained.frame.has_value());
     CHECK_EQ(retained.frame->number, 10U);
     const auto retainedPixels = retained.frame->rgba;
 
-    CHECK_EQ(queue.publish(c2Frame(13)).code, beeb::OutputStatusCode::ok);
-    CHECK_EQ(queue.publish(c2Frame(14)).code, beeb::OutputStatusCode::overrun);
+    CHECK(queue.publish(c2Frame(13)).code == beeb::OutputStatusCode::ok);
+    CHECK(queue.publish(c2Frame(14)).code == beeb::OutputStatusCode::overrun);
     CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
-    CHECK_EQ(retained.frame->rgba, retainedPixels);
+    CHECK(retained.frame->rgba == retainedPixels);
 
     const auto beforeInvalid = queue.counters();
-    CHECK_EQ(queue.publish(c2Frame(14)).code, beeb::OutputStatusCode::invalidArgument);
+    CHECK(queue.publish(c2Frame(14)).code == beeb::OutputStatusCode::invalidArgument);
     CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
-    CHECK_EQ(queue.counters(), beforeInvalid);
+    CHECK(queue.counters() == beforeInvalid);
 
     for (const auto expected : {12U, 13U, 14U}) {
         const auto result = queue.dequeue();
-        CHECK_EQ(result.status.code, beeb::OutputStatusCode::ok);
+        CHECK(result.status.code == beeb::OutputStatusCode::ok);
         CHECK(result.frame.has_value());
         CHECK_EQ(result.frame->number, expected);
     }
