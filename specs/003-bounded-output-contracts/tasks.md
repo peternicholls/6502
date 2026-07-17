@@ -96,7 +96,7 @@
 - [x] T042 [P] Update runtime ownership, host boundary, timing, and architecture guides in `docs/code/runtime-ownership.md`, `docs/code/host-boundary.md`, `docs/code/timing-model.md`, and `docs/ARCHITECTURE.md`
 - [ ] T043 [P] Update verified C2 and Xcode-project evidence only after measurements pass in `docs/STATUS.md`, `docs/CORE_ROADMAP.md`, and `docs/product/LEGACY_DECISIONS.md`
 - [x] T044 Update release notes and synchronized version sources for public contract changes in `CHANGELOG.md`, `VERSION`, and `Sources/BeebCore/include/beeb/version.h`
-- [ ] T045 Run 60 emulated seconds after warm-up plus 10,000-item stress, exact accounting, 16 MiB RSS tolerance, and 0.1% rate tolerance in `Tests/C2/test-output-measurement.sh` using `specs/003-bounded-output-contracts/quickstart.md`
+- [x] T045 Run 60 emulated seconds after warm-up plus 10,000-item stress, exact accounting, 16 MiB RSS tolerance, and 0.1% rate tolerance in `Tests/C2/test-output-measurement.sh` using `specs/003-bounded-output-contracts/quickstart.md`
 - [ ] T046 Generate and validate browsable public/internal documentation with `scripts/build-docs.sh`, `Tests/C0/test-documentation.sh`, and `Tests/C2/test-documentation.sh`
 - [ ] T047 Run final validation with `make test`, `make sanitize`, `make thread-sanitize`, `make format-check`, `make test-c1`, `make test-c2`, `swift test`, `swift build`, all `xcodebuild` commands in `specs/003-bounded-output-contracts/quickstart.md`, `make docs-check`, and `git diff --check`
 
