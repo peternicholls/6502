@@ -175,7 +175,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		A00000000000000000000050 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_CXX_LANGUAGE_STANDARD = "gnu++20"; SWIFT_VERSION = 5.0; }; name = Debug; };
+		A00000000000000000000050 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_CXX_LANGUAGE_STANDARD = "gnu++20"; ONLY_ACTIVE_ARCH = YES; SWIFT_VERSION = 5.0; }; name = Debug; };
 		A00000000000000000000051 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_CXX_LANGUAGE_STANDARD = "gnu++20"; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_VERSION = 5.0; }; name = Release; };
 		A00000000000000000000052 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; OTHER_SWIFT_FLAGS = "-parse-as-library"; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.demo.macos; PRODUCT_NAME = BeebDemo; SDKROOT = macosx; SUPPORTED_PLATFORMS = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Debug; };
 		A00000000000000000000053 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; OTHER_SWIFT_FLAGS = "-parse-as-library"; PRODUCT_BUNDLE_IDENTIFIER = uk.co.peternicholls.Beeb6502.demo.macos; PRODUCT_NAME = BeebDemo; SDKROOT = macosx; SUPPORTED_PLATFORMS = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Release; };

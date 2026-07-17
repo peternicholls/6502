@@ -58,12 +58,15 @@ done
 
 run_logged build-macos xcodebuild -project "${project}" -scheme BeebDemo-macOS \
     -destination 'platform=macOS' -derivedDataPath "${derived}/macos" \
+    SYMROOT="${derived}/macos/Build" OBJROOT="${derived}/macos/Intermediates" \
     CODE_SIGNING_ALLOWED=NO build
 run_logged build-ios-simulator xcodebuild -project "${project}" -scheme BeebDemo-iOS \
     -destination 'generic/platform=iOS Simulator' -derivedDataPath "${derived}/ios" \
+    SYMROOT="${derived}/ios/Build" OBJROOT="${derived}/ios/Intermediates" \
     CODE_SIGNING_ALLOWED=NO build
 run_logged test-macos xcodebuild -project "${project}" -scheme Beeb6502-Tests \
     -destination 'platform=macOS' -derivedDataPath "${derived}/tests" \
+    SYMROOT="${derived}/tests/Build" OBJROOT="${derived}/tests/Intermediates" \
     CODE_SIGNING_ALLOWED=NO test
 
 run_logged swift-build swift build --package-path "${repo_root}"
