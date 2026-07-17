@@ -7,10 +7,13 @@ second source of machine state or emulated time.
 ## C ABI
 
 Every fallible C function returns one `beeb_status` by value. Its category maps
-one-to-one to `RuntimeStatusCode`, its fixed diagnostic belongs to that
-operation, and success is the sole status allowed to write a required
-out-parameter. There is no shared last-error slot and no sentinel that must be
-interpreted using a later call.
+to the runtime or bounded-output category, and its fixed diagnostic belongs to
+that operation. `OK` is normally the sole status allowed to write a required
+out-parameter. The documented exception is `UNDERRUN`: `beeb_drain_audio()`
+writes every valid partial sample plus exact copied, shortfall, demand, overrun,
+and underrun accounting. Other non-OK paths preserve caller outputs. There is
+no shared last-error slot and no sentinel that must be interpreted using a
+later call.
 
 `beeb_create()` writes an opaque token only after both the runtime and the outer
 handle state exist. The token is a registry key, not an object that entry points
@@ -32,15 +35,34 @@ call completes. CPU, lifecycle, safe-point, and fault results are plain value
 aggregates. Audio renders into a caller buffer only after validation and
 successful owner completion.
 
-`beeb_get_frame()` allocates a complete caller-owned RGBA copy. No completed
+`beeb_get_frame()` returns a complete caller-owned RGBA value. No completed
 frame is a successful value with `available == 0`, null storage, and zero
-metadata; it is not a failure. Every successful frame value is passed to
-`beeb_frame_release()`, which releases its allocation and clears the aggregate.
-A failed frame call leaves the caller's aggregate untouched.
+metadata; it is not a failure. Every successful frame carries an opaque
+`release_context` passed back unchanged to `beeb_frame_release()`, which releases
+the vector storage and clears the aggregate. Callers read but never free `rgba`
+directly. A failed frame call leaves the caller's aggregate untouched.
+
+`beeb_dequeue_frame()` allocates its small release context before it asks the
+owner to consume the oldest frame from the capacity-three FIFO. The returned
+pixel vector moves into that context without a second allocation. Allocation
+failure and `EMPTY` both leave the aggregate and FIFO accounting untouched.
+`beeb_drain_audio()` copies FIFO samples into caller storage and reports
+recoverable `UNDERRUN` with valid partial output. `beeb_get_output_diagnostics()`
+copies one owner-consistent, non-mutating value containing depths, capacities,
+demand, exact flow counters, and latest output status. The standalone
+`beeb_calculate_emulation_rate()` helper compares two such values and one host
+interval without touching a machine or storing host time.
+
+After reset, C and Swift consumers cannot receive retained pre-reset media:
+frame dequeue is empty and audio drain produces an empty typed underrun until
+new emulated execution publishes output. Diagnostics keep runtime-lifetime
+identities and include the discarded reset depths in exact frame-drop and
+audio-overrun accounting.
 
 No C++ exception crosses C. Adapter allocation failures become
 `resource_exhausted`; contained standard or unknown failures become
-`internal_failure`. Outputs remain untouched on every non-OK path.
+`internal_failure`. Outputs remain untouched on every non-OK path except the
+documented valid partial audio drain returned with `UNDERRUN`.
 
 ## Swift wrapper
 
@@ -56,6 +78,13 @@ uses input-specific cases before crossing C. Lifecycle and fault values are
 queried from the runtime rather than cached in Swift. Frame bytes are copied
 into `Data` before the C frame is released; CPU, safe-point, fault, and audio
 results are likewise independently owned Swift values.
+
+The continuous-output mappings preserve recoverable pressure instead of
+flattening it into generic failure. Empty frame dequeue returns no value; an
+audio underrun throws `BeebError.audioPressure` carrying the valid owned
+`BeebAudioDrain`; diagnostic observations are owned `Sendable` values. Swift's
+emulation-rate helper delegates to the pure C calculation and does not create a
+timer or production loop.
 
 Concurrent tasks retain the object through each method call. Deinitialization
 runs only after the final strong reference is gone and performs blocking C
@@ -76,3 +105,6 @@ the implementation through one `MachineRuntime` command and contain every
 exception. Then add a Swift value/error mapping without a host-side lock or
 mirrored mutable state. Boundary tests must cover nulls, failure output
 preservation, concurrent entry, and recovery before publishing the symbol.
+If a recoverable non-OK status carries valid output, document that exception
+explicitly at every language layer and test both the partial value and the
+untouched-output cases.

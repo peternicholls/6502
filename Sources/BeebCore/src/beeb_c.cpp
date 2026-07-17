@@ -5,16 +5,21 @@
 #include "beeb/runtime.hpp"
 
 #include <algorithm>
+#include <atomic>
+#include <cmath>
 #include <condition_variable>
 #include <cstring>
 #include <exception>
+#include <latch>
 #include <memory>
 #include <mutex>
 #include <new>
 #include <span>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 /// @cond INTERNAL
 /// Opaque allocation used only as a stable registry key; machine state lives in HandleState.
@@ -22,6 +27,39 @@ struct beeb_machine final {};
 /// @endcond
 
 namespace {
+
+/// Adapter-owned frame allocation whose vector buffer transfers from the
+/// runtime without a second pixel allocation after destructive dequeue.
+struct CFrameStorage final {
+    std::vector<std::uint8_t> rgba;
+};
+static_assert(std::is_nothrow_move_assignable_v<std::vector<std::uint8_t>>);
+
+/// One-shot private test seam used to prove allocation happens before dequeue.
+std::atomic<bool> failNextFrameStorageAllocation{false};
+
+/// Allocates the C release context before any runtime output can be consumed.
+std::unique_ptr<CFrameStorage> allocateFrameStorage() {
+    if (failNextFrameStorageAllocation.exchange(false, std::memory_order_relaxed))
+        throw std::bad_alloc();
+    return std::make_unique<CFrameStorage>();
+}
+
+/// Moves one already-owned C++ frame buffer into a C release context without
+/// allocating or copying pixels; metadata and bytes remain caller-owned.
+template <typename Frame>
+beeb_frame transferFrameToC(Frame& frame, std::unique_ptr<CFrameStorage> storage) noexcept {
+    storage->rgba = std::move(frame.rgba);
+    const beeb_frame output{1,
+                            frame.width,
+                            frame.height,
+                            frame.number,
+                            storage->rgba.data(),
+                            storage->rgba.size(),
+                            storage.get()};
+    (void)storage.release();
+    return output;
+}
 
 /// Creates a zero-filled, null-terminated operation status without throwing.
 beeb_status makeStatus(beeb_status_code code, std::string_view message = {}) noexcept {
@@ -60,6 +98,87 @@ beeb_status_code translateStatusCode(beeb::RuntimeStatusCode code) noexcept {
 /// Copies a C++ category and diagnostic into one self-contained C result.
 beeb_status translateStatus(const beeb::RuntimeStatus& status) noexcept {
     return makeStatus(translateStatusCode(status.code), status.message);
+}
+
+/// Maps structured output pressure and failures into the extended C vocabulary.
+beeb_status_code translateOutputStatusCode(beeb::OutputStatusCode status) noexcept {
+    beeb_status_code code = BEEB_STATUS_INTERNAL_FAILURE;
+    switch (status) {
+    case beeb::OutputStatusCode::ok:
+        code = BEEB_STATUS_OK;
+        break;
+    case beeb::OutputStatusCode::empty:
+        code = BEEB_STATUS_EMPTY;
+        break;
+    case beeb::OutputStatusCode::underrun:
+        code = BEEB_STATUS_UNDERRUN;
+        break;
+    case beeb::OutputStatusCode::overrun:
+        code = BEEB_STATUS_OVERRUN;
+        break;
+    case beeb::OutputStatusCode::capacityExceeded:
+        code = BEEB_STATUS_CAPACITY_EXCEEDED;
+        break;
+    case beeb::OutputStatusCode::invalidArgument:
+        code = BEEB_STATUS_INVALID_ARGUMENT;
+        break;
+    case beeb::OutputStatusCode::invalidState:
+        code = BEEB_STATUS_INVALID_STATE;
+        break;
+    case beeb::OutputStatusCode::resourceExhausted:
+        code = BEEB_STATUS_RESOURCE_EXHAUSTED;
+        break;
+    case beeb::OutputStatusCode::unavailable:
+        code = BEEB_STATUS_UNAVAILABLE;
+        break;
+    case beeb::OutputStatusCode::productionFailed:
+        code = BEEB_STATUS_OUTPUT_FAILED;
+        break;
+    case beeb::OutputStatusCode::internalFailure:
+        break;
+    }
+    return code;
+}
+
+/// Maps structured output pressure and failures into the extended C vocabulary.
+beeb_status translateOutputStatus(const beeb::OutputStatus& status) noexcept {
+    std::string_view fallback = "bounded output failed";
+    switch (status.code) {
+    case beeb::OutputStatusCode::ok:
+        fallback = {};
+        break;
+    case beeb::OutputStatusCode::empty:
+        fallback = "no completed output is available";
+        break;
+    case beeb::OutputStatusCode::underrun:
+        fallback = "output demand exceeded available data";
+        break;
+    case beeb::OutputStatusCode::overrun:
+        fallback = "oldest bounded output was discarded";
+        break;
+    case beeb::OutputStatusCode::capacityExceeded:
+        fallback = "output capacity was exceeded";
+        break;
+    case beeb::OutputStatusCode::invalidArgument:
+        fallback = "output argument is invalid";
+        break;
+    case beeb::OutputStatusCode::invalidState:
+        fallback = "output operation is invalid in the current lifecycle";
+        break;
+    case beeb::OutputStatusCode::resourceExhausted:
+        fallback = "output storage could not be allocated";
+        break;
+    case beeb::OutputStatusCode::unavailable:
+        fallback = "output runtime is unavailable";
+        break;
+    case beeb::OutputStatusCode::productionFailed:
+        fallback = "output production failed";
+        break;
+    case beeb::OutputStatusCode::internalFailure:
+        break;
+    }
+    return makeStatus(translateOutputStatusCode(status.code),
+                      status.message.empty() ? fallback : std::string_view(status.message));
 }
 
 /// Maps runtime lifecycle state without exposing implementation storage.
@@ -216,7 +335,23 @@ beeb_status beeb_test_create_with_allocation_failure(beeb_machine** out_machine,
     return createMachine(out_machine, {.failAllocationAt = point});
 }
 
+/// Holds a private operation after normal admission so lifetime tests can
+/// prove destroy overlap without inferring it from scheduler timing.
+beeb_status beeb_test_hold_admitted_call(beeb_machine* machine, std::latch& admitted,
+                                         std::latch& release) {
+    return operation(machine, [&](beeb::MachineRuntime&) {
+        admitted.count_down();
+        release.wait();
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
 extern "C" {
+
+/// Arms the private C-adapter failure seam for one pre-dequeue allocation.
+void beeb_test_fail_next_frame_storage_allocation(void) {
+    failNextFrameStorageAllocation.store(true, std::memory_order_relaxed);
+}
 
 const char* beeb_version_string(void) {
     return BEEB_VERSION_STRING;
@@ -365,33 +500,57 @@ beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state)
 
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame) {
     if (!out_frame) return missingOutput("frame output is null");
-    if (out_frame->rgba != nullptr) {
+    if (out_frame->rgba != nullptr || out_frame->release_context != nullptr) {
         return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
                           "frame output must be released before reuse");
     }
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto storage = allocateFrameStorage();
         auto result = runtime.frame();
         if (!result.status) return translateStatus(result.status);
-        const auto& frame = *result.value;
+        auto& frame = *result.value;
         beeb_frame output{};
-        if (frame.available) {
-            auto bytes = std::make_unique<uint8_t[]>(frame.rgba.size());
-            std::copy(frame.rgba.begin(), frame.rgba.end(), bytes.get());
-            output.available = 1;
-            output.width = frame.width;
-            output.height = frame.height;
-            output.number = frame.number;
-            output.rgba_size = frame.rgba.size();
-            output.rgba = bytes.release();
-        }
+        if (frame.available) output = transferFrameToC(frame, std::move(storage));
         *out_frame = output;
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
+beeb_status beeb_dequeue_frame(beeb_machine* machine, beeb_frame* out_frame) {
+    if (!out_frame) return missingOutput("frame output is null");
+    if (out_frame->rgba != nullptr || out_frame->release_context != nullptr) {
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "frame output must be released before reuse");
+    }
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto storage = allocateFrameStorage();
+        auto result = runtime.dequeueFrame();
+        if (!result.status.isOK()) return translateOutputStatus(result.status);
+        if (!result.frame) {
+            return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
+                              "frame dequeue succeeded without an owned value");
+        }
+        *out_frame = transferFrameToC(*result.frame, std::move(storage));
         return makeStatus(BEEB_STATUS_OK);
     });
 }
 
 beeb_status beeb_frame_release(beeb_frame* frame) {
     if (!frame) return missingOutput("frame is null");
-    delete[] frame->rgba;
+    if (!frame->release_context) {
+        if (frame->rgba) {
+            return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                              "frame RGBA storage has no release context");
+        }
+        *frame = {};
+        return makeStatus(BEEB_STATUS_OK);
+    }
+    auto* storage = static_cast<CFrameStorage*>(frame->release_context);
+    if (frame->rgba != storage->rgba.data() || frame->rgba_size != storage->rgba.size()) {
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "frame ownership fields were changed before release");
+    }
+    delete storage;
     *frame = {};
     return makeStatus(BEEB_STATUS_OK);
 }
@@ -405,6 +564,81 @@ beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
         std::copy(result.value->begin(), result.value->end(), mono);
         return makeStatus(BEEB_STATUS_OK);
     });
+}
+
+beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity,
+                             beeb_audio_drain_result* out_result) {
+    if (capacity != 0 && !mono) return missingOutput("audio output buffer is null");
+    if (!out_result) return missingOutput("audio drain result is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        auto result = runtime.drainAudio(capacity);
+        if (result.status.code != beeb::OutputStatusCode::ok &&
+            result.status.code != beeb::OutputStatusCode::underrun)
+            return translateOutputStatus(result.status);
+        if (result.chunk.samples.size() > capacity ||
+            result.chunk.shortfall != capacity - result.chunk.samples.size())
+            return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
+                              "audio drain returned inconsistent copy accounting");
+        std::copy(result.chunk.samples.begin(), result.chunk.samples.end(), mono);
+        *out_result = {result.chunk.firstSample,
+                       result.chunk.samples.size(),
+                       result.chunk.shortfall,
+                       result.demand,
+                       result.counters.audioSamplesOverrun,
+                       result.counters.audioSamplesUnderrun};
+        return translateOutputStatus(result.status);
+    });
+}
+
+beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
+                                        beeb_output_diagnostics* out_diagnostics) {
+    if (!out_diagnostics) return missingOutput("output diagnostics are null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.outputDiagnostics();
+        if (!result.status) return translateStatus(result.status);
+        const auto& value = *result.value;
+        const beeb_output_diagnostics output{
+            value.totalCycles,
+            value.latestFrameNumber,
+            value.frameDepth,
+            value.frameCapacity,
+            value.audioDepth,
+            value.audioCapacity,
+            value.audioDemand,
+            value.counters.framesProduced,
+            value.counters.framesConsumed,
+            value.counters.framesDropped,
+            value.counters.audioSamplesProduced,
+            value.counters.audioSamplesConsumed,
+            value.counters.audioSamplesOverrun,
+            value.counters.audioSamplesUnderrun,
+            translateOutputStatusCode(value.lastStatus),
+        };
+        *out_diagnostics = output;
+        return makeStatus(BEEB_STATUS_OK);
+    });
+}
+
+beeb_status beeb_calculate_emulation_rate(const beeb_output_diagnostics* before,
+                                          const beeb_output_diagnostics* after, double host_seconds,
+                                          double* out_rate) {
+    if (!before) return missingOutput("earlier output diagnostics are null");
+    if (!after) return missingOutput("later output diagnostics are null");
+    if (!out_rate) return missingOutput("emulation-rate output is null");
+    if (!std::isfinite(host_seconds) || host_seconds <= 0.0)
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "host observation interval must be finite and positive");
+    if (after->total_cycles < before->total_cycles)
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT,
+                          "emulated cycle observations must not regress");
+
+    constexpr double emulatedCyclesPerSecond = 2'000'000.0;
+    const auto cycleDelta = after->total_cycles - before->total_cycles;
+    const auto rate = (static_cast<double>(cycleDelta) / emulatedCyclesPerSecond) / host_seconds;
+    if (!std::isfinite(rate))
+        return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "emulation-rate observation is not finite");
+    *out_rate = rate;
+    return makeStatus(BEEB_STATUS_OK);
 }
 
 beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {

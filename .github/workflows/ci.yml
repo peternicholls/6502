@@ -22,6 +22,10 @@ jobs:
         env:
           C1_REQUIRE_TSAN: "1"
         run: make test-c1
+      - name: Run portable C2 contract aggregate
+        env:
+          C2_REQUIRE_TSAN: "1"
+        run: make test-c2-portable
       - name: Run native sanitizers
         run: make sanitize
       - name: Run ThreadSanitizer race gate
@@ -45,6 +49,8 @@ jobs:
         run: swift test
       - name: Build the SwiftUI demo
         run: swift build
+      - name: Run Apple C2 Xcode contract
+        run: make test-c2-xcode
       - name: Validate complete code documentation
         run: DOCS_BASE=origin/develop make docs-check DOCS_PROFILE=macos
 

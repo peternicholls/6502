@@ -10,7 +10,7 @@ No operating-system, BASIC, filing-system, game or character ROM is included.
 The demo deliberately loads user-supplied ROMs and media through the platform
 document picker.
 
-The current development version is **0.2.0**. Public releases use Semantic
+The current development version is **0.3.0**. Public releases use Semantic
 Versioning and `vMAJOR.MINOR.PATCH` Git tags.
 
 ## What works now
@@ -34,6 +34,8 @@ Versioning and `vMAJOR.MINOR.PATCH` Git tags.
   reads, writes, seeks, drive status and special registers.
 - A C API, Swift wrapper, multiplatform SwiftUI shell, user file importers and
   a headless command-line runner.
+- Owner-serialized capacity-three completed-frame output, continuous bounded
+  48 kHz mono audio, and exact pressure/progress diagnostics across C++/C/Swift.
 
 The core has also booted a privately supplied OS 1.20 plus BASIC II ROM pair to
 the familiar `BBC COMPUTER 32K` / `BASIC` Mode 7 screen. Those ROMs are not
@@ -96,13 +98,25 @@ Inspect the installed runtime version with:
 
 ## Build on Apple platforms
 
-Open `Package.swift` in Xcode. `BeebKit` is the reusable product and `BeebDemo`
-is the SwiftUI shell. The package declares macOS 13 and iOS 16 minimums.
+Open `Beeb6502.xcodeproj` in Xcode. Its shared `BeebDemo-macOS`,
+`BeebDemo-iOS`, and `Beeb6502-Tests` schemes are the maintained Apple app and
+test entry points. Select the macOS scheme to run the desktop app, or the iOS
+scheme with an iOS Simulator destination. The apps declare macOS 13 and iOS 16
+minimums; signing is not required for simulator builds or tests.
 
-The complete package builds with Swift Package Manager on macOS, and `swift
-test` exercises the C-to-Swift error and version boundaries. Xcode remains the
-recommended environment for interactive macOS/iOS UI and document-picker
-validation.
+The Xcode project consumes the local `BeebKit` package rather than copying its
+sources. Swift Package Manager remains an independent build surface and can be
+verified without opening the project:
+
+```sh
+swift build
+swift test
+```
+
+The portable core remains independently buildable with `make test all`.
+Run `make test-c2-portable` for the Linux-compatible bounded-output aggregate
+and `make test-c2-xcode` for the maintained Apple project contract. Ordinary
+ignored `xcuserdata` is permitted; tracked or unignored user state is not.
 
 ## Accuracy boundary
 
@@ -141,7 +155,9 @@ Run `make check-version` before tagging a release.
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md), the
 [project constitution](.specify/memory/constitution.md), and the
 [Spec Kit feature workflow](specs/README.md). Continuous integration builds the
-warning-clean C++ core on Linux and the complete Swift package on macOS.
+warning-clean C++ core and the portable C2 aggregate under required
+ThreadSanitizer on Linux. It independently verifies the Swift package, macOS
+app, iOS Simulator app, and shared Xcode test scheme on macOS.
 
 ## Licence and references
 

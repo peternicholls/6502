@@ -49,14 +49,14 @@ host-agnostic boundary in [ARCHITECTURE.md](ARCHITECTURE.md).
 | --- | --- | --- | --- | --- |
 | C0 — Baseline evidence | Complete | Machine foundation | Current verified core | Compatibility fixture research |
 | C1 — Runtime ownership | Complete | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
-| C2 — Bounded output contracts | Ready | Horizon 1: continuous video and audio | C1 | C3 implementation |
+| C2 — Bounded output contracts | Complete | Horizon 1: continuous video and audio | C1 | C3 implementation |
 | C3 — Session continuity | Ready | Horizon 1: background and restore | C1 safe-point contract | C2 implementation |
 | C4 — Bus-cycle timing | Queued | Compatibility and timing fidelity | C1; C3 snapshot invariant | Pull-based compatibility fixtures |
 | C5 — Dependable media core | Later | Horizon 2: Media | C1; slice-specific timing prerequisites | Curated device fixtures |
 | C6 — Inspection and editor bridge | Later | Horizon 3: Editor | C1 and C3 | Read-only inspector research |
 
-The default next phase is C2. C3 may proceed beside C2 because C1 now defines
-and verifies the quiescent safe point. C4 implementation begins only after the
+The default next phase is C3. C2 is complete, and C1 defines and verifies the
+quiescent safe point that C3 consumes. C4 implementation begins only after the
 snapshot invariant described in C3 is fixed. C5 and C6 do not enter the active
 Machine critical path.
 
@@ -178,13 +178,19 @@ producer queues or C3's versioned snapshot format.
 
 ## Phase C2 — bounded frame, audio and diagnostic contracts
 
-**Status:** Ready
+**Status:** Complete
 
 **Outcome:** Give decoupled host consumers stable, bounded output without
 making host timing authoritative.
 
 **Product capability unlocked:** Continuous Machine video and audio that do not
 stall the UI.
+
+**Delivery elevation:** C2 promotes the Apple host from opening `Package.swift`
+directly to a committed `Beeb6502.xcodeproj` with shared macOS, iOS Simulator,
+and test schemes. The Xcode project is a host/build surface over the same local
+Swift package products; Swift Package Manager and the portable Makefile remain
+authoritative build paths, and no Apple framework enters `BeebCore`.
 
 **Depends on:** C1.
 
@@ -208,7 +214,7 @@ accepted.
 
 ### Exit evidence
 
-- A consumer retaining a valid frame or audio view cannot observe invalidated
+- A consumer retaining a valid frame or audio value cannot observe invalidated
   or concurrently mutated storage.
 - Capacity and overflow behavior are deterministic and covered at empty, full
   and sustained-production boundaries.
@@ -218,11 +224,44 @@ accepted.
   values never drive core state.
 - C and Swift boundary tests cover lifetime, failure and back-pressure
   behavior.
+- The committed Xcode project builds the macOS app, iOS Simulator app, and test
+  scheme from a clean checkout through `xcodebuild`, without duplicating core
+  sources or weakening the Makefile/Swift Package gates.
+
+The implemented `003-bounded-output-contracts` slice has passed its required
+measurement gate: 10,000 frames transferred with retained-value immutability;
+separate 10,000-item pressure stress reached but did not exceed capacities 3
+and 4,096; a 10-second warm-up plus 120,000,060 measured cycles balanced both
+conservation equations; the final remediation run's RSS growth was 32,768 bytes
+against a 16 MiB limit; and
+the synthetic rate error was zero against a 0.1% tolerance. Shared Xcode
+schemes build macOS and generic iOS Simulator apps and run all 17 Swift tests,
+while Swift Package Manager and Make remain independently green. The final
+matrix passed 54 C++ tests, 49 sanitizer tests, all six C1 groups, all nine C2
+groups, 17 Swift tests, both app schemes, the shared test scheme, formatting,
+and generated documentation. Local ThreadSanitizer remains explicitly N/A and
+requires its supported CI lane. That Linux lane requires the complete portable
+C2 aggregate and rejects an unavailable ThreadSanitizer run. Post-review C and
+Swift evidence now crosses the public boundaries for repeated replay and real
+producer/consumer contention; recoverable C frame allocation failures occur
+before dequeue and preserve queue accounting, while an opaque release context
+authenticates the transferred bytes. Xcode validation tolerates ignored local
+user state but still rejects tracked or unignored metadata and proves ordinary
+validation does not rewrite maintained project files.
+The final concurrency regressions synchronize on the semantic boundary they
+claim: actual C-call admission for destroy overlap and an execution-slice
+ledger event for sustained runtime production, rather than elapsed host time or
+the presence of unrelated setup entries.
+Reset now discards retained pre-reset frames/audio and fractional audio timing;
+runtime-lifetime identities remain monotonic, and exact frame-drop/audio-overrun
+accounting preserves the conservation equations at the empty new epoch.
 
 ### Non-goals
 
 - Metal presentation, AVAudioEngine callbacks or host refresh scheduling.
 - Visual CRT effects or host UI diagnostics.
+- Xcode Cloud, signing/distribution automation, App Store packaging, or replacing
+  Swift Package Manager and the portable Makefile.
 
 ## Phase C3 — versioned session continuity
 
@@ -479,3 +518,5 @@ documentation debt.
 - Avoid new dependencies unless they materially improve validation or safety.
 - Update this roadmap for technical priority changes and `STATUS.md` only when
   implementation evidence changes.
+
+## Post-Phase C6 - Working Basic Computer Application

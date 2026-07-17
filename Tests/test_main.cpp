@@ -30,6 +30,7 @@
 
 beeb_status beeb_test_create_with_allocation_failure(beeb_machine**,
                                                      beeb::RuntimeAllocationFailurePoint);
+beeb_status beeb_test_hold_admitted_call(beeb_machine*, std::latch&, std::latch&);
 
 namespace {
 
@@ -429,7 +430,7 @@ beeb_machine* createCMachine() {
 void testCAPI02StatusOutParametersAndNullability() {
     // Declaration-driven C 0.2 matrix: keep one applicable success and one
     // output-preserving validation failure for every fallible header family.
-    CHECK(std::string(beeb_version_string()) == "0.2.0");
+    CHECK(std::string(beeb_version_string()) == "0.3.0");
     checkCStatus(beeb_create(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
     checkCStatus(beeb_destroy(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
@@ -622,15 +623,12 @@ void testCAPI02DestroyWaitsForCallsAlreadyInside() {
     checkCStatus(beeb_load_os_rom(machine, os.data(), os.size()), BEEB_STATUS_OK);
     checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
 
-    std::latch entered(1);
-    auto run = std::async(std::launch::async, [&] {
-        entered.count_down();
-        std::uint64_t actual = 0;
-        const auto status = beeb_run_cycles(machine, 50'000'000, &actual);
-        return std::pair{status, actual};
+    std::latch admitted(1);
+    std::latch release(1);
+    auto heldCall = std::async(std::launch::async, [&] {
+        return beeb_test_hold_admitted_call(machine, admitted, release);
     });
-    entered.wait();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    admitted.wait();
     auto destroy = std::async(std::launch::async, [&] { return beeb_destroy(machine); });
     beeb_runtime_state unavailableState = BEEB_RUNTIME_STATE_FAULTED;
     beeb_status unavailable{};
@@ -643,10 +641,10 @@ void testCAPI02DestroyWaitsForCallsAlreadyInside() {
     } while (std::chrono::steady_clock::now() < unavailableDeadline);
     checkCStatus(unavailable, BEEB_STATUS_UNAVAILABLE);
     CHECK(unavailableState == BEEB_RUNTIME_STATE_FAULTED);
-    const auto [runStatus, actual] = run.get();
+    release.count_down();
+    const auto heldStatus = heldCall.get();
     const auto destroyed = destroy.get();
-    checkCStatus(runStatus, BEEB_STATUS_OK);
-    CHECK(actual >= 50'000'000);
+    checkCStatus(heldStatus, BEEB_STATUS_OK);
     checkCStatus(destroyed, BEEB_STATUS_OK);
 }
 
@@ -929,6 +927,39 @@ std::array<std::uint8_t, 0x4000> makeLoopingOSROM() {
     return os;
 }
 
+std::array<std::uint8_t, 0x4000> makeOutputOSROM() {
+    auto os = makeNOPOSROM();
+    std::size_t cursor = 0;
+    const auto emit = [&](std::uint8_t byte) { os[cursor++] = byte; };
+    const auto loadImmediate = [&](std::uint8_t value) {
+        emit(0xA9);
+        emit(value);
+    };
+    const auto storeAbsolute = [&](std::uint16_t address) {
+        emit(0x8D);
+        emit(static_cast<std::uint8_t>(address));
+        emit(static_cast<std::uint8_t>(address >> 8));
+    };
+    const auto setCRTC = [&](std::uint8_t reg, std::uint8_t value) {
+        loadImmediate(reg);
+        storeAbsolute(0xFE00);
+        loadImmediate(value);
+        storeAbsolute(0xFE01);
+    };
+    setCRTC(1, 1);
+    setCRTC(6, 1);
+    setCRTC(9, 0);
+    setCRTC(12, 0);
+    setCRTC(13, 0);
+    loadImmediate(0x1C);
+    storeAbsolute(0xFE20);
+    const auto idle = static_cast<std::uint16_t>(0xC000 + cursor);
+    emit(0x4C);
+    emit(static_cast<std::uint8_t>(idle));
+    emit(static_cast<std::uint8_t>(idle >> 8));
+    return os;
+}
+
 std::array<std::uint8_t, 0x4000> makeLateFaultOSROM() {
     auto os = makeNOPOSROM();
     const std::array<std::uint8_t, 11> program{
@@ -997,6 +1028,36 @@ C1MatrixObservation invokeC1MatrixCommand(beeb::MachineRuntime& runtime,
     const auto result = [](const auto& value) {
         return C1MatrixObservation{value.status, value.value.has_value()};
     };
+    const auto outputResult = [](const auto& output, bool present) {
+        beeb::RuntimeStatusCode code = beeb::RuntimeStatusCode::internalFailure;
+        switch (output.status.code) {
+        case beeb::OutputStatusCode::ok:
+        case beeb::OutputStatusCode::empty:
+        case beeb::OutputStatusCode::underrun:
+        case beeb::OutputStatusCode::overrun:
+            code = beeb::RuntimeStatusCode::ok;
+            break;
+        case beeb::OutputStatusCode::capacityExceeded:
+        case beeb::OutputStatusCode::resourceExhausted:
+            code = beeb::RuntimeStatusCode::resourceExhausted;
+            break;
+        case beeb::OutputStatusCode::invalidArgument:
+            code = beeb::RuntimeStatusCode::invalidArgument;
+            break;
+        case beeb::OutputStatusCode::invalidState:
+            code = beeb::RuntimeStatusCode::invalidState;
+            break;
+        case beeb::OutputStatusCode::unavailable:
+            code = beeb::RuntimeStatusCode::unavailable;
+            break;
+        case beeb::OutputStatusCode::productionFailed:
+            code = beeb::RuntimeStatusCode::executionFailed;
+            break;
+        case beeb::OutputStatusCode::internalFailure:
+            break;
+        }
+        return C1MatrixObservation{{code, output.status.message, 0}, present};
+    };
     switch (command) {
     case beeb::RuntimeCommandKind::start:
         return {runtime.start(), false};
@@ -1034,6 +1095,16 @@ C1MatrixObservation invokeC1MatrixCommand(beeb::MachineRuntime& runtime,
         return result(runtime.frame());
     case beeb::RuntimeCommandKind::renderAudio:
         return result(runtime.renderAudio(1, 48'000));
+    case beeb::RuntimeCommandKind::dequeueFrame: {
+        const auto output = runtime.dequeueFrame();
+        return outputResult(output, output.frame.has_value());
+    }
+    case beeb::RuntimeCommandKind::drainAudio: {
+        const auto output = runtime.drainAudio(0);
+        return outputResult(output, true);
+    }
+    case beeb::RuntimeCommandKind::outputDiagnostics:
+        return result(runtime.outputDiagnostics());
     case beeb::RuntimeCommandKind::shutdown:
         return {runtime.shutdown(), false};
     }
@@ -1247,8 +1318,16 @@ void testC1ClosedLoopSustainedLifecycleRepeats() {
         checkRuntimeOK(runtime.reset());
         checkRuntimeOK(runtime.start());
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-        while (runtime.ledger().empty() && std::chrono::steady_clock::now() < deadline)
+        bool observedExecutionSlice = false;
+        while (!observedExecutionSlice && std::chrono::steady_clock::now() < deadline) {
+            const auto runningLedger = runtime.ledger();
+            observedExecutionSlice =
+                std::any_of(runningLedger.begin(), runningLedger.end(), [](const auto& entry) {
+                    return entry.event == beeb::LedgerEventKind::executionSlice;
+                });
             std::this_thread::yield();
+        }
+        CHECK(observedExecutionSlice);
         checkRuntimeOK(runtime.pause());
         CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
         CHECK(!runtimeValue(runtime.fault()).available);
@@ -1480,6 +1559,20 @@ C1ReplayOutcome replayC1Ledger(const std::vector<beeb::LedgerEntry>& ledger) {
     auto previousAcceptance = std::uint64_t{0};
     beeb::SafePoint finalSafePoint{};
     const auto os = makeNOPOSROM();
+    std::uint64_t audioRemainder = 0;
+    const auto publishAudio = [&](std::uint64_t cycles) {
+        const auto fractional = audioRemainder + (cycles % 125) * 3;
+        std::uint64_t remaining = (cycles / 125) * 3 + fractional / 125;
+        audioRemainder = fractional % 125;
+        std::array<float, beeb::audioSampleCapacity> samples{};
+        while (remaining != 0) {
+            const auto count =
+                static_cast<std::size_t>(std::min<std::uint64_t>(remaining, samples.size()));
+            machine.sound().render(samples.data(), count,
+                                   static_cast<double>(beeb::audioSampleRate));
+            remaining -= count;
+        }
+    };
 
     for (const auto& entry : ledger) {
         CHECK(entry.sequence > previousSequence);
@@ -1491,6 +1584,7 @@ C1ReplayOutcome replayC1Ledger(const std::vector<beeb::LedgerEntry>& ledger) {
             CHECK(state == beeb::RuntimeState::running);
             CHECK_EQ(entry.requestedCycles, beeb::MachineRuntime::executionSliceCycles);
             CHECK_EQ(machine.runFor(entry.requestedCycles), entry.actualCycles);
+            publishAudio(entry.actualCycles);
         } else {
             CHECK(entry.acceptanceSequence > previousAcceptance);
             previousAcceptance = entry.acceptanceSequence;
@@ -2134,6 +2228,218 @@ void testC1RaceShutdownDrainAndRejection() {
     checkRuntimeOK(runtime.shutdown());
 }
 
+beeb::CompletedFrame c2Frame(std::uint64_t number) {
+    beeb::CompletedFrame frame;
+    frame.number = number;
+    frame.width = 1;
+    frame.height = 1;
+    frame.rgba = {static_cast<std::uint8_t>(number), 0x22, 0x33, 0xFF};
+    return frame;
+}
+
+void testC2CompletedFrameFIFOAndAccounting() {
+    beeb::CompletedFrameQueue queue;
+
+    const auto empty = queue.dequeue();
+    CHECK(empty.status.code == beeb::OutputStatusCode::empty);
+    CHECK(!empty.frame.has_value());
+
+    CHECK(queue.publish(c2Frame(10)).code == beeb::OutputStatusCode::ok);
+    CHECK(queue.publish(c2Frame(11)).code == beeb::OutputStatusCode::ok);
+    CHECK(queue.publish(c2Frame(12)).code == beeb::OutputStatusCode::ok);
+    CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
+
+    auto retained = queue.dequeue();
+    CHECK(retained.status.code == beeb::OutputStatusCode::ok);
+    CHECK(retained.frame.has_value());
+    CHECK_EQ(retained.frame->number, 10U);
+    const auto retainedPixels = retained.frame->rgba;
+
+    CHECK(queue.publish(c2Frame(13)).code == beeb::OutputStatusCode::ok);
+    CHECK(queue.publish(c2Frame(14)).code == beeb::OutputStatusCode::overrun);
+    CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
+    CHECK(retained.frame->rgba == retainedPixels);
+
+    const auto beforeInvalid = queue.counters();
+    CHECK(queue.publish(c2Frame(14)).code == beeb::OutputStatusCode::invalidArgument);
+    CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
+    CHECK(queue.counters() == beforeInvalid);
+
+    for (const auto expected : {12U, 13U, 14U}) {
+        const auto result = queue.dequeue();
+        CHECK(result.status.code == beeb::OutputStatusCode::ok);
+        CHECK(result.frame.has_value());
+        CHECK_EQ(result.frame->number, expected);
+    }
+
+    const auto counters = queue.counters();
+    CHECK_EQ(queue.depth(), 0U);
+    CHECK_EQ(counters.framesProduced, 5U);
+    CHECK_EQ(counters.framesConsumed, 4U);
+    CHECK_EQ(counters.framesDropped, 1U);
+    CHECK_EQ(counters.framesProduced,
+             counters.framesConsumed + counters.framesDropped + queue.depth());
+}
+
+void testC2CFrameReleaseRequiresOwnershipToken() {
+    beeb_frame empty{};
+    checkCStatus(beeb_frame_release(&empty), BEEB_STATUS_OK);
+
+    std::uint8_t foreignByte = 0;
+    beeb_frame foreign{};
+    foreign.available = 1;
+    foreign.rgba = &foreignByte;
+    foreign.rgba_size = 1;
+    checkCStatus(beeb_frame_release(&foreign), BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(foreign.rgba == &foreignByte);
+    CHECK_EQ(foreign.rgba_size, 1U);
+    CHECK(foreign.release_context == nullptr);
+}
+
+void testC2AudioFIFOPressureDemandAndAccounting() {
+    beeb::AudioSampleQueue queue;
+    CHECK_EQ(queue.capacity(), 4'096U);
+    CHECK_EQ(queue.demand(), 2'048U);
+
+    const auto empty = queue.drain(4);
+    CHECK(empty.status.code == beeb::OutputStatusCode::underrun);
+    CHECK_EQ(empty.chunk.requested, 4U);
+    CHECK_EQ(empty.chunk.shortfall, 4U);
+    CHECK(empty.chunk.samples.empty());
+
+    const std::array initial{1.0F, 2.0F, 3.0F};
+    CHECK(queue.publish(initial).code == beeb::OutputStatusCode::ok);
+    auto first = queue.drain(2);
+    CHECK(first.status.code == beeb::OutputStatusCode::ok);
+    CHECK(first.chunk.samples == std::vector<float>({1.0F, 2.0F}));
+    CHECK_EQ(first.chunk.shortfall, 0U);
+    CHECK_EQ(queue.depth(), 1U);
+    CHECK_EQ(queue.demand(), 2'047U);
+
+    std::vector<float> pressure(beeb::audioSampleCapacity);
+    for (std::size_t index = 0; index < pressure.size(); ++index)
+        pressure[index] = static_cast<float>(index);
+    CHECK(queue.publish(pressure).code == beeb::OutputStatusCode::overrun);
+    CHECK_EQ(queue.depth(), beeb::audioSampleCapacity);
+    CHECK_EQ(queue.demand(), 0U);
+
+    const auto full = queue.drain(beeb::audioSampleCapacity);
+    CHECK(full.status.code == beeb::OutputStatusCode::ok);
+    CHECK_EQ(full.chunk.samples.size(), beeb::audioSampleCapacity);
+    CHECK_EQ(full.chunk.samples.front(), 0.0F);
+    CHECK_EQ(full.chunk.samples.back(), 4'095.0F);
+
+    const auto finalUnderrun = queue.drain(5);
+    CHECK(finalUnderrun.status.code == beeb::OutputStatusCode::underrun);
+    CHECK_EQ(finalUnderrun.chunk.shortfall, 5U);
+
+    const auto counters = queue.counters();
+    CHECK_EQ(counters.audioSamplesProduced, 4'099U);
+    CHECK_EQ(counters.audioSamplesConsumed, 4'098U);
+    CHECK_EQ(counters.audioSamplesOverrun, 1U);
+    CHECK_EQ(counters.audioSamplesUnderrun, 9U);
+    CHECK_EQ(counters.audioSamplesProduced,
+             counters.audioSamplesConsumed + counters.audioSamplesOverrun + queue.depth());
+}
+
+void testC2DiagnosticsAreConsistentAndObservational() {
+    beeb::MachineRuntime runtime;
+    checkRuntimeOK(runtime.loadOSROM(makeLoopingOSROM()));
+    checkRuntimeOK(runtime.reset());
+
+    const auto initial = runtimeValue(runtime.outputDiagnostics());
+    const auto initialCPU = runtimeValue(runtime.cpuState());
+    CHECK_EQ(initial.totalCycles, initialCPU.cycles);
+    CHECK_EQ(initial.latestFrameNumber, 0U);
+    CHECK_EQ(initial.frameDepth, 0U);
+    CHECK_EQ(initial.frameCapacity, beeb::completedFrameCapacity);
+    CHECK_EQ(initial.audioDepth, 0U);
+    CHECK_EQ(initial.audioCapacity, beeb::audioSampleCapacity);
+    CHECK_EQ(initial.audioDemand, beeb::audioTargetDepth);
+    CHECK(initial.counters == beeb::OutputCounters{});
+    CHECK(initial.lastStatus == beeb::OutputStatusCode::ok);
+
+    const auto actualCycles = runtimeValue(runtime.runFor(250));
+    CHECK(actualCycles >= 250);
+    const auto produced = runtimeValue(runtime.outputDiagnostics());
+    CHECK_EQ(produced.totalCycles, initial.totalCycles + actualCycles);
+    CHECK_EQ(produced.audioDepth, produced.counters.audioSamplesProduced);
+    CHECK_EQ(produced.audioDemand, beeb::audioTargetDepth - produced.audioDepth);
+    CHECK_EQ(produced.counters.audioSamplesProduced, produced.counters.audioSamplesConsumed +
+                                                         produced.counters.audioSamplesOverrun +
+                                                         produced.audioDepth);
+    CHECK_EQ(produced.counters.framesProduced, produced.counters.framesConsumed +
+                                                   produced.counters.framesDropped +
+                                                   produced.frameDepth);
+
+    const auto partial = runtime.drainAudio(produced.audioDepth + 5);
+    CHECK(partial.status.code == beeb::OutputStatusCode::underrun);
+    CHECK_EQ(partial.chunk.samples.size(), produced.audioDepth);
+    CHECK_EQ(partial.chunk.shortfall, 5U);
+
+    const auto pressured = runtimeValue(runtime.outputDiagnostics());
+    CHECK_EQ(pressured.totalCycles, produced.totalCycles);
+    CHECK_EQ(pressured.audioDepth, 0U);
+    CHECK_EQ(pressured.audioDemand, beeb::audioTargetDepth);
+    CHECK_EQ(pressured.counters.audioSamplesConsumed, produced.audioDepth);
+    CHECK_EQ(pressured.counters.audioSamplesUnderrun, 5U);
+    CHECK(pressured.lastStatus == beeb::OutputStatusCode::underrun);
+
+    const auto repeated = runtimeValue(runtime.outputDiagnostics());
+    CHECK(repeated == pressured);
+    CHECK_EQ(runtimeValue(runtime.cpuState()).cycles, pressured.totalCycles);
+}
+
+void testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting() {
+    beeb::MachineRuntime runtime;
+    checkRuntimeOK(runtime.loadOSROM(makeOutputOSROM()));
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.runUntilFrame(200'000)));
+    CHECK(runtimeValue(runtime.runFor(2'000'000)) >= 2'000'000);
+
+    const auto before = runtimeValue(runtime.outputDiagnostics());
+    CHECK(before.frameDepth > 0);
+    CHECK(before.audioDepth > 0);
+    checkRuntimeOK(runtime.reset());
+
+    const auto after = runtimeValue(runtime.outputDiagnostics());
+    CHECK_EQ(after.frameDepth, 0U);
+    CHECK_EQ(after.audioDepth, 0U);
+    CHECK_EQ(after.audioDemand, beeb::audioTargetDepth);
+    CHECK_EQ(after.latestFrameNumber, before.latestFrameNumber);
+    CHECK_EQ(after.counters.framesProduced, before.counters.framesProduced);
+    CHECK_EQ(after.counters.framesConsumed, before.counters.framesConsumed);
+    CHECK_EQ(after.counters.framesDropped, before.counters.framesDropped + before.frameDepth);
+    CHECK_EQ(after.counters.audioSamplesProduced, before.counters.audioSamplesProduced);
+    CHECK_EQ(after.counters.audioSamplesConsumed, before.counters.audioSamplesConsumed);
+    CHECK_EQ(after.counters.audioSamplesOverrun,
+             before.counters.audioSamplesOverrun + before.audioDepth);
+    CHECK(after.lastStatus == beeb::OutputStatusCode::ok);
+    CHECK(after.counters.framesProduced ==
+          after.counters.framesConsumed + after.counters.framesDropped + after.frameDepth);
+    CHECK(after.counters.audioSamplesProduced == after.counters.audioSamplesConsumed +
+                                                     after.counters.audioSamplesOverrun +
+                                                     after.audioDepth);
+    CHECK(runtime.dequeueFrame().status.code == beeb::OutputStatusCode::empty);
+    const auto audio = runtime.drainAudio(1);
+    CHECK(audio.status.code == beeb::OutputStatusCode::underrun);
+    CHECK(audio.chunk.samples.empty());
+
+    const auto postResetCycles = runtimeValue(runtime.runFor(122));
+    const auto resumed = runtimeValue(runtime.outputDiagnostics());
+    beeb::MachineRuntime fresh;
+    checkRuntimeOK(fresh.loadOSROM(makeOutputOSROM()));
+    checkRuntimeOK(fresh.reset());
+    const auto freshCycles = runtimeValue(fresh.runFor(122));
+    const auto freshOutput = runtimeValue(fresh.outputDiagnostics());
+    CHECK_EQ(postResetCycles, freshCycles);
+    CHECK_EQ(resumed.counters.audioSamplesProduced - after.counters.audioSamplesProduced,
+             freshOutput.counters.audioSamplesProduced);
+    const auto resumedAudio = runtime.drainAudio(resumed.audioDepth);
+    const auto freshAudio = fresh.drainAudio(freshOutput.audioDepth);
+    CHECK(resumedAudio.chunk.samples == freshAudio.chunk.samples);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2215,6 +2521,16 @@ int main(int argc, char** argv) {
          testC1ObservationsReturnConsistentOwnedValues},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
+        {"C2 frames: FIFO overflow ownership and accounting",
+         testC2CompletedFrameFIFOAndAccounting},
+        {"C2 frames: C release requires the matching ownership token",
+         testC2CFrameReleaseRequiresOwnershipToken},
+        {"C2 audio: FIFO pressure demand and accounting",
+         testC2AudioFIFOPressureDemandAndAccounting},
+        {"C2 diagnostics: consistent observational pressure snapshot",
+         testC2DiagnosticsAreConsistentAndObservational},
+        {"C2 reset: retained output is discarded with exact accounting",
+         testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting},
     };
 
     unsigned failed = 0;

@@ -457,27 +457,42 @@ fi
 } >"${output_dir}/index.html"
 
 check_internal_links() {
-    local html href clean target
-    while IFS= read -r -d '' html; do
-        while IFS= read -r href; do
-            case "${href}" in
-                ""|\#*|/favicon.*|http://*|https://*|mailto:*|javascript:*|data:*) continue ;;
-            esac
-            clean="${href%%\#*}"
-            clean="${clean%%\?*}"
-            [[ -z "${clean}" ]] && continue
-            if [[ "${clean}" == /* ]]; then
-                target="${output_dir}/${clean#/}"
-            else
-                target="$(dirname "${html}")/${clean}"
-            fi
-            if [[ ! -e "${target}" ]]; then
-                printf 'broken generated documentation link: %s -> %s\n' \
-                    "${html#"${output_dir}/"}" "${href}" >&2
-                return 1
-            fi
-        done < <(perl -ne 'while (/href="([^"]+)"/g) { print "$1\n" }' "${html}")
-    done < <(find "${output_dir}" -type f -name '*.html' -print0)
+    # Scan the generated tree in one Perl process. Launching one parser for
+    # every DocC page makes the same link checks scale with process startup
+    # rather than with the number of links.
+    perl -MFile::Basename=dirname -MFile::Find -e '
+        my $root = shift;
+        my $failed = 0;
+        find({
+            no_chdir => 1,
+            wanted => sub {
+                my $html = $File::Find::name;
+                return unless -f $html && $html =~ /\.html\z/;
+                open my $handle, "<", $html or die "cannot read $html: $!\n";
+                local $/;
+                my $content = <$handle>;
+                close $handle;
+                while ($content =~ /href="([^"]+)"/g) {
+                    my $href = $1;
+                    next if $href eq "" ||
+                        $href =~ m{^(?:\#|/favicon\.|https?://|mailto:|javascript:|data:)};
+                    my $clean = $href;
+                    $clean =~ s/\#.*//;
+                    $clean =~ s/\?.*//;
+                    next if $clean eq "";
+                    my $target = $clean =~ m{^/}
+                        ? "$root/" . substr($clean, 1)
+                        : dirname($html) . "/$clean";
+                    next if -e $target;
+                    (my $relative = $html) =~ s{^\Q$root\E/?}{};
+                    print STDERR "broken generated documentation link: " .
+                        "$relative -> $href\n";
+                    $failed = 1;
+                }
+            },
+        }, $root);
+        exit $failed;
+    ' "${output_dir}"
 }
 
 if [[ "${check}" == true ]]; then

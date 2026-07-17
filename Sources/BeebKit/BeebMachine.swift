@@ -5,6 +5,18 @@ import Foundation
 
 /// Stable Swift mapping of the C runtime status categories.
 public enum BeebStatusCategory: Sendable, Equatable {
+    /// Operation completed successfully.
+    case ok
+    /// No complete output value is currently retained.
+    case empty
+    /// Partial output was returned with an exact demand shortfall.
+    case underrun
+    /// Oldest bounded output was discarded under producer pressure.
+    case overrun
+    /// A caller or fixed output capacity was exceeded.
+    case capacityExceeded
+    /// Output conversion or production failed without corrupting the runtime.
+    case outputProductionFailed
     /// A pointer, size, value, or output was invalid.
     case invalidArgument
     /// The command was not legal in the current lifecycle state.
@@ -63,6 +75,64 @@ public struct BeebVideoFrame: Sendable {
     public let rgba: Data
 }
 
+/// Independently owned result of one continuous 48 kHz mono audio drain.
+public struct BeebAudioDrain: Sendable, Equatable {
+    /// Emulated sequence of the first copied sample.
+    public let firstSample: UInt64
+    /// Requested maximum sample count.
+    public let requested: Int
+    /// Valid owned mono Float32 samples in FIFO order.
+    public let samples: [Float]
+    /// Exact requested samples unavailable during this operation.
+    public let shortfall: Int
+    /// Post-drain samples needed to reach the 2,048-sample target.
+    public let demand: Int
+    /// Cumulative samples discarded at capacity or reset.
+    public let overrunCount: UInt64
+    /// Cumulative exact requested-sample shortfall.
+    public let underrunCount: UInt64
+}
+
+/// Exact monotonic accounting carried by one output diagnostic observation.
+public struct BeebOutputCounters: Sendable, Equatable {
+    /// Complete frames offered to the bounded FIFO.
+    public let framesProduced: UInt64
+    /// Complete frames transferred to consumers.
+    public let framesConsumed: UInt64
+    /// Frames discarded at capacity or reset.
+    public let framesDropped: UInt64
+    /// Continuous audio samples offered to the bounded FIFO.
+    public let audioSamplesProduced: UInt64
+    /// Continuous audio samples transferred to consumers.
+    public let audioSamplesConsumed: UInt64
+    /// Audio samples discarded at capacity or reset.
+    public let audioSamplesOverrun: UInt64
+    /// Exact requested audio-sample shortfall.
+    public let audioSamplesUnderrun: UInt64
+}
+
+/// Owned owner-consistent observation of progress and bounded output pressure.
+public struct BeebOutputDiagnostics: Sendable, Equatable {
+    /// Completed emulated CPU cycles.
+    public let totalCycles: UInt64
+    /// Latest complete output-frame identity.
+    public let latestFrameNumber: UInt64
+    /// Complete frames currently retained.
+    public let frameDepth: Int
+    /// Fixed completed-frame capacity.
+    public let frameCapacity: Int
+    /// Continuous audio samples currently retained.
+    public let audioDepth: Int
+    /// Fixed continuous-audio capacity.
+    public let audioCapacity: Int
+    /// Samples needed to reach the target depth.
+    public let audioDemand: Int
+    /// Exact frame and audio flow accounting.
+    public let counters: BeebOutputCounters
+    /// Latest recoverable output outcome at this boundary.
+    public let lastStatus: BeebStatusCategory
+}
+
 /// Identity of one completed-instruction and fully advanced-device boundary.
 public struct BeebSafePoint: Sendable, Equatable {
     /// Total completed CPU cycles.
@@ -97,6 +167,8 @@ public enum BeebError: LocalizedError {
     case invalidAudioRequest
     /// The keyboard matrix coordinates were outside 0...15.
     case invalidKey
+    /// Recoverable audio pressure carrying every valid partial sample and counter.
+    case audioPressure(BeebStatusCategory, BeebAudioDrain)
     /// A C status category and its operation-scoped diagnostic.
     case coreStatus(BeebStatusCategory, String)
 
@@ -115,6 +187,9 @@ public enum BeebError: LocalizedError {
             return "Audio needs a positive frame count and finite positive sample rate."
         case .invalidKey:
             return "Keyboard row and column must both be in 0...15."
+        case let .audioPressure(category, drain):
+            return "Audio reported \(category) after copying \(drain.samples.count) samples " +
+                "with a shortfall of \(drain.shortfall)."
         case let .coreStatus(category, message):
             return "The emulator core reported \(category): \(message)"
         }
@@ -224,7 +299,8 @@ public final class BeebMachine: @unchecked Sendable {
         try Self.check(status)
     }
 
-    /// Resets CPU and devices, clears a fault, retains media, and finishes paused.
+    /// Resets CPU/devices and fractional audio timing, discards retained output with
+    /// exact monotonic accounting, clears a fault, retains media, and finishes paused.
     /// - Throws: ``BeebError/coreStatus(_:_:)`` if reset cannot complete.
     public func reset() throws { try Self.check(beeb_reset(handle)) }
 
@@ -293,6 +369,33 @@ public final class BeebMachine: @unchecked Sendable {
         )
     }
 
+    /// Transfers the oldest retained completed frame into independent Swift storage.
+    /// - Returns: A complete packed-RGBA frame owned by the returned value.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` with typed empty, lifecycle,
+    /// allocation, or output-failure status. No runtime or C storage is borrowed.
+    public func dequeueVideoFrame() throws -> BeebVideoFrame {
+        var frame = beeb_frame()
+        try Self.check(beeb_dequeue_frame(handle, &frame))
+        defer { _ = beeb_frame_release(&frame) }
+        guard frame.available != 0, let bytes = frame.rgba else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C frame dequeue succeeded without RGBA storage")
+        }
+        let width = Int(frame.width)
+        let height = Int(frame.height)
+        let expectedSize = width * height * 4
+        guard frame.rgba_size == expectedSize else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C frame byte count did not match its dimensions")
+        }
+        return BeebVideoFrame(
+            width: width,
+            height: height,
+            number: frame.number,
+            rgba: Data(bytes: bytes, count: expectedSize)
+        )
+    }
+
     /// Renders independently owned mono samples without advancing CPU time.
     /// - Parameters:
     ///   - frames: Positive number of samples.
@@ -308,6 +411,93 @@ public final class BeebMachine: @unchecked Sendable {
         }
         try Self.check(status)
         return output
+    }
+
+    /// Drains continuous 48 kHz mono output into an independently owned value.
+    /// - Parameter maximumSamples: Non-negative maximum sample count to copy.
+    /// - Returns: Owned FIFO samples and the atomic post-drain pressure observation.
+    /// - Throws: ``BeebError/audioPressure(_:_:)`` with a valid partial value on
+    /// underrun, ``BeebError/invalidAudioRequest`` for a negative count, or a
+    /// typed core status for lifecycle and resource failures.
+    public func drainAudio(maximumSamples: Int) throws -> BeebAudioDrain {
+        guard maximumSamples >= 0 else { throw BeebError.invalidAudioRequest }
+        var output = Array(repeating: Float.zero, count: maximumSamples)
+        var result = beeb_audio_drain_result()
+        let status = output.withUnsafeMutableBufferPointer { buffer in
+            beeb_drain_audio(handle, buffer.baseAddress, buffer.count, &result)
+        }
+        if status.code != BEEB_STATUS_OK, status.code != BEEB_STATUS_UNDERRUN {
+            try Self.check(status)
+        }
+        guard result.copied <= output.count,
+              result.shortfall == output.count - result.copied
+        else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C audio drain returned inconsistent copy accounting")
+        }
+        let drain = BeebAudioDrain(
+            firstSample: result.first_sample,
+            requested: maximumSamples,
+            samples: Array(output.prefix(result.copied)),
+            shortfall: result.shortfall,
+            demand: result.demand,
+            overrunCount: result.overrun_count,
+            underrunCount: result.underrun_count
+        )
+        if status.code == BEEB_STATUS_UNDERRUN {
+            throw BeebError.audioPressure(.underrun, drain)
+        }
+        try Self.check(status)
+        return drain
+    }
+
+    /// Returns one owner-consistent progress and bounded-output observation.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime cannot provide
+    /// the observation.
+    public func outputDiagnostics() throws -> BeebOutputDiagnostics {
+        var value = beeb_output_diagnostics()
+        try Self.check(beeb_get_output_diagnostics(handle, &value))
+        return BeebOutputDiagnostics(
+            totalCycles: value.total_cycles,
+            latestFrameNumber: value.latest_frame_number,
+            frameDepth: value.frame_depth,
+            frameCapacity: value.frame_capacity,
+            audioDepth: value.audio_depth,
+            audioCapacity: value.audio_capacity,
+            audioDemand: value.audio_demand,
+            counters: BeebOutputCounters(
+                framesProduced: value.frames_produced,
+                framesConsumed: value.frames_consumed,
+                framesDropped: value.frames_dropped,
+                audioSamplesProduced: value.audio_samples_produced,
+                audioSamplesConsumed: value.audio_samples_consumed,
+                audioSamplesOverrun: value.audio_samples_overrun,
+                audioSamplesUnderrun: value.audio_samples_underrun
+            ),
+            lastStatus: Self.statusCategory(value.last_status)
+        )
+    }
+
+    /// Calculates informational emulation speed from two host observations.
+    /// - Parameters:
+    ///   - before: Earlier owner-consistent diagnostic observation.
+    ///   - after: Later observation with a nondecreasing cycle count.
+    ///   - hostSeconds: Positive finite elapsed host-observation seconds.
+    /// - Returns: Emulated seconds per host second.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` with `invalidArgument` for an
+    /// invalid interval or regressing observation.
+    public static func emulationRate(
+        from before: BeebOutputDiagnostics,
+        to after: BeebOutputDiagnostics,
+        hostSeconds: Double
+    ) throws -> Double {
+        var cBefore = beeb_output_diagnostics()
+        cBefore.total_cycles = before.totalCycles
+        var cAfter = beeb_output_diagnostics()
+        cAfter.total_cycles = after.totalCycles
+        var rate = 0.0
+        try check(beeb_calculate_emulation_rate(&cBefore, &cAfter, hostSeconds, &rate))
+        return rate
     }
 
     /// Changes one keyboard-matrix bit in FIFO order.
@@ -361,6 +551,12 @@ public final class BeebMachine: @unchecked Sendable {
     /// Maps the closed C category vocabulary into the public Swift vocabulary.
     static func statusCategory(_ code: beeb_status_code) -> BeebStatusCategory {
         switch code {
+        case BEEB_STATUS_OK: return .ok
+        case BEEB_STATUS_EMPTY: return .empty
+        case BEEB_STATUS_UNDERRUN: return .underrun
+        case BEEB_STATUS_OVERRUN: return .overrun
+        case BEEB_STATUS_CAPACITY_EXCEEDED: return .capacityExceeded
+        case BEEB_STATUS_OUTPUT_FAILED: return .outputProductionFailed
         case BEEB_STATUS_INVALID_ARGUMENT: return .invalidArgument
         case BEEB_STATUS_INVALID_STATE: return .invalidState
         case BEEB_STATUS_EXECUTION_FAILED: return .executionFailed

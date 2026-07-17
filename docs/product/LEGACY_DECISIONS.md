@@ -1,7 +1,7 @@
 # Legacy design decision register
 
 **Status:** Canonical interpretation of historical material  
-**Updated:** 2026-07-15
+**Updated:** 2026-07-17
 
 The files under `../Archive/` came from an abandoned version
 of the project. They capture useful product discovery, but their implementation
@@ -39,12 +39,12 @@ Disposition meanings:
 | --- | --- | --- |
 | C++ core behind a stable C API and Swift wrapper. | Retained | Implemented as `BeebCore` → `beeb_c.h` → `BeebKit`; C++ exceptions are contained at the ABI. |
 | Reuse and adapt the old davepoo-derived fork. | Superseded | The current repository contains a new dependency-free C++20 implementation with its own tests and documented legal boundary. |
-| Separate submodule, Xcode project or prebuilt XCFramework. | Superseded | The current monorepo uses Swift Package Manager plus a portable Makefile build. Binary distribution can be reconsidered later. |
+| Separate submodule, Xcode project or prebuilt XCFramework. | Refined | C2 implements a committed top-level Xcode project as an Apple host/build surface over the monorepo. Its shared macOS, iOS Simulator and test schemes consume the same local package products and demo source; Swift Package Manager and the portable Makefile remain authoritative, and binary distribution remains deferred. |
 | C++17 and Google Test/CMake are required. | Superseded | The core uses C++20 and a dependency-free test executable. New dependencies require an explicit need. |
 | Host file, window and audio concerns remain outside the deterministic core. | Retained | Bytes enter explicitly; frames, samples and state leave through stable data contracts. |
-| Swift wrapper failures use `throws`; C failures use error codes. | Refined | Sentinel results plus a per-machine C diagnostic map to typed Swift errors. A future API may add structured error codes. |
+| Swift wrapper failures use `throws`; C failures use error codes. | Refined | C returns structured operation-owned statuses and success/explicit-partial outputs; Swift preserves typed categories, diagnostics and recoverable audio pressure with owned partial samples. |
 | Auto-save uses a core state blob plus host metadata. | Refined | The concept is retained, but a versioned snapshot contract has not yet been designed. |
-| The Swift wrapper's single lock is the final threading model. | Superseded | It is safe for the current API, but real-time audio and sustained emulation need bounded queues and narrow synchronization. |
+| The Swift wrapper's single lock is the final threading model. | Superseded | `BeebMachine` adds no lock. The C++ runtime owner is the sole serialization authority and owns the measured bounded frame/audio queues behind its FIFO. |
 
 ## Timing, display and audio decisions
 
@@ -53,13 +53,13 @@ Disposition meanings:
 | The core advances in fixed 20 ms `tickFrame()` calls. | Superseded | CPU execution drives machine time. The current instruction-boundary device tick will evolve toward bus-cycle micro-operations. |
 | CRTC register writes are buffered to frame boundaries in phase one. | Superseded | Register writes occur through the emulated bus. Fidelity improvements should preserve their emulated timing rather than impose a host-frame abstraction. |
 | CRTC timing, pixel construction and host presentation are separate responsibilities. | Retained | The current core already separates CRTC/ULA/rendering; Metal presentation remains a host concern. |
-| A triple-buffer protected by `OSAllocatedUnfairLock` is mandatory. | Open | Use a bounded frame queue, but select lock-free or narrowly locked implementation from measurements and lifecycle requirements. |
+| A triple-buffer protected by `OSAllocatedUnfairLock` is mandatory. | Superseded | C2 implements a capacity-three owner-only frame FIFO with oldest-drop pressure accounting. It needs no internal lock because all publication and dequeue operations run on `MachineRuntime`; the 10,000-item and sustained measurements enforce the bound. |
 | Host presentation repeats 50 Hz frames on 60/120 Hz displays using timestamps. | Retained | Presentation must not alter emulated time; frame-age and pacing metrics should validate the policy. |
 | Metal and AVAudioEngine are the Apple presentation/output technologies. | Retained | They are planned host integrations, not core dependencies. |
 | “Cycle accurate” is an achieved binary property. | Refined | Accuracy is a set of evidence-backed behaviors. Current aggregate instruction cycles are correct; bus events are not yet scheduled per cycle. |
 | Mode 7 should use an embedded character ROM lookup. | Superseded | The repository uses a clean-room host font. Exact SAA5050 behavior remains a fidelity track without copying proprietary glyph data. |
 | Golden frames compare output with a reference emulator. | Refined | Retain layered unit/integration/golden testing, but fixtures must have documented provenance and legally usable inputs. |
-| Low audio latency and zero underruns can be assumed from AVAudioEngine. | Refined | Add a ring buffer and measurements; publish claims only after sustained device tests. |
+| Low audio latency and zero underruns can be assumed from AVAudioEngine. | Refined | C2 now supplies a measured capacity-4,096 continuous ring with exact demand, overrun and underrun accounting. Device latency and zero-underrun claims still require sustained AVAudioEngine integration tests. |
 
 ## UX and platform decisions
 
@@ -70,7 +70,7 @@ Disposition meanings:
 | Keyboard overlay, key help and safe input capture are required. | Retained | A graphical keyboard remains optional research. |
 | Full-screen is opt-in and always has a discoverable exit. | Retained | Preserve platform shortcuts and never trap keyboard focus. |
 | Swift Testing is mandatory and XCTest is deprecated. | Open | Current Swift boundary tests use XCTest. Standardize only when the chosen toolchain, UI testing needs and migration value justify it. |
-| Xcode Cloud is the primary CI system. | Superseded | GitHub Actions currently validates Linux core and macOS Swift builds. Xcode Cloud may supplement device/archive workflows later. |
+| Xcode Cloud is the primary CI system. | Superseded | GitHub Actions validates the Linux core, Swift package, shared macOS/iOS Simulator app builds and Xcode test scheme. Xcode Cloud may supplement device/archive workflows later. |
 | iOS 17/macOS 14 are fixed product minimums. | Open | Current package declarations are build baselines, not a final release support decision. |
 | Combine is the required state-management framework. | Superseded | Prefer the simplest current Swift concurrency/observation tools; introduce a framework only for a concrete requirement. |
 

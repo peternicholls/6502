@@ -81,7 +81,8 @@ using CommandPayload = std::variant<std::monostate, std::uint64_t, std::vector<s
 
 /// Closed owned-result vocabulary returned through one caller-specific promise.
 using CompletionValue = std::variant<std::monostate, RuntimeState, std::uint64_t, bool, CPUState,
-                                     OwnedFrame, std::vector<float>, SafePoint, RuntimeFault>;
+                                     OwnedFrame, std::vector<float>, FrameDequeueResult,
+                                     AudioDrainResult, OutputDiagnostics, SafePoint, RuntimeFault>;
 
 std::uint64_t hashString(const std::string& value) noexcept {
     return hashBytes(std::span(reinterpret_cast<const std::uint8_t*>(value.data()), value.size()));
@@ -117,6 +118,37 @@ std::uint64_t completionDigest(const CompletionValue& value) noexcept {
                     digest = mix(digest, std::bit_cast<std::uint32_t>(sample));
                 }
                 return digest;
+            } else if constexpr (std::is_same_v<Result, FrameDequeueResult>) {
+                auto digest = static_cast<std::uint64_t>(result.status.code);
+                if (!result.frame) return digest;
+                digest = mix(digest, result.frame->number);
+                digest = mix(digest, result.frame->width);
+                digest = mix(digest, result.frame->height);
+                return mix(digest, hashBytes(result.frame->rgba));
+            } else if constexpr (std::is_same_v<Result, AudioDrainResult>) {
+                auto digest =
+                    mix(static_cast<std::uint64_t>(result.status.code), result.chunk.firstSample);
+                digest = mix(digest, result.chunk.requested);
+                digest = mix(digest, result.chunk.shortfall);
+                digest = mix(digest, result.demand);
+                for (const auto sample : result.chunk.samples)
+                    digest = mix(digest, std::bit_cast<std::uint32_t>(sample));
+                return digest;
+            } else if constexpr (std::is_same_v<Result, OutputDiagnostics>) {
+                auto digest = mix(result.totalCycles, result.latestFrameNumber);
+                digest = mix(digest, result.frameDepth);
+                digest = mix(digest, result.frameCapacity);
+                digest = mix(digest, result.audioDepth);
+                digest = mix(digest, result.audioCapacity);
+                digest = mix(digest, result.audioDemand);
+                digest = mix(digest, result.counters.framesProduced);
+                digest = mix(digest, result.counters.framesConsumed);
+                digest = mix(digest, result.counters.framesDropped);
+                digest = mix(digest, result.counters.audioSamplesProduced);
+                digest = mix(digest, result.counters.audioSamplesConsumed);
+                digest = mix(digest, result.counters.audioSamplesOverrun);
+                digest = mix(digest, result.counters.audioSamplesUnderrun);
+                return mix(digest, static_cast<std::uint64_t>(result.lastStatus));
             } else if constexpr (std::is_same_v<Result, SafePoint>) {
                 auto digest = mix(result.cpuCycles, result.frameNumber);
                 digest = mix(digest, static_cast<std::uint64_t>(result.state));
@@ -159,6 +191,50 @@ template <typename T> RuntimeResult<T> resultFromCompletion(Completion completio
     result.status = status(RuntimeStatusCode::internalFailure,
                            "runtime command completed without its declared result",
                            result.status.acceptanceSequence);
+    return result;
+}
+
+OutputStatusCode outputCode(RuntimeStatusCode code) noexcept {
+    switch (code) {
+    case RuntimeStatusCode::ok:
+        return OutputStatusCode::ok;
+    case RuntimeStatusCode::invalidArgument:
+        return OutputStatusCode::invalidArgument;
+    case RuntimeStatusCode::invalidState:
+        return OutputStatusCode::invalidState;
+    case RuntimeStatusCode::resourceExhausted:
+        return OutputStatusCode::resourceExhausted;
+    case RuntimeStatusCode::unavailable:
+        return OutputStatusCode::unavailable;
+    case RuntimeStatusCode::executionFailed:
+        return OutputStatusCode::productionFailed;
+    case RuntimeStatusCode::reentrantCall:
+    case RuntimeStatusCode::internalFailure:
+        return OutputStatusCode::internalFailure;
+    }
+    return OutputStatusCode::internalFailure;
+}
+
+FrameDequeueResult frameResultFromCompletion(Completion completion) {
+    if (!completion.status.isOK()) {
+        return {{outputCode(completion.status.code), std::move(completion.status.message)}, {}};
+    }
+    if (auto* value = std::get_if<FrameDequeueResult>(&completion.value)) return std::move(*value);
+    return {{OutputStatusCode::internalFailure,
+             "runtime command completed without its declared frame result"},
+            {}};
+}
+
+AudioDrainResult audioResultFromCompletion(Completion completion) {
+    if (!completion.status.isOK()) {
+        AudioDrainResult result;
+        result.status = {outputCode(completion.status.code), std::move(completion.status.message)};
+        return result;
+    }
+    if (auto* value = std::get_if<AudioDrainResult>(&completion.value)) return std::move(*value);
+    AudioDrainResult result;
+    result.status = {OutputStatusCode::internalFailure,
+                     "runtime command completed without its declared audio result"};
     return result;
 }
 
@@ -337,6 +413,11 @@ class MachineRuntime::Impl final {
     RuntimeState runtimeState_ = RuntimeState::paused;
     std::string faultMessage_;
     std::unique_ptr<BBCMicro> machine_;
+    CompletedFrameQueue frameOutput_;
+    AudioSampleQueue audioOutput_;
+    std::uint64_t nextOutputFrameNumber_ = 1;
+    std::uint64_t audioCycleRemainder_ = 0;
+    OutputStatusCode lastOutputStatus_ = OutputStatusCode::ok;
 
     bool ledgerEnabled_ = false;
     mutable std::mutex ledgerMutex_;
@@ -520,6 +601,13 @@ class MachineRuntime::Impl final {
             return ok();
         case RuntimeCommandKind::reset:
             machine_->reset();
+            // Reset establishes a new device epoch. Retained pre-reset values are
+            // accounted as discarded so no stale output crosses that boundary and
+            // runtime-lifetime conservation counters remain exact.
+            frameOutput_.discardRetained();
+            audioOutput_.discardRetained();
+            audioCycleRemainder_ = 0;
+            lastOutputStatus_ = OutputStatusCode::ok;
             runtimeState_ = RuntimeState::paused;
             faultMessage_.clear();
             return ok();
@@ -630,6 +718,28 @@ class MachineRuntime::Impl final {
             machine_->sound().render(samples.data(), samples.size(), payload.sampleRate);
             return ok(std::move(samples));
         }
+        case RuntimeCommandKind::dequeueFrame:
+            if (runtimeState_ == RuntimeState::faulted) {
+                return invalidState("cannot dequeue output while runtime is faulted");
+            }
+            {
+                auto result = frameOutput_.dequeue();
+                lastOutputStatus_ = result.status.code;
+                return ok(std::move(result));
+            }
+        case RuntimeCommandKind::drainAudio:
+            if (runtimeState_ == RuntimeState::faulted) {
+                return invalidState("cannot drain output while runtime is faulted");
+            }
+            {
+                auto result = audioOutput_.drain(
+                    static_cast<std::size_t>(std::get<std::uint64_t>(request.payload)));
+                lastOutputStatus_ = result.status.code;
+                return ok(std::move(result));
+            }
+        case RuntimeCommandKind::outputDiagnostics:
+            return ok(captureOutputDiagnostics(machine_->cpu().state().cycles, frameOutput_,
+                                               audioOutput_, lastOutputStatus_));
         case RuntimeCommandKind::shutdown:
             break;
         }
@@ -641,8 +751,13 @@ class MachineRuntime::Impl final {
         if (shouldFail(RuntimeAllocationFailurePoint::boundedExecution))
             return {allocationFailure(accepted), {}};
         auto before = machine_->checkpoint();
+        auto outputBefore = frameOutput_;
+        auto audioBefore = audioOutput_;
+        const auto numberBefore = nextOutputFrameNumber_;
+        const auto audioRemainderBefore = audioCycleRemainder_;
+        const auto statusBefore = lastOutputStatus_;
         try {
-            return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runFor(cycles)};
+            return {status(RuntimeStatusCode::ok, {}, accepted), runWithFramePublication(cycles)};
         } catch (const std::runtime_error& error) {
             const auto retained = machine_->cpu().state().cycles - before.cpu.cycles;
             runtimeState_ = RuntimeState::faulted;
@@ -651,9 +766,19 @@ class MachineRuntime::Impl final {
                 status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}, retained};
         } catch (const std::bad_alloc&) {
             machine_->restore(std::move(before));
+            frameOutput_ = std::move(outputBefore);
+            audioOutput_ = std::move(audioBefore);
+            nextOutputFrameNumber_ = numberBefore;
+            audioCycleRemainder_ = audioRemainderBefore;
+            lastOutputStatus_ = statusBefore;
             return {allocationFailure(accepted), {}};
         } catch (...) {
             machine_->restore(std::move(before));
+            frameOutput_ = std::move(outputBefore);
+            audioOutput_ = std::move(audioBefore);
+            nextOutputFrameNumber_ = numberBefore;
+            audioCycleRemainder_ = audioRemainderBefore;
+            lastOutputStatus_ = statusBefore;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage("unknown execution failure");
             return {status(RuntimeStatusCode::internalFailure, faultMessage_, accepted), {}};
@@ -662,8 +787,14 @@ class MachineRuntime::Impl final {
 
     Completion executeUntilFrame(std::uint64_t cycles, std::uint64_t accepted) {
         auto before = machine_->checkpoint();
+        auto outputBefore = frameOutput_;
+        auto audioBefore = audioOutput_;
+        const auto numberBefore = nextOutputFrameNumber_;
+        const auto audioRemainderBefore = audioCycleRemainder_;
+        const auto statusBefore = lastOutputStatus_;
         try {
-            return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runUntilFrame(cycles)};
+            const auto completed = runUntilFrameWithOutputPublication(cycles);
+            return {status(RuntimeStatusCode::ok, {}, accepted), completed};
         } catch (const std::runtime_error& error) {
             const auto retained = machine_->cpu().state().cycles - before.cpu.cycles;
             runtimeState_ = RuntimeState::faulted;
@@ -672,9 +803,19 @@ class MachineRuntime::Impl final {
                 status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}, retained};
         } catch (const std::bad_alloc&) {
             machine_->restore(std::move(before));
+            frameOutput_ = std::move(outputBefore);
+            audioOutput_ = std::move(audioBefore);
+            nextOutputFrameNumber_ = numberBefore;
+            audioCycleRemainder_ = audioRemainderBefore;
+            lastOutputStatus_ = statusBefore;
             return {allocationFailure(accepted), {}};
         } catch (...) {
             machine_->restore(std::move(before));
+            frameOutput_ = std::move(outputBefore);
+            audioOutput_ = std::move(audioBefore);
+            nextOutputFrameNumber_ = numberBefore;
+            audioCycleRemainder_ = audioRemainderBefore;
+            lastOutputStatus_ = statusBefore;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage("unknown execution failure");
             return {status(RuntimeStatusCode::internalFailure, faultMessage_, accepted), {}};
@@ -693,8 +834,15 @@ class MachineRuntime::Impl final {
             return;
         }
         std::optional<BBCMicro::Checkpoint> before;
+        std::optional<CompletedFrameQueue> outputBefore;
+        std::optional<AudioSampleQueue> audioBefore;
+        std::uint64_t numberBefore = nextOutputFrameNumber_;
+        std::uint64_t audioRemainderBefore = audioCycleRemainder_;
+        OutputStatusCode statusBefore = lastOutputStatus_;
         try {
             before = machine_->checkpoint();
+            outputBefore = frameOutput_;
+            audioBefore = audioOutput_;
         } catch (const std::bad_alloc&) {
             runtimeState_ = RuntimeState::faulted;
             faultMessage_.clear();
@@ -719,10 +867,15 @@ class MachineRuntime::Impl final {
         const auto restoreBoundary = [&]() noexcept {
             if (!before) return false;
             machine_->restore(std::move(*before));
+            if (outputBefore) frameOutput_ = std::move(*outputBefore);
+            if (audioBefore) audioOutput_ = std::move(*audioBefore);
+            nextOutputFrameNumber_ = numberBefore;
+            audioCycleRemainder_ = audioRemainderBefore;
+            lastOutputStatus_ = statusBefore;
             return true;
         };
         try {
-            actual = machine_->runFor(MachineRuntime::executionSliceCycles);
+            actual = runWithFramePublication(MachineRuntime::executionSliceCycles);
         } catch (const std::runtime_error& error) {
             actual = machine_->cpu().state().cycles - before->cpu.cycles;
             runtimeState_ = RuntimeState::faulted;
@@ -755,6 +908,61 @@ class MachineRuntime::Impl final {
         } catch (...) {
             faultMessage_.clear();
         }
+    }
+
+    std::uint64_t runWithFramePublication(std::uint64_t cycles) {
+        const auto started = machine_->cpu().state().cycles;
+        std::uint64_t actual = 0;
+        do {
+            const auto completed = runUntilFrameWithOutputPublication(cycles - actual);
+            actual = machine_->cpu().state().cycles - started;
+            if (!completed) break;
+        } while (actual < cycles);
+        return actual;
+    }
+
+    bool runUntilFrameWithOutputPublication(std::uint64_t cycles) {
+        const auto previousFrame = machine_->frame().number;
+        const auto started = machine_->cpu().state().cycles;
+        bool completed = false;
+        try {
+            completed = machine_->runUntilFrame(cycles);
+        } catch (...) {
+            publishAudioForCycles(machine_->cpu().state().cycles - started);
+            throw;
+        }
+        publishAudioForCycles(machine_->cpu().state().cycles - started);
+        if (completed && machine_->frame().number != previousFrame) publishCompletedFrame();
+        return completed;
+    }
+
+    void publishAudioForCycles(std::uint64_t cycles) {
+        const auto fractional = audioCycleRemainder_ + (cycles % 125) * 3;
+        std::uint64_t remainingSamples = (cycles / 125) * 3 + fractional / 125;
+        audioCycleRemainder_ = fractional % 125;
+        std::array<float, audioSampleCapacity> samples{};
+        while (remainingSamples != 0) {
+            const auto count =
+                static_cast<std::size_t>(std::min<std::uint64_t>(remainingSamples, samples.size()));
+            machine_->sound().render(samples.data(), count, static_cast<double>(audioSampleRate));
+            const auto outcome = audioOutput_.publish(std::span(samples.data(), count));
+            lastOutputStatus_ = outcome.code;
+            remainingSamples -= count;
+        }
+    }
+
+    void publishCompletedFrame() {
+        const auto& source = machine_->frame();
+        CompletedFrame frame;
+        frame.number = nextOutputFrameNumber_;
+        frame.width = source.width;
+        frame.height = source.height;
+        frame.rgba = source.rgba;
+        const auto outcome = frameOutput_.publish(std::move(frame));
+        if (outcome.code == OutputStatusCode::invalidArgument)
+            throw std::runtime_error("completed frame violated the bounded-output contract");
+        lastOutputStatus_ = outcome.code;
+        ++nextOutputFrameNumber_;
     }
 
     SafePoint currentSafePoint(std::uint64_t ledgerSequence) const {
@@ -880,6 +1088,21 @@ RuntimeResult<std::vector<float>> MachineRuntime::renderAudio(std::size_t frames
     auto digest = mix(frames, std::bit_cast<std::uint64_t>(sampleRate));
     return resultFromCompletion<std::vector<float>>(
         impl_->submit(RuntimeCommandKind::renderAudio, AudioPayload{frames, sampleRate}, digest));
+}
+
+FrameDequeueResult MachineRuntime::dequeueFrame() {
+    return frameResultFromCompletion(impl_->submit(RuntimeCommandKind::dequeueFrame));
+}
+
+AudioDrainResult MachineRuntime::drainAudio(std::size_t maximumSamples) {
+    return audioResultFromCompletion(impl_->submit(RuntimeCommandKind::drainAudio,
+                                                   static_cast<std::uint64_t>(maximumSamples),
+                                                   maximumSamples));
+}
+
+RuntimeResult<OutputDiagnostics> MachineRuntime::outputDiagnostics() {
+    return resultFromCompletion<OutputDiagnostics>(
+        impl_->submit(RuntimeCommandKind::outputDiagnostics));
 }
 
 RuntimeResult<SafePoint> MachineRuntime::safePoint() {
