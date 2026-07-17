@@ -30,7 +30,7 @@
 **Goal**: Publish owned RGBA frames through a capacity-three FIFO at the C1 safe point.
 **Independent Test**: Focused C++, C, Swift, and lifetime tests pass for empty, retained, full, drop-oldest, sustained, lifecycle, and exact accounting cases.
 
-- [ ] T008 [P] [US1] Add failing frame FIFO, oldest-first dequeue, drop-oldest, monotonic-number, and accounting tests in `Tests/test_main.cpp`
+- [x] T008 [P] [US1] Add failing frame FIFO, oldest-first dequeue, drop-oldest, monotonic-number, and accounting tests in `Tests/test_main.cpp`
 - [ ] T009 [P] [US1] Add failing retained-frame and concurrent producer lifetime tests in `Tests/C2/test-output-lifetime.sh`
 - [ ] T010 [P] [US1] Add failing C caller-owned frame, nullability, release, and no-alias tests in `Tests/C2/test-output-contract.sh`
 - [ ] T011 [P] [US1] Add failing Swift independently owned frame and typed lifecycle/empty tests in `Tests/BeebKitTests/BeebMachineTests.swift`

@@ -2134,6 +2134,59 @@ void testC1RaceShutdownDrainAndRejection() {
     checkRuntimeOK(runtime.shutdown());
 }
 
+beeb::CompletedFrame c2Frame(std::uint64_t number) {
+    beeb::CompletedFrame frame;
+    frame.number = number;
+    frame.width = 1;
+    frame.height = 1;
+    frame.rgba = {static_cast<std::uint8_t>(number), 0x22, 0x33, 0xFF};
+    return frame;
+}
+
+void testC2CompletedFrameFIFOAndAccounting() {
+    beeb::CompletedFrameQueue queue;
+
+    const auto empty = queue.dequeue();
+    CHECK_EQ(empty.status.code, beeb::OutputStatusCode::empty);
+    CHECK(!empty.frame.has_value());
+
+    CHECK_EQ(queue.publish(c2Frame(10)).code, beeb::OutputStatusCode::ok);
+    CHECK_EQ(queue.publish(c2Frame(11)).code, beeb::OutputStatusCode::ok);
+    CHECK_EQ(queue.publish(c2Frame(12)).code, beeb::OutputStatusCode::ok);
+    CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
+
+    auto retained = queue.dequeue();
+    CHECK_EQ(retained.status.code, beeb::OutputStatusCode::ok);
+    CHECK(retained.frame.has_value());
+    CHECK_EQ(retained.frame->number, 10U);
+    const auto retainedPixels = retained.frame->rgba;
+
+    CHECK_EQ(queue.publish(c2Frame(13)).code, beeb::OutputStatusCode::ok);
+    CHECK_EQ(queue.publish(c2Frame(14)).code, beeb::OutputStatusCode::overrun);
+    CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
+    CHECK_EQ(retained.frame->rgba, retainedPixels);
+
+    const auto beforeInvalid = queue.counters();
+    CHECK_EQ(queue.publish(c2Frame(14)).code, beeb::OutputStatusCode::invalidArgument);
+    CHECK_EQ(queue.depth(), beeb::completedFrameCapacity);
+    CHECK_EQ(queue.counters(), beforeInvalid);
+
+    for (const auto expected : {12U, 13U, 14U}) {
+        const auto result = queue.dequeue();
+        CHECK_EQ(result.status.code, beeb::OutputStatusCode::ok);
+        CHECK(result.frame.has_value());
+        CHECK_EQ(result.frame->number, expected);
+    }
+
+    const auto counters = queue.counters();
+    CHECK_EQ(queue.depth(), 0U);
+    CHECK_EQ(counters.framesProduced, 5U);
+    CHECK_EQ(counters.framesConsumed, 4U);
+    CHECK_EQ(counters.framesDropped, 1U);
+    CHECK_EQ(counters.framesProduced,
+             counters.framesConsumed + counters.framesDropped + queue.depth());
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2215,6 +2268,8 @@ int main(int argc, char** argv) {
          testC1ObservationsReturnConsistentOwnedValues},
         {"C1 race: 10000 mixed commands", testC1RaceMixedCommands},
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
+        {"C2 frames: FIFO overflow ownership and accounting",
+         testC2CompletedFrameFIFOAndAccounting},
     };
 
     unsigned failed = 0;
