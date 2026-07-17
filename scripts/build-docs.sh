@@ -457,8 +457,12 @@ fi
 } >"${output_dir}/index.html"
 
 check_internal_links() {
-    local html href clean target
+    local html html_dir href clean target
     while IFS= read -r -d '' html; do
+        # Resolve relative links without spawning dirname once per href. DocC
+        # emits thousands of local references, so process creation otherwise
+        # dominates the validation pass without changing what is checked.
+        html_dir="${html%/*}"
         while IFS= read -r href; do
             case "${href}" in
                 ""|\#*|/favicon.*|http://*|https://*|mailto:*|javascript:*|data:*) continue ;;
@@ -469,7 +473,7 @@ check_internal_links() {
             if [[ "${clean}" == /* ]]; then
                 target="${output_dir}/${clean#/}"
             else
-                target="$(dirname "${html}")/${clean}"
+                target="${html_dir}/${clean}"
             fi
             if [[ ! -e "${target}" ]]; then
                 printf 'broken generated documentation link: %s -> %s\n' \

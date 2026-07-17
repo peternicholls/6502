@@ -47,10 +47,36 @@ runtime owner.
 
 ## Continuous audio
 
-The audio contract covers deterministic mono Float32 production at 48 kHz, the
-4,096-sample FIFO and 2,048-sample demand target, caller-owned drains, and exact
-underrun and overrun accounting. Host clocks may observe output pressure but do
-not advance or schedule core state.
+Continuous output is one mono channel of IEEE 32-bit floating-point samples at
+exactly 48,000 Hz. The 2 MHz emulated CPU clock is the only production clock:
+each completed execution segment converts cycles to samples with the exact
+reduced ratio `3 / 125`, retaining the fractional emulated-cycle remainder for
+the next segment. SN76489 rendering and FIFO publication occur on the runtime
+owner after the same completed-instruction/device-tick transition used for
+frames.
+
+The fixed ring retains at most 4,096 samples, approximately 85 ms at the fixed
+rate. Demand is `max(0, 2,048 - retained depth)`. Production never waits for a
+host consumer. When incoming samples exceed capacity, the ring discards exactly
+the oldest retained samples, keeps the newest 4,096 in FIFO order, and increases
+the cumulative overrun count by the number discarded.
+
+A drain requests a maximum count and receives owned samples in FIFO order. C++
+and Swift results own their arrays; C copies only valid values into caller
+storage. If fewer samples exist, every available sample is returned and
+`shortfall = requested - copied`; the operation reports structured underrun and
+adds that exact shortfall to the cumulative underrun count. Allocation failure
+occurs before ring mutation. After every operation:
+
+```text
+audio samples produced = samples consumed + samples overrun + retained depth
+```
+
+The drain result observes copied count, shortfall, post-drain demand, and both
+pressure counters atomically. A Swift underrun remains a recoverable typed error
+carrying the valid owned partial drain. Host elapsed time may be supplied later
+to an observational rate helper, but no host clock is stored in BeebCore, drives
+SN76489 production, changes demand, or advances emulated state.
 
 ## Diagnostics and recovery
 

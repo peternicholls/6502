@@ -55,7 +55,7 @@
 - [x] T022 [US2] Integrate deterministic 48 kHz audio production with owner slices and SN76489 state in `Sources/BeebCore/src/runtime.cpp`
 - [x] T023 [US2] Expose caller-buffer audio drain, copied count, shortfall, demand, and pressure in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`
 - [x] T024 [US2] Map audio drains, demand, and recoverable pressure into Swift-owned values/errors in `Sources/BeebKit/BeebMachine.swift`
-- [ ] T025 [US2] Document sample format, capacity, target, FIFO/overflow/underrun rules, accounting, and host-clock exclusion in `Sources/BeebCore/include/beeb/output.hpp`, `Sources/BeebCore/include/beeb_c.h`, and `docs/code/bounded-output.md`
+- [x] T025 [US2] Document sample format, capacity, target, FIFO/overflow/underrun rules, accounting, and host-clock exclusion in `Sources/BeebCore/include/beeb/output.hpp`, `Sources/BeebCore/include/beeb_c.h`, and `docs/code/bounded-output.md`
 
 **Checkpoint**: US1 and US2 remain independently testable and verified in a Lore commit before US3.
 

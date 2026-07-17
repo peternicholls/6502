@@ -80,6 +80,10 @@ struct CompletedFrame {
 };
 
 /// Owned FIFO audio result and exact demand observed by one drain operation.
+///
+/// Samples are deterministic mono IEEE Float32 values at exactly 48,000 Hz.
+/// `shortfall == requested - samples.size()` and may be nonzero only with a
+/// structured underrun. Storage belongs exclusively to this value.
 struct AudioChunk {
     std::uint64_t firstSample = 0; ///< Emulated sequence of the first returned sample.
     std::size_t requested = 0;     ///< Maximum samples requested by the consumer.
@@ -173,8 +177,10 @@ struct AudioDrainResult {
 /// Owner-thread-only fixed ring for continuous mono Float32 output.
 ///
 /// Publication and drain are serialized by `MachineRuntime`. Storage is fixed
-/// at 4,096 samples, overflow replaces oldest samples, and drains allocate an
-/// owned result before mutating the ring so allocation failure consumes nothing.
+/// at 4,096 samples and demand targets 2,048 retained samples. Overflow replaces
+/// exactly the oldest samples and increments their exact count. Drains allocate
+/// an owned result before mutating the ring so allocation failure consumes
+/// nothing. At all times, produced equals consumed plus overrun plus depth.
 class AudioSampleQueue final {
   public:
     /// Publishes ordered samples, dropping oldest retained values at capacity.

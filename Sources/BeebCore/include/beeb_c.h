@@ -115,7 +115,8 @@ typedef struct beeb_frame {
 ///
 /// `copied` samples at the start of the caller buffer are valid on OK or
 /// UNDERRUN. `shortfall` is exactly `requested - copied`; demand and cumulative
-/// pressure counters are observed after that same drain operation.
+/// pressure counters are observed after that same drain operation. Samples are
+/// mono IEEE Float32 at 48,000 Hz and never alias runtime storage.
 typedef struct beeb_audio_drain_result {
     uint64_t first_sample;   ///< Emulated sequence of the first copied sample.
     size_t copied;           ///< Valid Float32 values written to the caller buffer.
@@ -283,6 +284,10 @@ beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
                               double sample_rate);
 
 /// Drains continuous 48 kHz mono Float32 output into caller storage.
+/// The runtime retains at most 4,096 samples and reports demand against a 2,048
+/// target. Producer overflow drops oldest samples; consumer underrun copies all
+/// available samples and reports the exact remainder. Host time is not an input
+/// to this operation or to core production.
 /// @param machine Live runtime token.
 /// @param mono Writable storage for `capacity` samples; required when capacity is nonzero.
 /// @param capacity Maximum samples to copy and the requested drain count.
