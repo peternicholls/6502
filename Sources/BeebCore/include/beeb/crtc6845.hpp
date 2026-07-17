@@ -70,6 +70,8 @@ class CRTC6845 {
     [[nodiscard]] bool displayEnabled() const noexcept;
 
   private:
+    friend class BBCMicro;
+
     std::array<std::uint8_t, 32> registers_{};
     std::uint8_t selected_ = 0;
     std::uint16_t hCharacter_ = 0;

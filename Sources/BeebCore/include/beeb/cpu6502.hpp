@@ -92,6 +92,8 @@ class CPU6502 {
     void setTraceCallback(TraceCallback callback) { trace_ = std::move(callback); }
 
   private:
+    friend class BBCMicro;
+
     // The bus is borrowed, never owned, and must outlive this processor. The
     // helpers below are grouped by the hardware boundary they preserve:
     // fetch/read/write are bus cycles; addressing helpers report page crossing

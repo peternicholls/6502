@@ -38,6 +38,8 @@ class SN76489 {
     }
 
   private:
+    friend class BBCMicro;
+
     std::array<std::uint16_t, 3> tone_{1, 1, 1};
     std::array<std::uint8_t, 4> volume_{15, 15, 15, 15};
     std::array<double, 4> phase_{};

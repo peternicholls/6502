@@ -68,6 +68,8 @@ class VIA6522 {
     [[nodiscard]] std::uint8_t ddrb() const noexcept { return ddrb_; }
 
   private:
+    friend class BBCMicro;
+
     std::uint8_t orb_ = 0;
     std::uint8_t ora_ = 0;
     std::uint8_t ddrb_ = 0;

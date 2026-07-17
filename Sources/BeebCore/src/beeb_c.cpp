@@ -93,6 +93,8 @@ beeb_safe_point translateSafePoint(const beeb::SafePoint& point) noexcept {
 /// retention, and first-destroy ownership. Later destroyers wait for the owner's result;
 /// calls arriving after destruction starts are rejected as unavailable.
 struct HandleState final {
+    explicit HandleState(beeb::MachineRuntimeOptions options = {}) : runtime(options) {}
+
     std::mutex mutex;
     std::condition_variable callsFinished;
     std::size_t activeCalls = 0;
@@ -187,19 +189,11 @@ beeb_status missingOutput(const char* name) noexcept {
     return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, name);
 }
 
-} // namespace
-
-extern "C" {
-
-const char* beeb_version_string(void) {
-    return BEEB_VERSION_STRING;
-}
-
-beeb_status beeb_create(beeb_machine** out_machine) {
+beeb_status createMachine(beeb_machine** out_machine, beeb::MachineRuntimeOptions options) {
     if (!out_machine) return missingOutput("machine output is null");
     try {
         auto token = std::make_unique<beeb_machine>();
-        auto state = std::make_shared<HandleState>();
+        auto state = std::make_shared<HandleState>(options);
         {
             std::lock_guard lock(registryMutex);
             registry.emplace(token.get(), std::move(state));
@@ -213,6 +207,23 @@ beeb_status beeb_create(beeb_machine** out_machine) {
     } catch (...) {
         return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "unknown machine creation failure");
     }
+}
+
+} // namespace
+
+beeb_status beeb_test_create_with_allocation_failure(beeb_machine** out_machine,
+                                                     beeb::RuntimeAllocationFailurePoint point) {
+    return createMachine(out_machine, {.failAllocationAt = point});
+}
+
+extern "C" {
+
+const char* beeb_version_string(void) {
+    return BEEB_VERSION_STRING;
+}
+
+beeb_status beeb_create(beeb_machine** out_machine) {
+    return createMachine(out_machine, {});
 }
 
 beeb_status beeb_destroy(beeb_machine* machine) {

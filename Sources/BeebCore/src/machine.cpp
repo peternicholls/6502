@@ -1,8 +1,11 @@
 #include "beeb/machine.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cstring>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
 
 namespace beeb {
 
@@ -73,29 +76,37 @@ void BBCMicro::restoreRAM(std::span<const std::uint8_t> bytes) noexcept {
 }
 
 BBCMicro::Checkpoint BBCMicro::checkpoint() const {
-    return {cpu_.state(), ram_,         keyboard_,     ic32_,          systemVIA_,
-            userVIA_,     crtc_,        videoULA_,     sound_,         fdc_,
-            frame_,       selectedROM_, viaRemainder_, crtcRemainder_, breakPressed_};
+    return {cpu_.state(),   cpu_.irqLine_, cpu_.nmiPending_, ram_,         keyboard_,
+            ic32_,          systemVIA_,    userVIA_,         crtc_,        videoULA_,
+            sound_,         fdc_,          frame_,           selectedROM_, viaRemainder_,
+            crtcRemainder_, breakPressed_};
 }
 
-void BBCMicro::restore(const Checkpoint& checkpoint) {
+void BBCMicro::restore(Checkpoint&& checkpoint) noexcept {
+    static_assert(std::is_nothrow_move_assignable_v<VIA6522>);
+    static_assert(std::is_nothrow_move_assignable_v<CRTC6845>);
+    static_assert(std::is_nothrow_move_assignable_v<VideoULA>);
+    static_assert(std::is_nothrow_move_assignable_v<SN76489>);
+    static_assert(std::is_nothrow_move_assignable_v<Intel8271>);
+    static_assert(std::is_nothrow_move_assignable_v<VideoFrame>);
+
     cpu_.setState(checkpoint.cpu);
-    ram_ = checkpoint.ram;
-    keyboard_ = checkpoint.keyboard;
-    ic32_ = checkpoint.ic32;
-    systemVIA_ = checkpoint.systemVIA;
-    userVIA_ = checkpoint.userVIA;
-    crtc_ = checkpoint.crtc;
-    videoULA_ = checkpoint.videoULA;
-    sound_ = checkpoint.sound;
-    fdc_ = checkpoint.fdc;
-    frame_ = checkpoint.frame;
+    cpu_.irqLine_ = checkpoint.cpuIRQ;
+    cpu_.nmiPending_ = checkpoint.cpuNMI;
+    ram_ = std::move(checkpoint.ram);
+    keyboard_ = std::move(checkpoint.keyboard);
+    ic32_ = std::move(checkpoint.ic32);
+    systemVIA_ = std::move(checkpoint.systemVIA);
+    userVIA_ = std::move(checkpoint.userVIA);
+    crtc_ = std::move(checkpoint.crtc);
+    videoULA_ = std::move(checkpoint.videoULA);
+    sound_ = std::move(checkpoint.sound);
+    fdc_ = std::move(checkpoint.fdc);
+    frame_ = std::move(checkpoint.frame);
     selectedROM_ = checkpoint.selectedROM;
     viaRemainder_ = checkpoint.viaRemainder;
     crtcRemainder_ = checkpoint.crtcRemainder;
     breakPressed_ = checkpoint.breakPressed;
-    configureSystemVIA();
-    fdc_.setNMICallback([this] { cpu_.requestNMI(); });
 }
 
 std::uint64_t BBCMicro::testDigest() const noexcept {
@@ -121,7 +132,15 @@ std::uint64_t BBCMicro::testDigest() const noexcept {
     add(cpu.p);
     add(cpu.pc);
     add(cpu.cycles);
+    add(static_cast<std::uint8_t>(cpu_.irqLine_));
+    add(static_cast<std::uint8_t>(cpu_.nmiPending_));
     addBytes(ram_);
+    addBytes(osROM_);
+    for (const auto& bank : sidewaysROM_)
+        addBytes(bank);
+    for (const auto present : sidewaysPresent_)
+        add(static_cast<std::uint8_t>(present));
+    add(static_cast<std::uint8_t>(osROMLoaded_));
     for (const auto row : keyboard_)
         add(row);
     for (const auto value : ic32_)
@@ -132,13 +151,28 @@ std::uint64_t BBCMicro::testDigest() const noexcept {
     add(crtc_.horizontalCharacter());
     add(crtc_.characterRow());
     add(crtc_.rasterRow());
+    add(crtc_.verticalAdjust_);
     add(crtc_.frameNumber());
+    add(static_cast<std::uint8_t>(crtc_.inVerticalAdjust_));
     add(static_cast<std::uint8_t>(crtc_.frameReady()));
     for (const auto* via : {&systemVIA_, &userVIA_}) {
         add(via->outputA());
         add(via->outputB());
         add(via->ddra());
         add(via->ddrb());
+        add(via->t1Counter_);
+        add(via->t1Latch_);
+        add(via->t2Counter_);
+        add(via->t2LatchLow_);
+        add(via->shift_);
+        add(via->acr_);
+        add(via->pcr_);
+        add(via->ifr_);
+        add(via->ier_);
+        add(static_cast<std::uint8_t>(via->t1Running_));
+        add(static_cast<std::uint8_t>(via->t2Running_));
+        add(static_cast<std::uint8_t>(via->ca1_));
+        add(static_cast<std::uint8_t>(via->cb1_));
         add(static_cast<std::uint8_t>(via->irq()));
     }
     add(videoULA_.control());
@@ -150,16 +184,40 @@ std::uint64_t BBCMicro::testDigest() const noexcept {
         add(sound_.tonePeriod(channel));
     for (unsigned channel = 0; channel < 4; ++channel)
         add(sound_.volume(channel));
+    for (const auto phase : sound_.phase_)
+        add(std::bit_cast<std::uint64_t>(phase));
+    add(sound_.noise_);
+    add(sound_.latchedChannel_);
+    add(static_cast<std::uint8_t>(sound_.latchedVolume_));
+    add(sound_.lfsr_);
+    add(static_cast<std::uint8_t>(sound_.noiseLevel_));
     add(fdc_.status());
     add(fdc_.result());
     for (unsigned drive = 0; drive < 2; ++drive) {
         const auto& disc = fdc_.disc(drive);
         add(static_cast<std::uint8_t>(disc.present()));
         add(static_cast<std::uint8_t>(disc.writable()));
+        add(static_cast<std::uint8_t>(disc.layout_));
         add(disc.tracks());
         add(disc.sides());
         addBytes(disc.bytes());
     }
+    addBytes(fdc_.special_);
+    addBytes(fdc_.currentTrack_);
+    addBytes(fdc_.parameters_);
+    addBytes(fdc_.transferBuffer_);
+    add(fdc_.command_);
+    add(fdc_.expectedParameters_);
+    add(fdc_.transferIndex_);
+    add(fdc_.countdown_);
+    add(fdc_.transferDrive_);
+    add(fdc_.transferTrack_);
+    add(fdc_.transferSide_);
+    add(fdc_.transferSector_);
+    add(fdc_.transferSectorSize_);
+    add(fdc_.transferSectorCount_);
+    add(static_cast<std::uint8_t>(fdc_.specifyTail_));
+    add(static_cast<std::uint8_t>(fdc_.transfer_));
     add(frame_.width);
     add(frame_.height);
     add(frame_.number);

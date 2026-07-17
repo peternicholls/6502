@@ -28,6 +28,9 @@
 #include <thread>
 #include <vector>
 
+beeb_status beeb_test_create_with_allocation_failure(beeb_machine**,
+                                                     beeb::RuntimeAllocationFailurePoint);
+
 namespace {
 
 // C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns why these fixtures
@@ -497,6 +500,12 @@ void testCAPI02StatusOutParametersAndNullability() {
     CHECK(staleStatus.code == BEEB_STATUS_INVALID_ARGUMENT);
     CHECK(std::string(staleStatus.message) == "OS ROM data is null");
     checkCStatus(beeb_reset(machine), BEEB_STATUS_OK);
+    checkCStatus(beeb_start(machine), BEEB_STATUS_OK);
+    checkCStatus(beeb_get_runtime_state(machine, &runtimeState), BEEB_STATUS_OK);
+    CHECK(runtimeState == BEEB_RUNTIME_STATE_RUNNING);
+    checkCStatus(beeb_pause(machine), BEEB_STATUS_OK);
+    checkCStatus(beeb_get_runtime_state(machine, &runtimeState), BEEB_STATUS_OK);
+    CHECK(runtimeState == BEEB_RUNTIME_STATE_PAUSED);
 
     completedFrame = 7;
     checkCStatus(beeb_run_until_frame(machine, 0, &completedFrame), BEEB_STATUS_OK);
@@ -545,6 +554,22 @@ void testCAPI02StatusOutParametersAndNullability() {
     checkCStatus(beeb_set_break(machine, 0), BEEB_STATUS_OK);
     checkCStatus(beeb_destroy(machine), BEEB_STATUS_OK);
     checkCStatus(beeb_start(machine), BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_machine* allocationMachine = nullptr;
+    checkCStatus(beeb_test_create_with_allocation_failure(
+                     &allocationMachine, beeb::RuntimeAllocationFailurePoint::frame),
+                 BEEB_STATUS_OK);
+    beeb_frame untouchedAllocationFrame{};
+    untouchedAllocationFrame.available = 1;
+    untouchedAllocationFrame.width = 37;
+    checkCStatus(beeb_get_frame(allocationMachine, &untouchedAllocationFrame),
+                 BEEB_STATUS_RESOURCE_EXHAUSTED);
+    CHECK_EQ(untouchedAllocationFrame.available, 1);
+    CHECK_EQ(untouchedAllocationFrame.width, 37);
+    beeb_frame recoveredFrame{};
+    checkCStatus(beeb_get_frame(allocationMachine, &recoveredFrame), BEEB_STATUS_OK);
+    checkCStatus(beeb_frame_release(&recoveredFrame), BEEB_STATUS_OK);
+    checkCStatus(beeb_destroy(allocationMachine), BEEB_STATUS_OK);
 }
 
 void testCAPI02FaultAndRecovery() {
@@ -606,8 +631,20 @@ void testCAPI02DestroyWaitsForCallsAlreadyInside() {
     });
     entered.wait();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    const auto destroyed = beeb_destroy(machine);
+    auto destroy = std::async(std::launch::async, [&] { return beeb_destroy(machine); });
+    beeb_runtime_state unavailableState = BEEB_RUNTIME_STATE_FAULTED;
+    beeb_status unavailable{};
+    const auto unavailableDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    do {
+        unavailableState = BEEB_RUNTIME_STATE_FAULTED;
+        unavailable = beeb_get_runtime_state(machine, &unavailableState);
+        if (unavailable.code == BEEB_STATUS_UNAVAILABLE) break;
+        std::this_thread::yield();
+    } while (std::chrono::steady_clock::now() < unavailableDeadline);
+    checkCStatus(unavailable, BEEB_STATUS_UNAVAILABLE);
+    CHECK(unavailableState == BEEB_RUNTIME_STATE_FAULTED);
     const auto [runStatus, actual] = run.get();
+    const auto destroyed = destroy.get();
     checkCStatus(runStatus, BEEB_STATUS_OK);
     CHECK(actual >= 50'000'000);
     checkCStatus(destroyed, BEEB_STATUS_OK);
@@ -1139,24 +1176,41 @@ void testC1RuntimeContractStructuredStatusIsolation() {
 }
 
 void testC1LateFaultRetainsLastCompletedBoundary() {
-    const auto exercisePaused = [](bool untilFrame) {
+    beeb::BBCMicro expected;
+    CHECK(expected.loadOSROM(makeLateFaultOSROM()));
+    expected.reset();
+    const auto expectedStartCycles = expected.cpu().state().cycles;
+    try {
+        (void)expected.runFor(100);
+        CHECK(false);
+    } catch (const std::runtime_error&) {
+    }
+    const auto expectedCPU = expected.cpu().state();
+    const auto expectedDigest = beeb::BBCMicroTestAccess::digest(expected);
+    const auto expectedRetainedCycles = expectedCPU.cycles - expectedStartCycles;
+    CHECK(expectedRetainedCycles > 0);
+
+    const auto exercisePaused = [&](bool untilFrame) {
         beeb::MachineRuntime runtime({.enableLedger = true});
         checkRuntimeOK(runtime.loadOSROM(makeLateFaultOSROM()));
         checkRuntimeOK(runtime.reset());
-        const auto beforeCPU = runtimeValue(runtime.cpuState());
-        const auto beforeFrame = runtimeValue(runtime.frame());
         const auto result =
             untilFrame ? runtime.runUntilFrame(100).status : runtime.runFor(100).status;
         CHECK(result.code == beeb::RuntimeStatusCode::executionFailed);
-        CHECK(runtimeValue(runtime.cpuState()) == beforeCPU);
-        CHECK(runtimeValue(runtime.frame()) == beforeFrame);
+        CHECK(runtimeValue(runtime.cpuState()) == expectedCPU);
         const auto fault = runtimeValue(runtime.fault());
         CHECK(fault.available);
-        CHECK_EQ(fault.safePoint.cpuCycles, beforeCPU.cycles);
+        CHECK_EQ(fault.safePoint.cpuCycles, expectedCPU.cycles);
         CHECK(fault.safePoint.state == beeb::RuntimeState::faulted);
+        (void)runtimeValue(runtime.safePoint());
         const auto ledger = runtime.ledger();
         CHECK(!ledger.empty());
-        CHECK_EQ(ledger.back().actualCycles, 0);
+        const auto failed = std::find_if(ledger.rbegin(), ledger.rend(), [](const auto& entry) {
+            return entry.status == beeb::RuntimeStatusCode::executionFailed;
+        });
+        CHECK(failed != ledger.rend());
+        CHECK_EQ(failed->actualCycles, expectedRetainedCycles);
+        CHECK_EQ(ledger.back().resultDigest, expectedDigest);
         checkRuntimeOK(runtime.reset());
         CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
     };
@@ -1167,21 +1221,22 @@ void testC1LateFaultRetainsLastCompletedBoundary() {
     beeb::MachineRuntime sustained({.enableLedger = true});
     checkRuntimeOK(sustained.loadOSROM(makeLateFaultOSROM()));
     checkRuntimeOK(sustained.reset());
-    const auto beforeCPU = runtimeValue(sustained.cpuState());
     checkRuntimeOK(sustained.start());
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     while (runtimeValue(sustained.state()) != beeb::RuntimeState::faulted &&
            std::chrono::steady_clock::now() < deadline)
         std::this_thread::yield();
     CHECK(runtimeValue(sustained.state()) == beeb::RuntimeState::faulted);
-    CHECK(runtimeValue(sustained.cpuState()) == beforeCPU);
+    CHECK(runtimeValue(sustained.cpuState()) == expectedCPU);
+    (void)runtimeValue(sustained.safePoint());
     const auto ledger = sustained.ledger();
     const auto failedSlice = std::find_if(ledger.rbegin(), ledger.rend(), [](const auto& entry) {
         return entry.event == beeb::LedgerEventKind::executionSlice &&
                entry.status == beeb::RuntimeStatusCode::executionFailed;
     });
     CHECK(failedSlice != ledger.rend());
-    CHECK_EQ(failedSlice->actualCycles, 0);
+    CHECK_EQ(failedSlice->actualCycles, expectedRetainedCycles);
+    CHECK_EQ(ledger.back().resultDigest, expectedDigest);
     checkRuntimeOK(sustained.reset());
 }
 
@@ -1207,12 +1262,39 @@ void testC1ClosedLoopSustainedLifecycleRepeats() {
 void testC1MachineDigestCoversRollbackState() {
     beeb::BBCMicro machine;
     const auto initial = beeb::BBCMicroTestAccess::digest(machine);
-    const auto checkpoint = machine.checkpoint();
+    auto checkpoint = machine.checkpoint();
     const std::array<std::uint8_t, 1> byte{0x2A};
     CHECK(machine.loadRAM(0, byte));
     machine.crtc().select(15);
+    machine.cpu().setIRQ(true);
+    machine.cpu().requestNMI();
     CHECK(beeb::BBCMicroTestAccess::digest(machine) != initial);
-    machine.restore(checkpoint);
+    machine.restore(std::move(checkpoint));
+    CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), initial);
+
+    machine.systemVIA().write(4, 4);
+    machine.systemVIA().write(5, 0);
+    const auto timerInitial = beeb::BBCMicroTestAccess::digest(machine);
+    checkpoint = machine.checkpoint();
+    machine.systemVIA().tick(1);
+    CHECK(beeb::BBCMicroTestAccess::digest(machine) != timerInitial);
+    machine.restore(std::move(checkpoint));
+    CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), timerInitial);
+    machine.reset();
+    CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), initial);
+
+    checkpoint = machine.checkpoint();
+    float sample = 0;
+    machine.sound().render(&sample, 1, 48'000);
+    CHECK(beeb::BBCMicroTestAccess::digest(machine) != initial);
+    machine.restore(std::move(checkpoint));
+    CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), initial);
+
+    checkpoint = machine.checkpoint();
+    machine.discController().write(0, 0x13);
+    machine.discController().tick(1);
+    CHECK(beeb::BBCMicroTestAccess::digest(machine) != initial);
+    machine.restore(std::move(checkpoint));
     CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), initial);
 }
 
@@ -1248,6 +1330,19 @@ void testC1AllocationFailuresRemainRecoverable() {
         const auto oversized = runtime->renderAudio(std::vector<float>{}.max_size(), 48'000);
         CHECK(oversized.status.code == Code::invalidArgument);
         CHECK(!oversized.value.has_value());
+    }
+    {
+        auto runtime = runtimeWithFailure(Point::faultResult);
+        const auto failed = runtime->fault();
+        CHECK(failed.status.code == Code::resourceExhausted);
+        CHECK(!failed.value.has_value());
+        CHECK(runtimeValue(runtime->state()) == beeb::RuntimeState::paused);
+    }
+    {
+        auto runtime = runtimeWithFailure(Point::shutdownResult);
+        CHECK(runtime->shutdown().code == Code::resourceExhausted);
+        CHECK(runtimeValue(runtime->state()) == beeb::RuntimeState::paused);
+        checkRuntimeOK(runtime->shutdown());
     }
     {
         auto runtime = runtimeWithFailure(Point::boundedExecution);
@@ -1904,18 +1999,59 @@ void testC1RaceMixedCommands() {
 
     checkRuntimeOK(runtime.loadOSROM(makeLateFaultOSROM()));
     checkRuntimeOK(runtime.reset());
+    constexpr unsigned recoveryObservers = 4;
+    constexpr unsigned recoveryQueriesPerObserver = 100;
+    std::latch executionFaulted(1);
+    std::latch faultObserved(recoveryObservers);
+    std::latch continueQueries(1);
+    std::atomic<unsigned> recoveryFailures{0};
+    std::vector<std::thread> recoveryWorkers;
+    recoveryWorkers.reserve(recoveryObservers);
+    for (unsigned observer = 0; observer < recoveryObservers; ++observer) {
+        recoveryWorkers.emplace_back([&, observer] {
+            executionFaulted.wait();
+            const auto observed = runtime.fault();
+            ++accounted;
+            if (!observed.status.isOK() || !observed.value || !observed.value->available)
+                ++recoveryFailures;
+            faultObserved.count_down();
+            continueQueries.wait();
+            for (unsigned query = 0; query < recoveryQueriesPerObserver; ++query) {
+                beeb::RuntimeStatus status;
+                switch ((observer + query) % 4) {
+                case 0:
+                    status = runtime.state().status;
+                    break;
+                case 1:
+                    status = runtime.cpuState().status;
+                    break;
+                case 2:
+                    status = runtime.safePoint().status;
+                    break;
+                default:
+                    status = runtime.fault().status;
+                    break;
+                }
+                ++accounted;
+                if (!status.isOK()) ++recoveryFailures;
+            }
+        });
+    }
     const auto execution = runtime.runFor(100);
     ++accounted;
     CHECK(execution.status.code == beeb::RuntimeStatusCode::executionFailed);
-    const auto fault = runtime.fault();
-    ++accounted;
-    checkRuntimeOK(fault.status);
-    CHECK(runtimeValue(fault).available);
+    executionFaulted.count_down();
+    faultObserved.wait();
+    continueQueries.count_down();
     checkRuntimeOK(runtime.reset());
     ++accounted;
     checkRuntimeOK(runtime.loadOSROM(loopingOS));
     ++accounted;
-    CHECK_EQ(accounted.load(), threadCount * operationsPerThread + 4);
+    for (auto& worker : recoveryWorkers)
+        worker.join();
+    CHECK_EQ(recoveryFailures.load(), 0);
+    CHECK_EQ(accounted.load(), threadCount * operationsPerThread + 1 + recoveryObservers +
+                                   recoveryObservers * recoveryQueriesPerObserver + 2);
     CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
 }
 

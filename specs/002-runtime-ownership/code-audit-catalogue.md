@@ -17,7 +17,7 @@ standards, documentation, or governance repairs.
 ## P0: Correctness and destructive safety
 
 - [x] **AUD-001 Preserve a coherent whole-machine safe point after a late execution fault.**
-  **Closure**: [T035/T036](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `f14900e`/`f5e2614`; late RAM/device fault regressions, 49-test core, and 44-test sanitizer evidence passed.
+  **Closure**: [T035/T036/T076](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `f14900e`/`f5e2614` plus the phase-closing candidate; bounded, frame, and sustained faults retain the last completed instruction/device boundary, with 49-test core and 44-test sanitizer evidence.
   FR-012 and FR-014 require a safe fault boundary without partial mutation
   (`spec.md:206-212`). `BBCMicro::runFor()` can complete and tick several
   instructions before a later instruction throws (`Sources/BeebCore/src/machine.cpp:151-155`),
@@ -28,7 +28,7 @@ standards, documentation, or governance repairs.
   run-to-frame, and sustained execution.
 
 - [x] **AUD-002 Prevent repository or user-data deletion through output-path options.**
-  **Closure**: [T031/T032](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `5674708`/`53e92d5`; destructive path fixtures preserved every sentinel and portable docs/C0 verification passed.
+  **Closure**: [T031/T032/T076](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `5674708`/`53e92d5` plus the phase-closing candidate; tool-specific ownership markers reject pre-existing unowned paths inside and outside `.build`, and every destructive-path sentinel survived.
   `scripts/build-docs.sh:77-82,265`, `scripts/verify-c0.sh:49-58`, and
   `scripts/verify-c0-references.sh:31,152` reject only an empty path or `/`
   before `rm -rf`; `scripts/measure-c0.sh:19,28-31` similarly deletes a derived
@@ -37,7 +37,7 @@ standards, documentation, or governance repairs.
   trap, and add destructive-path negative tests.
 
 - [x] **AUD-003 Make allocation-failure recovery allocation-free.**
-  **Closure**: [T045/T046](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `e2748fe`/`fab6b11`; injected request, queue, ledger, frame/audio, bounded, and sustained allocation failures recovered under core and sanitizer suites.
+  **Closure**: [T045/T046/T076](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `e2748fe`/`fab6b11` plus the phase-closing candidate; request, queue, ledger, frame/audio/fault results, bounded/sustained execution, and `noexcept` shutdown recover without a second allocation.
   `completeRequest()` and `executeRunningSlice()` are `noexcept`, but their
   exception handlers construct or assign `std::string` diagnostics
   (`Sources/BeebCore/src/runtime.cpp:419-434,631-650`). A second allocation
@@ -67,7 +67,7 @@ standards, documentation, or governance repairs.
   TSan profile cannot run and records both gates before C1 remains Complete.
 
 - [x] **AUD-006 Expand race evidence to the full FR-018 interaction set.**
-  **Closure**: [T043/T044](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `a83f09f`/`baf4dff`; 10,000 accounted interactions now cover lifecycle, media, input, observation, fault/recovery, and shutdown across ten repetitions.
+  **Closure**: [T043/T044/T076](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `a83f09f`/`baf4dff` plus the phase-closing candidate; 10,000 accounted interactions cover lifecycle, media, input, and observation, while deterministic fault/reset/recovery now runs under concurrent query load and shutdown overlap across ten repetitions.
   The 10,000-command stress at `Tests/test_main.cpp:1361-1394` omits ROM/disc
   loads, execution failure, and shutdown; the separate shutdown scenario at
   `Tests/test_main.cpp:1398-1451` still omits media and fault overlap. Exercise
@@ -84,7 +84,7 @@ standards, documentation, or governance repairs.
   semantics for paused, running, faulted, and shutting-down states.
 
 - [x] **AUD-008 Complete per-entry-point C ABI and Swift recovery evidence.**
-  **Closure**: [T047/T048](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `1442a2d`/`5d25068`; declaration-driven C coverage and all Swift status-category, concurrency, recovery, and release cases passed.
+  **Closure**: [T047/T048/T076](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `1442a2d`/`5d25068` plus the phase-closing candidate; C proves live start/pause, allocation recovery, output preservation, and shutdown unavailability, while Swift's production throw mapper covers resource and unavailable categories.
   SC-004 requires each applicable fallible C operation to cover success,
   invalid input/state, execution failure, and stale diagnostics
   (`spec.md:259-261`). `Tests/test_main.cpp:344-438` lacks complete coverage for
@@ -94,7 +94,7 @@ standards, documentation, or governance repairs.
   including output preservation and shutdown unavailability.
 
 - [x] **AUD-009 Add a whole-machine/device signature to replay evidence.**
-  **Closure**: [T037/T038](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `e2ea54b`/`283e029`; every named replay compares CPU, safe point, exact ledger, and private whole-machine digest across ten runs.
+  **Closure**: [T037/T038/T076](tasks.md#remediation-ledger-code-and-inline-documentation-audits), commits `e2ea54b`/`283e029` plus the phase-closing candidate; every named replay compares CPU, safe point, exact ledger, and a digest covering ROM/media plus hidden CPU, VIA, CRTC, sound, and FDC state across ten runs.
   SC-002 requires a final CPU/device signature (`spec.md:253-255`), but replay
   compares only `CPUState`, `SafePoint`, and ledger data
   (`Tests/test_main.cpp:853-1009`); `SafePoint` has no RAM or device digest

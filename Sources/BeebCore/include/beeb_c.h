@@ -117,7 +117,9 @@ beeb_status beeb_create(beeb_machine** out_machine);
 /// Stops acceptance, drains accepted commands, joins, and releases a runtime.
 /// @param machine Live token from `beeb_create()`; null is invalid.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for null/already
-/// destroyed tokens. Concurrent destroy calls share one shutdown result.
+/// destroyed tokens, `BEEB_STATUS_RESOURCE_EXHAUSTED` when shutdown resources
+/// cannot be obtained, or `BEEB_STATUS_INTERNAL_FAILURE` when an unexpected
+/// shutdown failure is contained. Concurrent destroy calls share one result.
 beeb_status beeb_destroy(beeb_machine* machine);
 
 /// Reads lifecycle state from one FIFO safe point.
@@ -137,8 +139,10 @@ beeb_status beeb_start(beeb_machine* machine);
 
 /// Pauses at a safe point; paused is an idempotent success.
 /// @param machine Live runtime token.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_STATE` when the transition
-/// is not legal, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token,
+/// `BEEB_STATUS_INVALID_STATE` when the transition is not legal,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_pause(beeb_machine* machine);
 
 /// Resets CPU and devices, clears a fault, retains media, and finishes paused.
@@ -209,15 +213,18 @@ beeb_status beeb_mount_disc(beeb_machine* machine, unsigned drive, const uint8_t
 /// Copies CPU registers and cycle count from one safe point.
 /// @param machine Live runtime token.
 /// @param out_state Required output, written only on success.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// output, `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state);
 
 /// Copies the latest frame into caller-owned storage.
 /// @param machine Live runtime token.
 /// @param out_frame Required output, written only on success and subsequently
 /// released with `beeb_frame_release()`.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output or
-/// `BEEB_STATUS_RESOURCE_EXHAUSTED` when frame storage cannot be allocated.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// output, `BEEB_STATUS_RESOURCE_EXHAUSTED` when command or frame storage cannot
+/// be allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame);
 
 /// Releases one frame value and clears all of its fields.
@@ -232,8 +239,10 @@ beeb_status beeb_frame_release(beeb_frame* frame);
 /// @param mono Required writable storage for `frames` samples when frames is nonzero.
 /// @param frames Number of samples; zero is permitted with a non-null pointer.
 /// @param sample_rate Finite positive sample rate in hertz.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for invalid rate,
-/// frame count, or buffer; the buffer is written only on success.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token,
+/// rate, frame count, or buffer, `BEEB_STATUS_INVALID_STATE` when faulted,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` on command or sample allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown; output changes only on success.
 beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
                               double sample_rate);
 
@@ -242,25 +251,34 @@ beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
 /// @param column Matrix column in the inclusive range 0...15.
 /// @param row Matrix row in the inclusive range 0...15.
 /// @param pressed Non-zero to press, zero to release.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for coordinates.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// coordinates, `BEEB_STATUS_INVALID_STATE` when faulted,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed);
 
 /// Changes BREAK state in FIFO order without inventing a lifecycle transition.
 /// @param machine Live runtime token.
 /// @param pressed Non-zero to press, zero to release.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token,
+/// `BEEB_STATUS_INVALID_STATE` when faulted, `BEEB_STATUS_RESOURCE_EXHAUSTED`
+/// on command allocation failure, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_set_break(beeb_machine* machine, int pressed);
 
 /// Reads the current safe-point identity in FIFO order.
 /// @param machine Live runtime token.
 /// @param out_safe_point Required output, written only on success.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// output, `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_get_safe_point(beeb_machine* machine, beeb_safe_point* out_safe_point);
 
 /// Reads retained execution-fault detail; absence is a successful value.
 /// @param machine Live runtime token.
 /// @param out_fault Required output, written only on success.
-/// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for bad output.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// output, `BEEB_STATUS_RESOURCE_EXHAUSTED` on command or result allocation
+/// failure, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_get_fault(beeb_machine* machine, beeb_fault_detail* out_fault);
 
 #ifdef __cplusplus

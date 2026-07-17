@@ -90,6 +90,36 @@ The phase-closing commit changes only this evidence ledger and the completed
 task marker. Its committed revision is checked again for generated
 documentation and a clean tree; no empty checkpoint commit is created.
 
+## C1 remediation completion evidence
+
+The Phase 12 remediation candidate built from `f38ea42` plus the scoped T076
+changes passed the complete local macOS gate on 2026-07-17. A final read-only
+code review returned APPROVE with no CRITICAL or HIGH findings; its two medium
+documentation/traceability notes were corrected before the phase commit.
+
+| Command | Exact result |
+| --- | --- |
+| `make test` | 49/49 tests passed |
+| `make sanitize` | 44/44 quick tests passed under UndefinedBehaviorSanitizer |
+| `make thread-sanitize` | N/A: ThreadSanitizer is not supported by the local compiler/host combination; supported Linux CI remains strict |
+| `swift test` | 10/10 XCTest cases passed |
+| `swift build` | Complete package and demo build passed |
+| `make verify-c0` | All 11 macOS evidence groups passed with exact references unchanged |
+| `make test-c1` | All six groups passed, including ten normal 10,000-command race repetitions and the replay digest suite |
+| `make docs-check` / `make format-check` | Strict generated documentation and formatting gates passed |
+| Clang static analysis | Every `Sources/BeebCore/src/*.cpp` translation unit completed without a diagnostic |
+| `git diff --check` / `git ls-files .build` | No output |
+| `git status --short` | Before the phase commit, only the scoped T076 source, test, script, specification, and documentation paths were listed |
+
+The retained fault boundary now keeps legal completed instructions and their
+device ticks, while allocation/internal failures restore the whole-command
+checkpoint. Replay evidence includes hidden CPU interrupt latches, ROM/media,
+VIA timers and edges, CRTC adjustment state, sound phase/noise state, and FDC
+transfer state. Destructive tools require their own ownership marker before
+removing an existing `.build` directory. C and Swift evidence covers resource
+recovery and shutdown unavailability, and fault/reset recovery runs while
+observers contend for the runtime FIFO.
+
 ## Release state
 
 Version 0.2.0 remains an unreleased development candidate. Live verification on

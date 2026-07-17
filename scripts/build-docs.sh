@@ -79,13 +79,17 @@ source_root="$(cd -P "${source_root}" && pwd -P)"
 home_root="$(cd -P "${HOME}" && pwd -P)"
 
 prepare_output_dir() {
-    local target="$1" parent name
+    local target="$1" parent name marker=".beeb-docs-owned"
     parent="$(cd -P "$(dirname "${target}")" && pwd -P)"
     name="$(basename "${target}")"
     target="${parent}/${name}"
     case "${target}" in
         "${source_root}/.build"/*)
-            rm -rf -- "${target}"
+            if [[ -e "${target}" && ! -f "${target}/${marker}" ]]; then
+                printf 'refusing to remove an existing unowned directory: %s\n' "${target}" >&2
+                exit 2
+            fi
+            [[ ! -e "${target}" ]] || rm -rf -- "${target}"
             mkdir -p "${target}"
             ;;
         /|"${source_root}"|"${source_root}"/*|"${home_root}"|"${home_root}"/*)
@@ -100,6 +104,7 @@ prepare_output_dir() {
             mkdir "${target}"
             ;;
     esac
+    : >"${target}/${marker}"
 }
 case "${output_dir}" in
     ""|/)

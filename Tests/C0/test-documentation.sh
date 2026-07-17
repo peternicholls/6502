@@ -62,6 +62,17 @@ printf 'keep\n' >"${escaped_target}/docs/sentinel.txt"
 ln -s "${escaped_target}" "${escaped_parent}"
 assert_docs_output_rejected docs-output-symlink "${escaped_parent}/docs"
 test "$(cat "${escaped_target}/docs/sentinel.txt")" = "keep"
+
+unowned_build_docs="${C0_TEST_ROOT}/.build/c0-test-unowned-docs"
+mkdir -p "${unowned_build_docs}"
+printf 'keep\n' >"${unowned_build_docs}/sentinel.txt"
+c0_capture docs-output-unowned-build "${builder}" --profile portable --check \
+    --source-root "${C0_TEST_ROOT}" --output-dir "${unowned_build_docs}" \
+    --debt-baseline "${fixture}/documentation-debt.txt" \
+    --changed-files "${fixture}/changed-files.txt"
+c0_expect_failure docs-output-unowned-build
+test "$(cat "${unowned_build_docs}/sentinel.txt")" = "keep"
+rm -rf -- "${unowned_build_docs}"
 c0_pass "dangerous documentation output paths fail without deleting sentinels"
 
 c0_capture portable "${builder}" --profile portable \

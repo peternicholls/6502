@@ -60,6 +60,8 @@ class Intel8271 {
     [[nodiscard]] std::uint8_t result() const noexcept { return result_; }
 
   private:
+    friend class BBCMicro;
+
     /// Host-visible readiness and interrupt indications maintained by commands.
     enum Status : std::uint8_t {
         Busy = 0x80,

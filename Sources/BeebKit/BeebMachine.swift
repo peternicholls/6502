@@ -352,7 +352,7 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     /// Converts one non-OK C status into its lossless typed Swift error.
-    private static func check(_ status: beeb_status) throws {
+    static func check(_ status: beeb_status) throws {
         guard status.code != BEEB_STATUS_OK else { return }
         throw BeebError.coreStatus(
             statusCategory(status.code), statusMessage(status))

@@ -66,6 +66,8 @@ class DiscImage {
     [[nodiscard]] std::span<const std::uint8_t> bytes() const noexcept { return bytes_; }
 
   private:
+    friend class BBCMicro;
+
     std::vector<std::uint8_t> bytes_;
     Layout layout_ = Layout::SSD;
     unsigned tracks_ = 0;

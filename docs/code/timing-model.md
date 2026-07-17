@@ -45,12 +45,13 @@ the request. The owner checks the FIFO before selecting another slice, so an
 accepted pause waits for at most the already selected slice. Bounded execution
 is a separate paused-only command. Neither path consults host wall time.
 
-If an instruction, trace observer, or aggregate device transition throws, the
-runtime restores the process-local whole-machine checkpoint captured before
-that execution transaction. Discarded transitions contribute zero retained
-`actualCycles`; the fault safe point therefore names the same CPU/device
-boundary that observations and replay digest report, rather than mixing
-restored CPU time with advanced peripheral state.
+If an emulated instruction fails, its processor-local transition is discarded
+while earlier complete instructions and their device ticks remain committed.
+The fault ledger records those retained `actualCycles`, and its safe point names
+the same CPU/device boundary reported by observations and the replay digest.
+Allocation and unexpected implementation failures restore the process-local
+whole-machine checkpoint captured before the execution transaction, so they
+cannot mix restored CPU time with advanced peripheral state.
 
 ## Where to extend fidelity
 

@@ -44,6 +44,8 @@ class BBCMicro final : public Bus {
     /// rollback boundary and its exclusion from snapshot persistence.
     struct Checkpoint {
         CPUState cpu;                           ///< Processor boundary.
+        bool cpuIRQ = false;                    ///< Level-sensitive IRQ input.
+        bool cpuNMI = false;                    ///< Pending edge-triggered NMI.
         std::array<std::uint8_t, 0x8000> ram;   ///< Complete writable memory.
         std::array<std::uint16_t, 16> keyboard; ///< Keyboard matrix rows.
         std::array<bool, 8> ic32;               ///< Addressable latch outputs.
@@ -148,7 +150,7 @@ class BBCMicro final : public Bus {
     [[nodiscard]] Checkpoint checkpoint() const;
     /// Restores a checkpoint captured from this machine.
     /// @param checkpoint Complete mutable execution state to reinstall.
-    void restore(const Checkpoint& checkpoint);
+    void restore(Checkpoint&& checkpoint) noexcept;
     /// Returns the currently selected sideways-ROM bank.
     /// @return Bank number in the range 0...15.
     [[nodiscard]] std::uint8_t selectedROM() const noexcept { return selectedROM_; }

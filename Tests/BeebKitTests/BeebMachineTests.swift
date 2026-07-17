@@ -90,6 +90,22 @@ final class BeebMachineTests: XCTestCase {
         }
     }
 
+    func testResourceAndShutdownStatusesUseProductionThrowMapping() {
+        for (code, expected) in [
+            (BEEB_STATUS_RESOURCE_EXHAUSTED, BeebStatusCategory.resourceExhausted),
+            (BEEB_STATUS_UNAVAILABLE, BeebStatusCategory.unavailable),
+        ] {
+            var status = beeb_status()
+            status.code = code
+            XCTAssertThrowsError(try BeebMachine.check(status)) { error in
+                guard case let BeebError.coreStatus(category, _) = error else {
+                    return XCTFail("Expected coreStatus, got \(error)")
+                }
+                XCTAssertEqual(category, expected)
+            }
+        }
+    }
+
     func testInvalidROMDiscAudioAndInputMapToSpecificSwiftErrors() throws {
         let machine = try BeebMachine()
 

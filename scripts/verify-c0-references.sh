@@ -34,9 +34,14 @@ esac
 case "${output_dir}" in ""|/) printf 'unsafe output directory\n' >&2; exit 2 ;; esac
 output_parent="$(cd -P "$(dirname "${output_dir}")" && pwd -P)"
 output_target="${output_parent}/$(basename "${output_dir}")"
+ownership_marker=".beeb-c0-reference-owned"
 case "${output_target}" in
     "${root}/.build"/*)
-        rm -rf -- "${output_target}"
+        if [[ -e "${output_target}" && ! -f "${output_target}/${ownership_marker}" ]]; then
+            printf 'refusing to remove an existing unowned directory: %s\n' "${output_target}" >&2
+            exit 2
+        fi
+        [[ ! -e "${output_target}" ]] || rm -rf -- "${output_target}"
         mkdir -p "${output_target}"
         ;;
     "${root}"|"${root}"/*|"${home_root}"|"${home_root}"/*|/)
@@ -49,6 +54,7 @@ case "${output_target}" in
         mkdir "${output_target}"
         ;;
 esac
+: >"${output_target}/${ownership_marker}"
 output_dir="${output_target}"
 
 manifest="${fixture_root}/manifest.txt"

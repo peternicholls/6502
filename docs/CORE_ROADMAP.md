@@ -1,7 +1,7 @@
 # Emulator core roadmap
 
 **Status:** Canonical core planning document  
-**Updated:** 2026-07-15
+**Updated:** 2026-07-17
 
 This roadmap governs the portable BBC Model B emulation foundation and its
 public host boundary. It does not define the wider application experience;
@@ -161,9 +161,10 @@ bus-cycle sequencer MUST preserve the ability to reach this boundary.
   result and quiescent boundary.
 
 The C1 implementation is the completed `002-runtime-ownership` Spec Kit slice.
-Its clean pre-release candidate passed 42 C++ tests, 37 sanitizer tests, seven
-Swift tests, all 11 C0 groups, all six C1 aggregate groups, and strict generated
-documentation ([exact gate record](STATUS.md#c1-pre-release-candidate-evidence)).
+Its remediated completion candidate passed 49 C++ tests, 44 sanitizer tests,
+ten Swift tests, all 11 C0 groups, all six C1 aggregate groups, strict generated
+documentation, formatting, and static analysis. Final review found no CRITICAL
+or HIGH issue ([exact gate record](STATUS.md#c1-remediation-completion-evidence)).
 The local ThreadSanitizer probe is not executable and is recorded as N/A rather
 than a pass; supported CI remains required to execute that instrumentation.
 

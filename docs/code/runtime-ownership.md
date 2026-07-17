@@ -96,15 +96,18 @@ time is used only by tests as a deadlock guard and never changes emulated state.
 
 ## Fault containment
 
-An execution exception is caught on the owner, and a process-local checkpoint
-restores CPU, RAM, devices, mounted media state, frame storage, keyboard state,
-and timing remainders to the last completed boundary captured before the
-failing run. The runtime then enters `faulted`. Work rolled back by that
-transaction is not retained work, so its ledger `actualCycles` is zero. The
-operation receives `executionFailed`; later fault queries return an owned copy
-of the same diagnostic and safe point. State, fault, CPU, and frame queries
-remain legal. Start, pause, bounded execution, media, input, and audio mutation
-are rejected until reset succeeds.
+An emulated execution exception is caught on the owner after the failing
+instruction has restored its processor-local pre-instruction state. Every
+earlier whole instruction and its completed aggregate device tick remain
+committed, so the fault safe point is the last completed instruction/device
+boundary and ledger `actualCycles` reports that retained work. The runtime then
+enters `faulted` and returns `executionFailed`. Allocation or unexpected
+implementation failures instead restore the process-local command checkpoint,
+covering CPU, RAM, devices, mounted media state, frame storage, keyboard state,
+and timing remainders, and report their non-execution category. Later fault
+queries return an owned diagnostic and safe point. State, fault, CPU, and frame
+queries remain legal. Start, pause, bounded execution, media, input, and audio
+mutation are rejected until reset succeeds.
 
 `CPU6502::step()` applies the same rule to processor-local failures. A trace
 observer runs after opcode fetch but before instruction execution or device

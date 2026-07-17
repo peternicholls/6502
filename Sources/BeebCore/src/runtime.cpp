@@ -136,6 +136,7 @@ std::uint64_t completionDigest(const CompletionValue& value) noexcept {
 struct Completion {
     RuntimeStatus status;
     CompletionValue value;
+    std::uint64_t retainedCycles = 0;
 };
 
 /// One accepted FIFO unit; payload, identity, digest, and promise move together.
@@ -249,6 +250,7 @@ class MachineRuntime::Impl final {
     RuntimeStatus shutdown() noexcept {
         std::uint64_t acceptanceSequence = 0;
         try {
+            if (shouldFail(RuntimeAllocationFailurePoint::shutdownResult)) throw std::bad_alloc{};
             std::unique_lock lock(mutex_);
             if (std::this_thread::get_id() == ownerId_) {
                 return status(RuntimeStatusCode::reentrantCall, "runtime owner cannot join itself");
@@ -280,11 +282,13 @@ class MachineRuntime::Impl final {
             lock.unlock();
             stateChanged_.notify_all();
             return status(RuntimeStatusCode::ok, {}, acceptanceSequence);
-        } catch (const std::exception& error) {
-            return status(RuntimeStatusCode::internalFailure, error.what(), acceptanceSequence);
+        } catch (const std::bad_alloc&) {
+            return allocationFailure(acceptanceSequence);
         } catch (...) {
-            return status(RuntimeStatusCode::internalFailure, "unknown shutdown failure",
-                          acceptanceSequence);
+            RuntimeStatus result;
+            result.code = RuntimeStatusCode::internalFailure;
+            result.acceptanceSequence = acceptanceSequence;
+            return result;
         }
     }
 
@@ -451,8 +455,18 @@ class MachineRuntime::Impl final {
             completion.value = safePoint;
         }
         if (request.kind == RuntimeCommandKind::fault && completion.status.isOK()) {
-            completion.value =
-                RuntimeFault{runtimeState_ == RuntimeState::faulted, faultMessage_, safePoint};
+            try {
+                if (shouldFail(RuntimeAllocationFailurePoint::faultResult)) throw std::bad_alloc{};
+                completion.value =
+                    RuntimeFault{runtimeState_ == RuntimeState::faulted, faultMessage_, safePoint};
+            } catch (const std::bad_alloc&) {
+                completion = {allocationFailure(request.acceptanceSequence), {}};
+            } catch (...) {
+                completion.status.code = RuntimeStatusCode::internalFailure;
+                completion.status.acceptanceSequence = request.acceptanceSequence;
+                completion.status.message.clear();
+                completion.value = {};
+            }
         }
         const auto resultDigest =
             request.kind == RuntimeCommandKind::safePoint && completion.status.isOK()
@@ -626,36 +640,44 @@ class MachineRuntime::Impl final {
     Completion executeBounded(std::uint64_t cycles, std::uint64_t accepted) {
         if (shouldFail(RuntimeAllocationFailurePoint::boundedExecution))
             return {allocationFailure(accepted), {}};
-        const auto before = machine_->checkpoint();
+        auto before = machine_->checkpoint();
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runFor(cycles)};
-        } catch (const std::exception& error) {
-            machine_->restore(before);
+        } catch (const std::runtime_error& error) {
+            const auto retained = machine_->cpu().state().cycles - before.cpu.cycles;
             runtimeState_ = RuntimeState::faulted;
-            faultMessage_ = error.what();
-            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
+            setFaultMessage(error.what());
+            return {
+                status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}, retained};
+        } catch (const std::bad_alloc&) {
+            machine_->restore(std::move(before));
+            return {allocationFailure(accepted), {}};
         } catch (...) {
-            machine_->restore(before);
+            machine_->restore(std::move(before));
             runtimeState_ = RuntimeState::faulted;
-            faultMessage_ = "unknown execution failure";
-            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
+            setFaultMessage("unknown execution failure");
+            return {status(RuntimeStatusCode::internalFailure, faultMessage_, accepted), {}};
         }
     }
 
     Completion executeUntilFrame(std::uint64_t cycles, std::uint64_t accepted) {
-        const auto before = machine_->checkpoint();
+        auto before = machine_->checkpoint();
         try {
             return {status(RuntimeStatusCode::ok, {}, accepted), machine_->runUntilFrame(cycles)};
-        } catch (const std::exception& error) {
-            machine_->restore(before);
+        } catch (const std::runtime_error& error) {
+            const auto retained = machine_->cpu().state().cycles - before.cpu.cycles;
             runtimeState_ = RuntimeState::faulted;
-            faultMessage_ = error.what();
-            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
+            setFaultMessage(error.what());
+            return {
+                status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}, retained};
+        } catch (const std::bad_alloc&) {
+            machine_->restore(std::move(before));
+            return {allocationFailure(accepted), {}};
         } catch (...) {
-            machine_->restore(before);
+            machine_->restore(std::move(before));
             runtimeState_ = RuntimeState::faulted;
-            faultMessage_ = "unknown execution failure";
-            return {status(RuntimeStatusCode::executionFailed, faultMessage_, accepted), {}};
+            setFaultMessage("unknown execution failure");
+            return {status(RuntimeStatusCode::internalFailure, faultMessage_, accepted), {}};
         }
     }
 
@@ -696,29 +718,28 @@ class MachineRuntime::Impl final {
         std::uint64_t actual = 0;
         const auto restoreBoundary = [&]() noexcept {
             if (!before) return false;
-            try {
-                machine_->restore(*before);
-                return true;
-            } catch (...) {
-                return false;
-            }
+            machine_->restore(std::move(*before));
+            return true;
         };
         try {
             actual = machine_->runFor(MachineRuntime::executionSliceCycles);
-        } catch (const std::exception& error) {
-            const auto restored = restoreBoundary();
-            if (restored) actual = 0;
+        } catch (const std::runtime_error& error) {
+            actual = machine_->cpu().state().cycles - before->cpu.cycles;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage(error.what());
-            code =
-                restored ? RuntimeStatusCode::executionFailed : RuntimeStatusCode::internalFailure;
+            code = RuntimeStatusCode::executionFailed;
+        } catch (const std::bad_alloc&) {
+            (void)restoreBoundary();
+            actual = 0;
+            runtimeState_ = RuntimeState::faulted;
+            faultMessage_.clear();
+            code = RuntimeStatusCode::resourceExhausted;
         } catch (...) {
-            const auto restored = restoreBoundary();
-            if (restored) actual = 0;
+            (void)restoreBoundary();
+            actual = 0;
             runtimeState_ = RuntimeState::faulted;
             setFaultMessage("unknown execution failure");
-            code =
-                restored ? RuntimeStatusCode::executionFailed : RuntimeStatusCode::internalFailure;
+            code = RuntimeStatusCode::internalFailure;
         }
 
         const auto sequence = nextLedgerSequence_++;
@@ -761,7 +782,7 @@ class MachineRuntime::Impl final {
 
     static std::uint64_t actualCycles(const Completion& completion) noexcept {
         if (const auto* value = std::get_if<std::uint64_t>(&completion.value)) return *value;
-        return 0;
+        return completion.retainedCycles;
     }
 };
 

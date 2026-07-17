@@ -69,6 +69,14 @@ printf 'keep\n' >"${escaped_target}/.measurement-work/sentinel.txt"
 ln -s "${escaped_target}" "${escaped_parent}"
 assert_measure_output_rejected measure-output-symlink "${escaped_parent}/result.txt"
 test "$(cat "${escaped_target}/.measurement-work/sentinel.txt")" = "keep"
+
+unowned_build_measure="${safety_root}/.build/c0-test-unowned-measure"
+mkdir -p "${unowned_build_measure}/.measurement-work"
+printf 'keep\n' >"${unowned_build_measure}/.measurement-work/sentinel.txt"
+assert_measure_output_rejected measure-output-unowned-build \
+    "${unowned_build_measure}/result.txt"
+test "$(cat "${unowned_build_measure}/.measurement-work/sentinel.txt")" = "keep"
+rm -rf -- "${unowned_build_measure}"
 c0_pass "dangerous measurement work paths fail without deleting sentinels"
 
 valid_record="${C0_TEST_TMP}/valid.txt"

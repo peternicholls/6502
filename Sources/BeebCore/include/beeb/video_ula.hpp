@@ -47,6 +47,8 @@ class VideoULA {
     [[nodiscard]] bool crtcTwoMHz() const noexcept { return (control_ & 0x10) != 0; }
 
   private:
+    friend class BBCMicro;
+
     std::uint8_t control_ = 0;
     std::array<std::uint8_t, 16> palette_{};
 };

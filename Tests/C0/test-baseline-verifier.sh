@@ -68,6 +68,13 @@ printf 'keep\n' >"${escaped_target}/run/sentinel.txt"
 ln -s "${escaped_target}" "${escaped_parent}"
 assert_verify_output_rejected verify-output-symlink "${escaped_parent}/run"
 test "$(cat "${escaped_target}/run/sentinel.txt")" = "keep"
+
+unowned_build_run="${C0_TEST_ROOT}/.build/c0-test-unowned-run"
+mkdir -p "${unowned_build_run}"
+printf 'keep\n' >"${unowned_build_run}/sentinel.txt"
+assert_verify_output_rejected verify-output-unowned-build "${unowned_build_run}"
+test "$(cat "${unowned_build_run}/sentinel.txt")" = "keep"
+rm -rf -- "${unowned_build_run}"
 c0_pass "dangerous baseline output paths fail without deleting sentinels"
 
 c0_snapshot_tree Tests "${C0_TEST_TMP}/tests-before.sha"

@@ -41,9 +41,14 @@ mkdir -p "$(dirname "${output}")"
 work_dir="$(dirname "${output}")/.measurement-work"
 work_parent="$(cd -P "$(dirname "${work_dir}")" && pwd -P)"
 work_target="${work_parent}/$(basename "${work_dir}")"
+ownership_marker=".beeb-c0-measure-owned"
 case "${work_target}" in
     "${root}/.build"/*)
-        rm -rf -- "${work_target}"
+        if [[ -e "${work_target}" && ! -f "${work_target}/${ownership_marker}" ]]; then
+            printf 'refusing to remove an existing unowned directory: %s\n' "${work_target}" >&2
+            exit 2
+        fi
+        [[ ! -e "${work_target}" ]] || rm -rf -- "${work_target}"
         mkdir -p "${work_target}"
         ;;
     /|"${root}"|"${root}"/*|"${home_root}"|"${home_root}"/*)
@@ -57,6 +62,7 @@ case "${work_target}" in
         ;;
 esac
 work_dir="${work_target}"
+: >"${work_dir}/${ownership_marker}"
 # The directory was either created atomically above or recreated inside the
 # tool-owned build tree, so this trap cannot remove a caller-owned path.
 trap 'rm -rf -- "${work_dir}"' EXIT

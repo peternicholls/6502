@@ -108,6 +108,16 @@ if [[ ! -x "${reference_verifier}" ]]; then
     exit 1
 fi
 
+unowned_build_references="${C0_TEST_ROOT}/.build/c0-test-unowned-references"
+mkdir -p "${unowned_build_references}"
+printf 'keep\n' >"${unowned_build_references}/sentinel.txt"
+c0_capture references-output-unowned-build "${reference_verifier}" --runs 1 \
+    --fixture-root "${fixture_root}" --output-dir "${unowned_build_references}"
+c0_expect_failure references-output-unowned-build
+test "$(cat "${unowned_build_references}/sentinel.txt")" = "keep"
+rm -rf -- "${unowned_build_references}"
+c0_pass "reference verifier preserves unowned build output"
+
 c0_snapshot_tree "${fixture_root}" "${C0_TEST_TMP}/fixture-before.sha"
 c0_capture ten-runs "${reference_verifier}" --runs 10 \
     --fixture-root "${fixture_root}" --output-dir "${C0_TEST_TMP}/ten-runs"

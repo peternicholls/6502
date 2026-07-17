@@ -141,6 +141,8 @@ enum class RuntimeAllocationFailurePoint {
     ledger,
     frame,
     audio,
+    faultResult,
+    shutdownResult,
     boundedExecution,
     sustainedExecution,
 };
