@@ -73,6 +73,24 @@ public struct BeebVideoFrame: Sendable {
     public let rgba: Data
 }
 
+/// Independently owned result of one continuous 48 kHz mono audio drain.
+public struct BeebAudioDrain: Sendable, Equatable {
+    /// Emulated sequence of the first copied sample.
+    public let firstSample: UInt64
+    /// Requested maximum sample count.
+    public let requested: Int
+    /// Valid owned mono Float32 samples in FIFO order.
+    public let samples: [Float]
+    /// Exact requested samples unavailable during this operation.
+    public let shortfall: Int
+    /// Post-drain samples needed to reach the 2,048-sample target.
+    public let demand: Int
+    /// Cumulative oldest samples discarded at capacity.
+    public let overrunCount: UInt64
+    /// Cumulative exact requested-sample shortfall.
+    public let underrunCount: UInt64
+}
+
 /// Identity of one completed-instruction and fully advanced-device boundary.
 public struct BeebSafePoint: Sendable, Equatable {
     /// Total completed CPU cycles.
@@ -107,6 +125,8 @@ public enum BeebError: LocalizedError {
     case invalidAudioRequest
     /// The keyboard matrix coordinates were outside 0...15.
     case invalidKey
+    /// Recoverable audio pressure carrying every valid partial sample and counter.
+    case audioPressure(BeebStatusCategory, BeebAudioDrain)
     /// A C status category and its operation-scoped diagnostic.
     case coreStatus(BeebStatusCategory, String)
 
@@ -125,6 +145,9 @@ public enum BeebError: LocalizedError {
             return "Audio needs a positive frame count and finite positive sample rate."
         case .invalidKey:
             return "Keyboard row and column must both be in 0...15."
+        case let .audioPressure(category, drain):
+            return "Audio reported \(category) after copying \(drain.samples.count) samples " +
+                "with a shortfall of \(drain.shortfall)."
         case let .coreStatus(category, message):
             return "The emulator core reported \(category): \(message)"
         }
@@ -345,6 +368,44 @@ public final class BeebMachine: @unchecked Sendable {
         }
         try Self.check(status)
         return output
+    }
+
+    /// Drains continuous 48 kHz mono output into an independently owned value.
+    /// - Parameter maximumSamples: Non-negative maximum sample count to copy.
+    /// - Returns: Owned FIFO samples and the atomic post-drain pressure observation.
+    /// - Throws: ``BeebError/audioPressure(_:_:)`` with a valid partial value on
+    /// underrun, ``BeebError/invalidAudioRequest`` for a negative count, or a
+    /// typed core status for lifecycle and resource failures.
+    public func drainAudio(maximumSamples: Int) throws -> BeebAudioDrain {
+        guard maximumSamples >= 0 else { throw BeebError.invalidAudioRequest }
+        var output = Array(repeating: Float.zero, count: maximumSamples)
+        var result = beeb_audio_drain_result()
+        let status = output.withUnsafeMutableBufferPointer { buffer in
+            beeb_drain_audio(handle, buffer.baseAddress, buffer.count, &result)
+        }
+        if status.code != BEEB_STATUS_OK, status.code != BEEB_STATUS_UNDERRUN {
+            try Self.check(status)
+        }
+        guard result.copied <= output.count,
+              result.shortfall == output.count - result.copied
+        else {
+            throw BeebError.coreStatus(
+                .internalFailure, "C audio drain returned inconsistent copy accounting")
+        }
+        let drain = BeebAudioDrain(
+            firstSample: result.first_sample,
+            requested: maximumSamples,
+            samples: Array(output.prefix(result.copied)),
+            shortfall: result.shortfall,
+            demand: result.demand,
+            overrunCount: result.overrun_count,
+            underrunCount: result.underrun_count
+        )
+        if status.code == BEEB_STATUS_UNDERRUN {
+            throw BeebError.audioPressure(.underrun, drain)
+        }
+        try Self.check(status)
+        return drain
     }
 
     /// Changes one keyboard-matrix bit in FIFO order.
