@@ -86,7 +86,7 @@
 - [x] T037 [US4] Add shared macOS app, iOS Simulator app, and package-test schemes in `Beeb6502.xcodeproj/xcshareddata/xcschemes/BeebDemo-macOS.xcscheme`, `Beeb6502.xcodeproj/xcshareddata/xcschemes/BeebDemo-iOS.xcscheme`, and `Beeb6502.xcodeproj/xcshareddata/xcschemes/Beeb6502-Tests.xcscheme`
 - [x] T038 [US4] Exclude user-specific Xcode state and derived products while retaining shared project metadata in `.gitignore`
 - [x] T039 [US4] Add macOS build, generic iOS Simulator build, and test-scheme gates to `.github/workflows/ci.yml`
-- [ ] T040 [US4] Replace package-only Apple setup with Xcode-project-first and independent Swift Package guidance in `README.md` and `CONTRIBUTING.md`
+- [x] T040 [US4] Replace package-only Apple setup with Xcode-project-first and independent Swift Package guidance in `README.md` and `CONTRIBUTING.md`
 
 **Checkpoint**: The Xcode project is a verified maintained delivery surface and the Makefile/Swift Package paths remain independently green.
 

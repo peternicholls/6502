@@ -96,13 +96,22 @@ Inspect the installed runtime version with:
 
 ## Build on Apple platforms
 
-Open `Package.swift` in Xcode. `BeebKit` is the reusable product and `BeebDemo`
-is the SwiftUI shell. The package declares macOS 13 and iOS 16 minimums.
+Open `Beeb6502.xcodeproj` in Xcode. Its shared `BeebDemo-macOS`,
+`BeebDemo-iOS`, and `Beeb6502-Tests` schemes are the maintained Apple app and
+test entry points. Select the macOS scheme to run the desktop app, or the iOS
+scheme with an iOS Simulator destination. The apps declare macOS 13 and iOS 16
+minimums; signing is not required for simulator builds or tests.
 
-The complete package builds with Swift Package Manager on macOS, and `swift
-test` exercises the C-to-Swift error and version boundaries. Xcode remains the
-recommended environment for interactive macOS/iOS UI and document-picker
-validation.
+The Xcode project consumes the local `BeebKit` package rather than copying its
+sources. Swift Package Manager remains an independent build surface and can be
+verified without opening the project:
+
+```sh
+swift build
+swift test
+```
+
+The portable core remains independently buildable with `make test all`.
 
 ## Accuracy boundary
 
@@ -141,7 +150,9 @@ Run `make check-version` before tagging a release.
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md), the
 [project constitution](.specify/memory/constitution.md), and the
 [Spec Kit feature workflow](specs/README.md). Continuous integration builds the
-warning-clean C++ core on Linux and the complete Swift package on macOS.
+warning-clean C++ core on Linux and independently verifies the Swift package,
+the macOS app, the iOS Simulator app, and the shared Xcode test scheme on
+macOS.
 
 ## Licence and references
 
