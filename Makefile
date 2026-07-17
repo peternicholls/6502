@@ -6,6 +6,7 @@ CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
 CORE_HEADERS = $(wildcard Sources/BeebCore/include/*.h Sources/BeebCore/include/beeb/*.hpp)
 C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
 C1_TEST_SCRIPTS ?= $(filter-out Tests/C1/testlib.sh,$(wildcard Tests/C1/test-*.sh))
+C2_TEST_SCRIPTS ?= $(filter-out Tests/C2/testlib.sh,$(wildcard Tests/C2/test-*.sh))
 BUILD_DIR = .build/cpp
 C0_PROFILE ?=
 DOCS_PROFILE ?= auto
@@ -16,7 +17,8 @@ else
 SANITIZERS ?= address,undefined
 endif
 
-.PHONY: all test sanitize thread-sanitize test-c1 format-check check-version demo-rom test-c0 verify-c0 \
+.PHONY: all test sanitize thread-sanitize test-c1 test-c2 verify-c2 measure-c2 \
+	format-check check-version demo-rom test-c0 verify-c0 \
 	verify-c0-references update-c0-reference measure-c0 \
 	validate-c0-measurement docs docs-check clean
 
@@ -77,6 +79,24 @@ test-c1:
 		fi; \
 	done; \
 	exit $$status
+
+test-c2:
+	@status=0; \
+	for test_script in $(C2_TEST_SCRIPTS); do \
+		echo "C2 group: $$test_script"; \
+		if "$$test_script"; then \
+			echo "C2 group PASS: $$test_script"; \
+		else \
+			code=$$?; status=1; \
+			echo "C2 group FAIL ($$code): $$test_script" >&2; \
+		fi; \
+	done; \
+	exit $$status
+
+verify-c2: test-c2
+
+measure-c2:
+	Tests/C2/test-output-measurement.sh
 
 test-c0:
 	@status=0; \
