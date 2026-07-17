@@ -97,7 +97,40 @@ int main(void) {
     if (!expect(beeb_frame_release(&first), BEEB_STATUS_OK)) return 17;
     if (first.available || first.rgba != NULL || first.rgba_size != 0) return 18;
     if (!expect(beeb_frame_release(&second), BEEB_STATUS_OK)) return 19;
-    return expect(beeb_destroy(machine), BEEB_STATUS_OK) ? 0 : 20;
+
+    uint64_t actual_cycles = 0;
+    if (!expect(beeb_run_cycles(machine, 2000000, &actual_cycles), BEEB_STATUS_OK)) return 20;
+    float* audio = malloc(5000 * sizeof(float));
+    if (audio == NULL) return 21;
+    for (size_t index = 0; index < 5000; ++index) audio[index] = 99.0f;
+    beeb_audio_drain_result audio_result = {0};
+    audio_result.copied = 77;
+    if (!expect(beeb_drain_audio(NULL, audio, 5000, &audio_result),
+                BEEB_STATUS_INVALID_ARGUMENT))
+        return 22;
+    if (audio_result.copied != 77 || audio[0] != 99.0f) return 23;
+    if (!expect(beeb_drain_audio(machine, NULL, 5000, &audio_result),
+                BEEB_STATUS_INVALID_ARGUMENT))
+        return 24;
+    if (!expect(beeb_drain_audio(machine, audio, 5000, NULL), BEEB_STATUS_INVALID_ARGUMENT))
+        return 25;
+
+    memset(&audio_result, 0, sizeof(audio_result));
+    if (!expect(beeb_drain_audio(machine, audio, 5000, &audio_result), BEEB_STATUS_UNDERRUN))
+        return 26;
+    if (audio_result.copied != 4096 || audio_result.shortfall != 904) return 27;
+    if (audio_result.demand != 2048 || audio_result.overrun_count == 0) return 28;
+    if (audio_result.underrun_count < audio_result.shortfall) return 29;
+    if (audio[0] == 99.0f || audio[4095] == 99.0f || audio[4096] != 99.0f) return 30;
+
+    const uint64_t underrun_before = audio_result.underrun_count;
+    if (!expect(beeb_drain_audio(machine, audio, 1, &audio_result), BEEB_STATUS_UNDERRUN))
+        return 31;
+    if (audio_result.copied != 0 || audio_result.shortfall != 1 ||
+        audio_result.underrun_count != underrun_before + 1)
+        return 32;
+    free(audio);
+    return expect(beeb_destroy(machine), BEEB_STATUS_OK) ? 0 : 33;
 }
 C
 

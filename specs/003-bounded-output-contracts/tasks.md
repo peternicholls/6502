@@ -49,7 +49,7 @@
 
 - [x] T017 [P] [US2] Add failing 48 kHz mono Float32, 4,096-capacity, 2,048-target, FIFO, underrun, overrun, and accounting tests in `Tests/test_main.cpp`
 - [x] T018 [P] [US2] Add failing deterministic sustained audio and bounded-depth replay tests in `Tests/C2/test-output-replay.sh`
-- [ ] T019 [P] [US2] Add failing C caller-buffer, copied-count, exact-shortfall, demand, and pressure tests in `Tests/C2/test-output-contract.sh`
+- [x] T019 [P] [US2] Add failing C caller-buffer, copied-count, exact-shortfall, demand, and pressure tests in `Tests/C2/test-output-contract.sh`
 - [ ] T020 [P] [US2] Add failing Swift owned audio, demand, and typed pressure tests in `Tests/BeebKitTests/BeebMachineTests.swift`
 - [ ] T021 [US2] Implement the 4,096-sample FIFO, 2,048 target, FIFO drain, and drop-oldest pressure accounting in `Sources/BeebCore/src/output.cpp`
 - [ ] T022 [US2] Integrate deterministic 48 kHz audio production with owner slices and SN76489 state in `Sources/BeebCore/src/runtime.cpp`
