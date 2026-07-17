@@ -1285,8 +1285,16 @@ void testC1ClosedLoopSustainedLifecycleRepeats() {
         checkRuntimeOK(runtime.reset());
         checkRuntimeOK(runtime.start());
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-        while (runtime.ledger().empty() && std::chrono::steady_clock::now() < deadline)
+        bool observedExecutionSlice = false;
+        while (!observedExecutionSlice && std::chrono::steady_clock::now() < deadline) {
+            const auto runningLedger = runtime.ledger();
+            observedExecutionSlice =
+                std::any_of(runningLedger.begin(), runningLedger.end(), [](const auto& entry) {
+                    return entry.event == beeb::LedgerEventKind::executionSlice;
+                });
             std::this_thread::yield();
+        }
+        CHECK(observedExecutionSlice);
         checkRuntimeOK(runtime.pause());
         CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
         CHECK(!runtimeValue(runtime.fault()).available);
