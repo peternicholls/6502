@@ -18,7 +18,7 @@ is governed separately by the [product strand](product/README.md).
 | Core build | GCC 13, C++20, warnings promoted to errors | Green |
 | Swift package | BeebKit tests and full package build on Apple Swift 6.2 | Green |
 | C1 runtime ownership | One owner, capacity-64 FIFO, safe-point lifecycle, exact replay, structured C/Swift recovery | Green; local TSan N/A |
-| C2 bounded output | Owned frame/audio queues, exact diagnostics, 10,000-frame lifetime transfer, 60-second sustained measurement | Measured green; final aggregate pending |
+| C2 bounded output | Owned frame/audio queues, exact diagnostics, 10,000-frame lifetime transfer, 60-second sustained measurement | Green; local TSan N/A |
 | Xcode project | Shared macOS, iOS Simulator, and test schemes over the local package and existing demo source | Green clean-checkout contract |
 | C0 aggregate evidence | `make verify-c0`: all 11 macOS groups; explicit portable profile passes with Swift groups N/A | Green |
 | Lawful exact references | Ten identical clean-room runs; exact CPU state plus 320×200 bitmap and 480×500 Mode 7 PPMs | Green |
@@ -122,7 +122,7 @@ removing an existing `.build` directory. C and Swift evidence covers resource
 recovery and shutdown unavailability, and fault/reset recovery runs while
 observers contend for the runtime FIFO.
 
-## C2 measured candidate evidence
+## C2 completion evidence
 
 The `003-bounded-output-contracts` candidate passed its measurement gate on
 2026-07-17 before any C2 completion claim was added. The committed harness
@@ -141,10 +141,26 @@ reproducible workload and pass/fail thresholds remain tracked in
 | Xcode delivery | All three shared schemes listed; macOS and generic iOS Simulator builds succeeded; the test scheme ran 14 tests with zero failures |
 | Independent build paths | The Xcode contract also passed `swift build`, `swift test`, and `make test` without source duplication or user/signing metadata |
 
-Focused output, replay, lifetime, race, documentation-negative, aggregate, and
-Xcode contracts are green. The phase remains a measured candidate until the
-final documentation and full validation tasks record their results; local
-ThreadSanitizer remains N/A rather than a pass.
+The complete local macOS exit matrix then passed on 2026-07-17:
+
+| Command | Exact result |
+| --- | --- |
+| `make test` | 52/52 tests passed |
+| `make sanitize` | 47/47 quick tests passed under UndefinedBehaviorSanitizer |
+| `make thread-sanitize` | N/A: ThreadSanitizer is unsupported by the local compiler/host combination; supported CI remains required |
+| `make format-check` | Passed |
+| `make test-c1` | All six C1 groups passed, including ten normal race repetitions |
+| `make test-c2` | All nine C2 groups passed; the final measurement rerun reported 65,536 bytes RSS growth and zero rate error |
+| `swift test` / `swift build` | 14/14 XCTest cases passed; the package and demo built |
+| Quickstart `xcodebuild` commands | All shared schemes listed; macOS and generic iOS Simulator builds passed; 14/14 test-scheme cases passed |
+| `make docs-check` | Complete Doxygen and Swift-DocC generation/link validation passed |
+| `git diff --check` | No output |
+
+The generated-link validator was also corrected during the exit run: it now
+checks the entire DocC/Doxygen tree in one Perl process instead of launching a
+parser per HTML file. The existing broken-link negative fixture and both C0/C2
+documentation suites pass with unchanged validation semantics. C2 is complete;
+local ThreadSanitizer remains N/A rather than a pass.
 
 ## Release state
 
@@ -220,11 +236,9 @@ latency, release, or product-performance guarantee.
 
 ## Current core focus
 
-C0 baseline evidence and C1 runtime ownership are complete. C2 bounded frame,
-audio, diagnostics, and Xcode delivery are implemented and measured; final
-documentation and validation are the remaining phase gates. C3 session
-continuity may be specified in parallel and becomes the default next core
-source after C2 closes. Bus-cycle implementation remains queued until C3 fixes
+C0 baseline evidence, C1 runtime ownership, and C2 bounded output/Xcode
+delivery are complete. C3 session continuity is the default next core source.
+Bus-cycle implementation remains queued until C3 fixes
 the version-1 snapshot invariant, so it cannot accidentally invalidate public
 session state.
 
