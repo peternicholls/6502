@@ -47,7 +47,7 @@
 **Goal**: Produce mono Float32 at 48 kHz through a 4,096-sample FIFO with a 2,048 target and exact demand/pressure accounting.
 **Independent Test**: Focused tests pass for FIFO ordering, empty, partial, full, drop-oldest, exact shortfall, sustained output, and owned-copy behavior.
 
-- [ ] T017 [P] [US2] Add failing 48 kHz mono Float32, 4,096-capacity, 2,048-target, FIFO, underrun, overrun, and accounting tests in `Tests/test_main.cpp`
+- [x] T017 [P] [US2] Add failing 48 kHz mono Float32, 4,096-capacity, 2,048-target, FIFO, underrun, overrun, and accounting tests in `Tests/test_main.cpp`
 - [ ] T018 [P] [US2] Add failing deterministic sustained audio and bounded-depth replay tests in `Tests/C2/test-output-replay.sh`
 - [ ] T019 [P] [US2] Add failing C caller-buffer, copied-count, exact-shortfall, demand, and pressure tests in `Tests/C2/test-output-contract.sh`
 - [ ] T020 [P] [US2] Add failing Swift owned audio, demand, and typed pressure tests in `Tests/BeebKitTests/BeebMachineTests.swift`

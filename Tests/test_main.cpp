@@ -2218,6 +2218,52 @@ void testC2CompletedFrameFIFOAndAccounting() {
              counters.framesConsumed + counters.framesDropped + queue.depth());
 }
 
+void testC2AudioFIFOPressureDemandAndAccounting() {
+    beeb::AudioSampleQueue queue;
+    CHECK_EQ(queue.capacity(), 4'096U);
+    CHECK_EQ(queue.demand(), 2'048U);
+
+    const auto empty = queue.drain(4);
+    CHECK(empty.status.code == beeb::OutputStatusCode::underrun);
+    CHECK_EQ(empty.chunk.requested, 4U);
+    CHECK_EQ(empty.chunk.shortfall, 4U);
+    CHECK(empty.chunk.samples.empty());
+
+    const std::array initial{1.0F, 2.0F, 3.0F};
+    CHECK(queue.publish(initial).code == beeb::OutputStatusCode::ok);
+    auto first = queue.drain(2);
+    CHECK(first.status.code == beeb::OutputStatusCode::ok);
+    CHECK(first.chunk.samples == std::vector<float>({1.0F, 2.0F}));
+    CHECK_EQ(first.chunk.shortfall, 0U);
+    CHECK_EQ(queue.depth(), 1U);
+    CHECK_EQ(queue.demand(), 2'047U);
+
+    std::vector<float> pressure(beeb::audioSampleCapacity);
+    for (std::size_t index = 0; index < pressure.size(); ++index)
+        pressure[index] = static_cast<float>(index);
+    CHECK(queue.publish(pressure).code == beeb::OutputStatusCode::overrun);
+    CHECK_EQ(queue.depth(), beeb::audioSampleCapacity);
+    CHECK_EQ(queue.demand(), 0U);
+
+    const auto full = queue.drain(beeb::audioSampleCapacity);
+    CHECK(full.status.code == beeb::OutputStatusCode::ok);
+    CHECK_EQ(full.chunk.samples.size(), beeb::audioSampleCapacity);
+    CHECK_EQ(full.chunk.samples.front(), 0.0F);
+    CHECK_EQ(full.chunk.samples.back(), 4'095.0F);
+
+    const auto finalUnderrun = queue.drain(5);
+    CHECK(finalUnderrun.status.code == beeb::OutputStatusCode::underrun);
+    CHECK_EQ(finalUnderrun.chunk.shortfall, 5U);
+
+    const auto counters = queue.counters();
+    CHECK_EQ(counters.audioSamplesProduced, 4'099U);
+    CHECK_EQ(counters.audioSamplesConsumed, 4'098U);
+    CHECK_EQ(counters.audioSamplesOverrun, 1U);
+    CHECK_EQ(counters.audioSamplesUnderrun, 9U);
+    CHECK_EQ(counters.audioSamplesProduced,
+             counters.audioSamplesConsumed + counters.audioSamplesOverrun + queue.depth());
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2301,6 +2347,8 @@ int main(int argc, char** argv) {
         {"C1 race: shutdown drain and rejection", testC1RaceShutdownDrainAndRejection},
         {"C2 frames: FIFO overflow ownership and accounting",
          testC2CompletedFrameFIFOAndAccounting},
+        {"C2 audio: FIFO pressure demand and accounting",
+         testC2AudioFIFOPressureDemandAndAccounting},
     };
 
     unsigned failed = 0;
