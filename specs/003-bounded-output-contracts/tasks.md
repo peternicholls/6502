@@ -33,7 +33,7 @@
 - [x] T008 [P] [US1] Add failing frame FIFO, oldest-first dequeue, drop-oldest, monotonic-number, and accounting tests in `Tests/test_main.cpp`
 - [x] T009 [P] [US1] Add failing retained-frame and concurrent producer lifetime tests in `Tests/C2/test-output-lifetime.sh`
 - [x] T010 [P] [US1] Add failing C caller-owned frame, nullability, release, and no-alias tests in `Tests/C2/test-output-contract.sh`
-- [ ] T011 [P] [US1] Add failing Swift independently owned frame and typed lifecycle/empty tests in `Tests/BeebKitTests/BeebMachineTests.swift`
+- [x] T011 [P] [US1] Add failing Swift independently owned frame and typed lifecycle/empty tests in `Tests/BeebKitTests/BeebMachineTests.swift`
 - [ ] T012 [US1] Implement immutable owned frame values and capacity-three drop-oldest FIFO in `Sources/BeebCore/src/output.cpp`
 - [ ] T013 [US1] Publish completed frames from the C1 instruction/device safe point in `Sources/BeebCore/src/runtime.cpp`
 - [ ] T014 [US1] Expose caller-owned frame dequeue/release operations in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`

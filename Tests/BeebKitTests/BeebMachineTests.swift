@@ -255,4 +255,40 @@ final class BeebMachineTests: XCTestCase {
         try machine.setBreak(pressed: false)
         XCTAssertNoThrow(try machine.run(cycles: 1))
     }
+
+    func testC2DequeuedFrameIsIndependentlyOwned() throws {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(loopingOSROM())
+        try machine.reset()
+        XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
+
+        let retained = try machine.dequeueVideoFrame()
+        let retainedPixels = retained.rgba
+        let retainedNumber = retained.number
+        for _ in 0..<5 {
+            XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
+        }
+
+        XCTAssertEqual(retained.number, retainedNumber)
+        XCTAssertEqual(retained.rgba, retainedPixels)
+        XCTAssertGreaterThan(try machine.dequeueVideoFrame().number, retainedNumber)
+    }
+
+    func testC2FrameEmptyAndFaultLifecycleAreTyped() throws {
+        let machine = try BeebMachine()
+        assertCoreStatus(.empty) {
+            _ = try machine.dequeueVideoFrame()
+        }
+
+        var illegal = [UInt8](validOSROM())
+        illegal[0] = 0x02
+        try machine.loadOSROM(Data(illegal))
+        try machine.reset()
+        assertCoreStatus(.executionFailed) {
+            _ = try machine.run(cycles: 1)
+        }
+        assertCoreStatus(.invalidState) {
+            _ = try machine.dequeueVideoFrame()
+        }
+    }
 }
