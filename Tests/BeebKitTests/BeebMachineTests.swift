@@ -326,4 +326,39 @@ final class BeebMachineTests: XCTestCase {
             _ = try machine.dequeueVideoFrame()
         }
     }
+
+    func testC2AudioDrainOwnsSamplesAndCarriesTypedPressure() throws {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(loopingOSROM())
+        try machine.reset()
+        _ = try machine.run(cycles: 2_000_000)
+
+        var retained: BeebAudioDrain?
+        XCTAssertThrowsError(try machine.drainAudio(maximumSamples: 5_000)) { error in
+            guard case let BeebError.audioPressure(category, drain) = error else {
+                return XCTFail("Expected audioPressure, got \(error)")
+            }
+            XCTAssertEqual(category, .underrun)
+            XCTAssertEqual(drain.samples.count, 4_096)
+            XCTAssertEqual(drain.shortfall, 904)
+            XCTAssertEqual(drain.demand, 2_048)
+            XCTAssertGreaterThan(drain.overrunCount, 0)
+            XCTAssertGreaterThanOrEqual(drain.underrunCount, UInt64(drain.shortfall))
+            retained = drain
+        }
+
+        let retainedSamples = try XCTUnwrap(retained).samples
+        _ = try machine.run(cycles: 100_000)
+        XCTAssertEqual(retained?.samples, retainedSamples)
+
+        _ = try machine.drainAudio(maximumSamples: 2_048)
+        XCTAssertThrowsError(try machine.drainAudio(maximumSamples: 4_096)) { error in
+            guard case let BeebError.audioPressure(category, drain) = error else {
+                return XCTFail("Expected recoverable underrun, got \(error)")
+            }
+            XCTAssertEqual(category, .underrun)
+            XCTAssertEqual(drain.samples.count + drain.shortfall, 4_096)
+            XCTAssertGreaterThanOrEqual(drain.demand, 0)
+        }
+    }
 }
