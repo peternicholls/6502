@@ -24,7 +24,7 @@ extern "C" {
 /// Fixed storage available for each operation-scoped UTF-8 diagnostic.
 #define BEEB_STATUS_MESSAGE_CAPACITY 256
 
-/// Stable status categories shared one-to-one with the C++ runtime.
+/// Stable status categories shared with the C++ runtime and output contracts.
 /// Documentation rationale: docs/code/host-boundary.md owns the cross-language
 /// category and recovery contract represented by this closed vocabulary.
 typedef enum beeb_status_code {
@@ -35,7 +35,12 @@ typedef enum beeb_status_code {
     BEEB_STATUS_RESOURCE_EXHAUSTED = 4, ///< Required allocation or capacity failed.
     BEEB_STATUS_UNAVAILABLE = 5,        ///< Runtime is shutting down or no longer accepts work.
     BEEB_STATUS_REENTRANT_CALL = 6,     ///< Reserved: owner-thread re-entry would deadlock.
-    BEEB_STATUS_INTERNAL_FAILURE = 7    ///< Unexpected implementation failure was contained.
+    BEEB_STATUS_INTERNAL_FAILURE = 7,   ///< Unexpected implementation failure was contained.
+    BEEB_STATUS_EMPTY = 8,              ///< No complete output value is currently retained.
+    BEEB_STATUS_UNDERRUN = 9,           ///< Partial output includes an exact demand shortfall.
+    BEEB_STATUS_OVERRUN = 10,           ///< Oldest bounded output was discarded under pressure.
+    BEEB_STATUS_CAPACITY_EXCEEDED = 11, ///< Caller capacity or fixed output limit was exceeded.
+    BEEB_STATUS_OUTPUT_FAILED = 12      ///< Output conversion or production failed safely.
 } beeb_status_code;
 
 /// Complete result of one C operation.
@@ -89,7 +94,7 @@ typedef struct beeb_fault_detail {
     beeb_safe_point safe_point;                 ///< Boundary at which it is observed.
 } beeb_fault_detail;
 
-/// Caller-owned copy of the latest completed video frame.
+/// Caller-owned copy of one completed video frame.
 ///
 /// A successful unavailable value has `available == 0`, null `rgba`, and zero
 /// metadata. An available value owns exactly `rgba_size` allocated bytes.
@@ -227,9 +232,20 @@ beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state)
 /// be allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame);
 
+/// Transfers the oldest retained completed frame into caller-owned storage.
+/// @param machine Live runtime token.
+/// @param out_frame Required zero-initialized output, written only on success and
+/// subsequently released with `beeb_frame_release()`.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_EMPTY` when no frame is retained,
+/// `BEEB_STATUS_INVALID_ARGUMENT` for a bad token, null output, or unreleased
+/// output value, `BEEB_STATUS_INVALID_STATE` when faulted,
+/// `BEEB_STATUS_RESOURCE_EXHAUSTED` when command or frame storage cannot be
+/// allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+beeb_status beeb_dequeue_frame(beeb_machine* machine, beeb_frame* out_frame);
+
 /// Releases one frame value and clears all of its fields.
 /// @param frame Required frame previously initialized to zero or returned by
-/// `beeb_get_frame()`; null is invalid.
+/// `beeb_get_frame()` or `beeb_dequeue_frame()`; null is invalid.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` for an invalid
 /// frame pointer/value.
 beeb_status beeb_frame_release(beeb_frame* frame);
