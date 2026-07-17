@@ -19,7 +19,7 @@
 
 **Purpose**: Lock shared owned-value, capacity, format, status, and diagnostics shapes before story behavior.
 
-- [ ] T005 Add a failing public-shape contract for owned results, capacities 3/4,096, 48 kHz mono Float32, and diagnostic counters in `Tests/C2/test-public-boundaries.sh`
+- [x] T005 Add a failing public-shape contract for owned results, capacities 3/4,096, 48 kHz mono Float32, and diagnostic counters in `Tests/C2/test-public-boundaries.sh`
 - [ ] T006 Define documented shared output formats, statuses, capacities, counters, and owned result types in `Sources/BeebCore/include/beeb/output.hpp`
 - [ ] T007 Define the owner-thread producer/queue boundary and no-borrow/no-callback invariants in `Sources/BeebCore/include/beeb/runtime.hpp`
 
