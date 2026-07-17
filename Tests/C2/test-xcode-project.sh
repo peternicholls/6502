@@ -14,7 +14,28 @@ rm -rf "${derived}"
 test -f "${pbxproj}"
 for scheme in BeebDemo-macOS BeebDemo-iOS Beeb6502-Tests; do
     test -f "${project}/xcshareddata/xcschemes/${scheme}.xcscheme"
+    git -C "${repo_root}" ls-files --error-unmatch \
+        "Beeb6502.xcodeproj/xcshareddata/xcschemes/${scheme}.xcscheme" >/dev/null
 done
+git -C "${repo_root}" ls-files --error-unmatch \
+    Beeb6502.xcodeproj/project.pbxproj >/dev/null
+
+tracked_xcode_state="$(git -C "${repo_root}" ls-files | \
+    rg '(^|/)(xcuserdata|DerivedData|Build)/|\.xcuserstate$|\.xc(result|archive)(/|$)' || true)"
+if [[ -n "${tracked_xcode_state}" ]]; then
+    printf 'Xcode project tracks user-specific or derived state:\n%s\n' \
+        "${tracked_xcode_state}" >&2
+    exit 1
+fi
+git -C "${repo_root}" check-ignore -q --no-index \
+    Beeb6502.xcodeproj/xcuserdata/probe.xcuserdatad/UserInterfaceState.xcuserstate
+git -C "${repo_root}" check-ignore -q --no-index DerivedData/probe
+git -C "${repo_root}" check-ignore -q --no-index Build/probe
+if git -C "${repo_root}" check-ignore -q --no-index \
+    Beeb6502.xcodeproj/xcshareddata/xcschemes/BeebDemo-macOS.xcscheme; then
+    printf 'maintained shared schemes are ignored\n' >&2
+    exit 1
+fi
 
 if find "${project}" -type d -name xcuserdata -print -quit | rg -q .; then
     printf 'Xcode project contains user-specific xcuserdata\n' >&2

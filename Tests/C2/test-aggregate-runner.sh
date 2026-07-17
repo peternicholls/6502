@@ -42,3 +42,18 @@ rg -q "C2 group FAIL \(11\).*01-first-fails" "${output}"
 rg -q "C2 group PASS: .*02-second-passes" "${output}"
 rg -q "C2 group FAIL \(12\).*03-third-fails" "${output}"
 rg -q "C2 group PASS: .*04-fourth-passes" "${output}"
+
+# A clean aggregate must also propagate success instead of retaining failure
+# state from an earlier invocation.
+: >"${log}"
+make -C "${repo_root}" --no-print-directory test-c2 \
+    C2_TEST_SCRIPTS="${fixture}/02-second-passes.sh ${fixture}/04-fourth-passes.sh" \
+    >"${output}" 2>&1
+test "$(wc -l <"${log}" | tr -d ' ')" = 2
+test "$(sed -n '1p' "${log}")" = second
+test "$(sed -n '2p' "${log}")" = fourth
+test "$(rg -c 'C2 group PASS:' "${output}")" = 2
+if rg -q 'C2 group FAIL' "${output}"; then
+    printf 'successful C2 aggregate retained a failure\n' >&2
+    exit 1
+fi
