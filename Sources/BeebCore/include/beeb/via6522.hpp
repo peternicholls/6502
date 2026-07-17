@@ -1,13 +1,18 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/timing-model.md owns aggregate VIA timing.
+
 #include <cstdint>
 #include <functional>
 
 namespace beeb {
 
 /// Register, timer, edge, and interrupt model of the MOS 6522 VIA.
+/// A machine owns and serializes each instance. Input/output callbacks are
+/// owned by the VIA, invoked synchronously on the mutating caller's thread,
+/// and callback exceptions propagate; no background thread invokes them.
 class VIA6522 {
-public:
+  public:
     /// Provider for the external logic level on an eight-bit port.
     using Input = std::function<std::uint8_t()>;
     /// Observer receiving the output register and data-direction mask.
@@ -62,7 +67,9 @@ public:
     /// @return Port B direction mask.
     [[nodiscard]] std::uint8_t ddrb() const noexcept { return ddrb_; }
 
-private:
+  private:
+    friend class BBCMicro;
+
     std::uint8_t orb_ = 0;
     std::uint8_t ora_ = 0;
     std::uint8_t ddrb_ = 0;

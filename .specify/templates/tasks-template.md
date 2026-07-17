@@ -14,9 +14,11 @@ implementation. Documentation-only or process-only changes REQUIRE appropriate
 link, formatting, schema, or tooling validation instead of synthetic unit tests.
 
 **Code Documentation**: Every coding story MUST include tasks for affected
-public contracts, non-obvious behavior, and conceptual guides, or record a
-concrete `N/A`. Documentation source changes belong with the code they explain;
-the final phase MUST generate and validate the browsable documentation.
+public contracts, private/internal named types and interfaces, non-obvious
+behavior, and conceptual guides, or record a concrete `N/A`. Internal type docs
+cover purpose, responsibility, and important invariants rather than narrating
+syntax. Documentation source changes belong with the code they explain; the
+final phase MUST generate and validate the browsable documentation.
 
 **Git**: Commit every task after its focused verification succeeds and before
 starting the next task. Commit phase-completion changes before the next phase;
@@ -174,8 +176,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Update docs/STATUS.md, roadmaps, architecture, and CHANGELOG.md as applicable
 - [ ] TXXX Run applicable repository gates: make test, make sanitize, swift test, swift build
 - [ ] TXXX Generate browsable code documentation and fail on invalid markup,
-      broken internal links, missing required changed-surface documentation, or
-      increased documentation debt
+      broken internal links, missing required public or private/internal
+      changed-surface documentation, or increased documentation debt
 - [ ] TXXX Run git diff --check and documentation link validation
 
 ---

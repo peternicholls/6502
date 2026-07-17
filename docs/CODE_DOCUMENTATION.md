@@ -15,6 +15,7 @@ They live under `.build/docs/`; never edit or commit them.
 | Public C ABI | Purpose; ownership and lifetime; nullability; inputs and return/failure values; error channel; threading; side effects; borrowed-buffer validity | C++ implementation mechanics |
 | Public C++ | Purpose; parameter and return semantics; ownership/borrowing; exceptions; mutation and timing effects; invariants a caller relies on | Obvious type information and private helper narration |
 | Public Swift | Purpose; ownership; concurrency/actor expectation; validation; thrown errors; value or buffer-copy behavior | Repeated C ABI prose |
+| Private/internal named type or interface | Purpose in the subsystem; responsibility boundary; important invariants; ownership/lifetime and threading model; collaborators or extension constraints where non-obvious | Narration of obvious fields, accessors, or implementation syntax |
 | Non-obvious implementation | Hardware behavior; timing or transition invariant; observable effect; authoritative guide/reference | A paraphrase of each statement |
 | Conceptual guide | Relationships across symbols/languages, one authoritative model, extension constraints | Complete API inventories |
 
@@ -57,9 +58,13 @@ state ordering, or a lifetime constraint:
 // remainder invariant used by this aggregation.
 ```
 
-Avoid comments such as `// increment the counter`. Self-evident getters,
-delegators, loops, and private storage do not need comments solely to raise a
-coverage number.
+Private/internal classes, structs, protocols, interfaces, enums, and other
+named abstractions are developer-facing architecture and MUST have useful
+declaration documentation. Explain why the abstraction exists and what must
+remain true; document individual private members only when their role, units,
+lifetime, ordering, or constraints are not evident from code. Avoid comments
+such as `// increment the counter`. Self-evident getters, delegators, loops, and
+private storage do not need comments solely to raise a coverage number.
 
 An implementation rationale should answer at least two of these questions:
 
@@ -103,35 +108,47 @@ Carry one trace through Spec Kit artifacts:
 `spec impact -> plan source/generator/debt decision -> task beside code -> docs-check -> rendered-page review`
 
 A documentation `N/A` is valid only when the feature changes no public
-contract, non-obvious behavior, or conceptual relationship. Record a concrete
-reason in the feature artifact. For changed-file validation, the accepted form
-is `path|N/A: reason`; `N/A` with no reason is not a decision.
+contract, private/internal named abstraction, non-obvious behavior, or
+conceptual relationship. Record a concrete reason in the feature artifact. For
+changed-file validation, the accepted form is `path|N/A: reason`; `N/A` with no
+reason is not a decision.
 
 ## Debt ratchet
 
 `Tests/Fixtures/C0/documentation-debt.txt` is an inventory of reviewed,
 unchanged internal gaps, not permission to omit documentation from new work.
-Its first line is the maximum baseline count:
+Its first two lines are independent maximum counts:
 
 ```text
-baseline_count=0
+public_baseline_count=0
+internal_baseline_count=0
 ```
 
 Any entry uses this stable form:
 
 ```text
-DEBT-001|path-or-symbol|severity|repayment trigger|target phase
+PUBLIC_DEBT-001|path-or-symbol|severity|repayment trigger|target phase
+INTERNAL_DEBT-001|path-or-symbol|severity|repayment trigger|target phase
 ```
 
 Adding an entry or broadening its scope fails the gate unless the baseline
 change is separately reviewed as an explicit governance decision. Ordinary
 feature work must keep the count level or reduce it. When touching an inventoried
 surface, repay the entry in the same task if its trigger applies; remove the
-entry and lower `baseline_count` together.
+entry and lower the corresponding baseline together.
+
+`REVIEWED_EXCLUSION` lines name narrow non-declaration surfaces such as module
+wiring or obvious fields/accessors; they are not debt and cannot waive a named
+abstraction. `DOCS_BASE=<base>` makes the private/internal scan consume the
+committed `<base>...HEAD` file inventory, while an uncommitted run consumes the
+working-tree inventory. Doxygen remains public-reference oriented; the manual
+branch-aware scan enforces changed private/internal declarations.
 
 ## Review checklist
 
 - Is the public guarantee next to the declaration?
+- Do private/internal named abstractions explain their purpose, boundary, and
+  important invariants for future maintainers?
 - Are ownership, lifetime, nullability, errors, concurrency, and side effects
   stated where applicable—not mechanically everywhere?
 - Does non-obvious code link to a useful rationale rather than narrate syntax?

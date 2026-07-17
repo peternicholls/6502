@@ -35,6 +35,48 @@ all_pass="${C0_TEST_TMP}/all-pass.groups"
 printf 'alpha\tall\t%s\ncharlie\tall\t%s\nswift-only\tmacos\t%s\n' \
     "${commands}/pass-a" "${commands}/pass-c" "${commands}/pass-swift" >"${all_pass}"
 
+assert_verify_output_rejected() {
+    local name="$1"
+    local output="$2"
+    local fake_home="${C0_TEST_TMP}/home"
+    local sentinel="${fake_home}/sentinel.txt"
+    mkdir -p "${fake_home}"
+    printf 'keep\n' >"${sentinel}"
+    c0_capture "${name}" env HOME="${fake_home}" "${verifier}" --profile portable \
+        --groups "${all_pass}" --output-dir "${output}"
+    c0_expect_failure "${name}"
+    test "$(cat "${sentinel}")" = "keep"
+}
+
+assert_verify_output_rejected verify-output-repository "${C0_TEST_ROOT}"
+assert_verify_output_rejected verify-output-home "${C0_TEST_TMP}/home"
+assert_verify_output_rejected verify-output-root /
+c0_capture verify-output-empty "${verifier}" --profile portable \
+    --groups "${all_pass}" --output-dir ''
+c0_expect_failure verify-output-empty
+
+unowned_run="${C0_TEST_TMP}/unowned-run"
+mkdir -p "${unowned_run}"
+printf 'keep\n' >"${unowned_run}/sentinel.txt"
+assert_verify_output_rejected verify-output-unowned "${unowned_run}"
+test "$(cat "${unowned_run}/sentinel.txt")" = "keep"
+
+escaped_parent="${C0_TEST_TMP}/escaped-parent"
+escaped_target="${C0_TEST_TMP}/escaped-target"
+mkdir -p "${escaped_target}/run"
+printf 'keep\n' >"${escaped_target}/run/sentinel.txt"
+ln -s "${escaped_target}" "${escaped_parent}"
+assert_verify_output_rejected verify-output-symlink "${escaped_parent}/run"
+test "$(cat "${escaped_target}/run/sentinel.txt")" = "keep"
+
+unowned_build_run="${C0_TEST_ROOT}/.build/c0-test-unowned-run"
+mkdir -p "${unowned_build_run}"
+printf 'keep\n' >"${unowned_build_run}/sentinel.txt"
+assert_verify_output_rejected verify-output-unowned-build "${unowned_build_run}"
+test "$(cat "${unowned_build_run}/sentinel.txt")" = "keep"
+rm -rf -- "${unowned_build_run}"
+c0_pass "dangerous baseline output paths fail without deleting sentinels"
+
 c0_snapshot_tree Tests "${C0_TEST_TMP}/tests-before.sha"
 c0_capture all-pass "${verifier}" --profile portable --groups "${all_pass}" \
     --output-dir "${C0_TEST_TMP}/run-all-pass"

@@ -30,8 +30,9 @@
 
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
 
-**Code Documentation**: [language-appropriate browsable generators, source
-comments/guides affected, documentation debt impact, and validation command]
+**Code Documentation**: [language-appropriate browsable generators; affected
+public contracts and private/internal named types or interfaces; source
+comments/guides; documentation debt impact; validation command]
 
 **Git Checkpoints**: [How every verified task is committed before the next task
 and how the final task commit or a separate phase-closing commit records each
@@ -63,9 +64,10 @@ phase boundary]
       measurement, or primary reference, and known limits remain explicit.
 - [ ] Ownership, lifetime, errors, threading, ABI compatibility, and persisted
       format versioning are defined for every affected boundary.
-- [ ] Public contracts, non-obvious implementation behavior, conceptual-guide
-      impact, and browsable-documentation validation are defined, or a concrete
-      documentation `N/A` rationale is recorded.
+- [ ] Public contracts, private/internal named types and interfaces, non-obvious
+      implementation behavior, conceptual-guide impact, and browsable-
+      documentation validation are defined, or a concrete documentation `N/A`
+      rationale is recorded.
 - [ ] User-content provenance, import/export behavior, and legal constraints are
       addressed where relevant.
 - [ ] Accessibility and failure recovery are specified for user-facing work, or

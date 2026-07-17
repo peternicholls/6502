@@ -17,20 +17,51 @@
 
 namespace beeb {
 
+/// Forward declaration for the friend-gated replay diagnostic seam below.
+struct BBCMicroTestAccess;
+
 /// Owned rendering result for the most recently completed video frame.
 struct VideoFrame {
-    std::uint32_t width = 0;  ///< Pixel width.
-    std::uint32_t height = 0; ///< Pixel height.
-    std::uint64_t number = 0; ///< CRTC frame sequence number.
+    std::uint32_t width = 0;        ///< Pixel width.
+    std::uint32_t height = 0;       ///< Pixel height.
+    std::uint64_t number = 0;       ///< CRTC frame sequence number.
     std::vector<std::uint8_t> rgba; ///< Packed 8-bit RGBA pixels.
 };
 
 /// Aggregate BBC Model B core and the owner of all emulated devices and media.
 ///
 /// The machine is deterministic for a given initial state and input sequence.
-/// It has no internal synchronization; callers must serialize access.
+/// It has no internal synchronization. Supported hosts use MachineRuntime;
+/// direct construction is reserved for low-level single-threaded core tests.
 class BBCMicro final : public Bus {
-public:
+  public:
+    /// In-memory rollback value for one runtime execution transaction.
+    ///
+    /// This private-in-spirit C++ seam is neither a persisted snapshot format
+    /// nor a host API. It owns every device value that instruction execution
+    /// can mutate so a failed transaction can restore one coherent boundary.
+    /// Documentation rationale: docs/code/runtime-ownership.md owns the
+    /// rollback boundary and its exclusion from snapshot persistence.
+    struct Checkpoint {
+        CPUState cpu;                           ///< Processor boundary.
+        bool cpuIRQ = false;                    ///< Level-sensitive IRQ input.
+        bool cpuNMI = false;                    ///< Pending edge-triggered NMI.
+        std::array<std::uint8_t, 0x8000> ram;   ///< Complete writable memory.
+        std::array<std::uint16_t, 16> keyboard; ///< Keyboard matrix rows.
+        std::array<bool, 8> ic32;               ///< Addressable latch outputs.
+        VIA6522 systemVIA;                      ///< System VIA state and callbacks.
+        VIA6522 userVIA;                        ///< User VIA state and callbacks.
+        CRTC6845 crtc;                          ///< Video timing registers/counters.
+        VideoULA videoULA;                      ///< Video control and palette.
+        SN76489 sound;                          ///< Sound registers and phases.
+        Intel8271 fdc;                          ///< Controller and private media state.
+        VideoFrame frame;                       ///< Latest owned rendered frame.
+        std::uint8_t selectedROM = 0;           ///< Active sideways bank.
+        std::uint32_t viaRemainder = 0;         ///< CPU-to-VIA fractional cycles.
+        std::uint32_t crtcRemainder = 0;        ///< CPU-to-CRTC fractional cycles.
+        bool breakPressed = false;              ///< BREAK edge-tracking state.
+    };
+
     /// Constructs a machine, connects device callbacks, and resets all state.
     BBCMicro();
 
@@ -66,8 +97,8 @@ public:
     /// @param layout SSD or DSD ordering.
     /// @param writable Whether writes to the private image copy are permitted.
     /// @return Whether drive and image were valid.
-    bool mountDisc(unsigned drive, std::span<const std::uint8_t> bytes,
-                   DiscImage::Layout layout, bool writable = false);
+    bool mountDisc(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout,
+                   bool writable = false);
     /// Resets processor and devices while retaining loaded ROMs and discs.
     void reset();
     /// Executes whole instructions until at least `cpuCycles` have elapsed.
@@ -111,6 +142,15 @@ public:
     /// Borrows all 32 KiB RAM until the next machine mutation.
     /// @return Read-only RAM span.
     [[nodiscard]] std::span<const std::uint8_t> ram() const noexcept { return ram_; }
+    /// Restores the complete RAM image from a previously captured snapshot.
+    /// @param bytes Exactly 32 KiB of RAM contents.
+    void restoreRAM(std::span<const std::uint8_t> bytes) noexcept;
+    /// Captures the complete mutable execution boundary for runtime rollback.
+    /// @return Owned, process-local checkpoint with no stable serialized form.
+    [[nodiscard]] Checkpoint checkpoint() const;
+    /// Restores a checkpoint captured from this machine.
+    /// @param checkpoint Complete mutable execution state to reinstall.
+    void restore(Checkpoint&& checkpoint) noexcept;
     /// Returns the currently selected sideways-ROM bank.
     /// @return Bank number in the range 0...15.
     [[nodiscard]] std::uint8_t selectedROM() const noexcept { return selectedROM_; }
@@ -127,7 +167,9 @@ public:
     /// @param pressed Whether BREAK is held.
     void setBreak(bool pressed);
 
-private:
+  private:
+    friend struct BBCMicroTestAccess;
+
     std::array<std::uint8_t, 0x8000> ram_{};
     std::array<std::uint8_t, 0x4000> osROM_{};
     std::array<std::array<std::uint8_t, 0x4000>, 16> sidewaysROM_{};
@@ -155,6 +197,17 @@ private:
     std::uint8_t keyboardPortA() const;
     void updateIC32(std::uint8_t value, std::uint8_t ddr);
     static std::array<std::uint8_t, 4> rgbaForColour(std::uint8_t colour);
+    /// Produces a process-local deterministic digest for replay tests.
+    /// @return Digest of CPU, RAM, devices, media, and rendering state.
+    [[nodiscard]] std::uint64_t testDigest() const noexcept;
+};
+
+/// Friend-gated access used only by deterministic C++ replay tests.
+struct BBCMicroTestAccess {
+    /// Returns the machine's process-local diagnostic digest.
+    /// @param machine Low-level test machine to inspect without mutation.
+    /// @return Deterministic digest with no persisted representation.
+    static std::uint64_t digest(const BBCMicro& machine) noexcept { return machine.testDigest(); }
 };
 
 } // namespace beeb

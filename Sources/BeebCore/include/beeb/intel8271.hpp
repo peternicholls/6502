@@ -1,5 +1,7 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/timing-model.md owns controller timing limits.
+
 #include "beeb/disc_image.hpp"
 
 #include <array>
@@ -11,8 +13,12 @@
 namespace beeb {
 
 /// Command, status, transfer, and timing model of the Intel 8271 FDC.
+/// One emulated machine owns each instance and serializes host-register writes
+/// with ticking. The owned NMI callback runs synchronously on that caller's
+/// thread; callback exceptions propagate and the callable remains installed
+/// until replaced or destruction.
 class Intel8271 {
-public:
+  public:
     /// Observer invoked when the controller asserts its NMI condition.
     using NMICallback = std::function<void()>;
 
@@ -27,7 +33,8 @@ public:
     /// @param layout SSD or DSD byte ordering.
     /// @param writable Whether controller writes may modify the private image.
     /// @return Whether the drive and image were valid.
-    bool mount(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout, bool writable = false);
+    bool mount(unsigned drive, std::span<const std::uint8_t> bytes, DiscImage::Layout layout,
+               bool writable = false);
     /// Returns one of the two mounted image slots.
     /// @param drive Drive selector; values are reduced modulo two.
     /// @return Borrowed drive image valid for this controller's lifetime.
@@ -52,7 +59,10 @@ public:
     /// @return Result byte.
     [[nodiscard]] std::uint8_t result() const noexcept { return result_; }
 
-private:
+  private:
+    friend class BBCMicro;
+
+    /// Host-visible readiness and interrupt indications maintained by commands.
     enum Status : std::uint8_t {
         Busy = 0x80,
         CommandFull = 0x40,
@@ -61,6 +71,7 @@ private:
         NMI = 0x08,
         NeedData = 0x04,
     };
+    /// Mutually exclusive sector-stream phase; None means no transfer active.
     enum class Transfer { None, Read, Write };
 
     std::array<DiscImage, 2> drives_;

@@ -21,12 +21,59 @@ printf '%s\n' \
     '/// @return The sum.' \
     'int add(int lhs, int rhs);' >"${fixture}/include/example.hpp"
 printf '%s\n' '# Guide' '' 'A small conceptual guide.' >"${fixture}/docs/guide.md"
-printf 'baseline_count=0\n' >"${fixture}/documentation-debt.txt"
+printf 'public_baseline_count=0\ninternal_baseline_count=0\n' \
+    >"${fixture}/documentation-debt.txt"
 : >"${fixture}/changed-files.txt"
 
 common_args=(--check --source-root "${fixture}" \
     --debt-baseline "${fixture}/documentation-debt.txt" \
     --changed-files "${fixture}/changed-files.txt")
+
+assert_docs_output_rejected() {
+    local name="$1"
+    local output="$2"
+    local fake_home="${C0_TEST_TMP}/home"
+    local sentinel="${fake_home}/sentinel.txt"
+    mkdir -p "${fake_home}"
+    printf 'keep\n' >"${sentinel}"
+    c0_capture "${name}" env HOME="${fake_home}" "${builder}" --profile portable \
+        --output-dir "${output}" "${common_args[@]}"
+    c0_expect_failure "${name}"
+    test "$(cat "${sentinel}")" = "keep"
+}
+
+assert_docs_output_rejected docs-output-source-root "${fixture}"
+assert_docs_output_rejected docs-output-home "${C0_TEST_TMP}/home"
+assert_docs_output_rejected docs-output-root /
+c0_capture docs-output-empty "${builder}" --profile portable --output-dir '' \
+    "${common_args[@]}"
+c0_expect_failure docs-output-empty
+
+unowned_docs="${C0_TEST_TMP}/unowned-docs"
+mkdir -p "${unowned_docs}"
+printf 'keep\n' >"${unowned_docs}/sentinel.txt"
+assert_docs_output_rejected docs-output-unowned "${unowned_docs}"
+test "$(cat "${unowned_docs}/sentinel.txt")" = "keep"
+
+escaped_parent="${C0_TEST_TMP}/escaped-parent"
+escaped_target="${C0_TEST_TMP}/escaped-target"
+mkdir -p "${escaped_target}/docs"
+printf 'keep\n' >"${escaped_target}/docs/sentinel.txt"
+ln -s "${escaped_target}" "${escaped_parent}"
+assert_docs_output_rejected docs-output-symlink "${escaped_parent}/docs"
+test "$(cat "${escaped_target}/docs/sentinel.txt")" = "keep"
+
+unowned_build_docs="${C0_TEST_ROOT}/.build/c0-test-unowned-docs"
+mkdir -p "${unowned_build_docs}"
+printf 'keep\n' >"${unowned_build_docs}/sentinel.txt"
+c0_capture docs-output-unowned-build "${builder}" --profile portable --check \
+    --source-root "${C0_TEST_ROOT}" --output-dir "${unowned_build_docs}" \
+    --debt-baseline "${fixture}/documentation-debt.txt" \
+    --changed-files "${fixture}/changed-files.txt"
+c0_expect_failure docs-output-unowned-build
+test "$(cat "${unowned_build_docs}/sentinel.txt")" = "keep"
+rm -rf -- "${unowned_build_docs}"
+c0_pass "dangerous documentation output paths fail without deleting sentinels"
 
 c0_capture portable "${builder}" --profile portable \
     --output-dir "${C0_TEST_TMP}/docs-portable" "${common_args[@]}"
@@ -60,6 +107,35 @@ c0_expect_failure undocumented
 c0_assert_contains "${C0_TEST_TMP}/undocumented.stderr" \
     "missing public documentation: include/example.hpp:2"
 c0_pass "undocumented public declaration is rejected"
+
+undocumented_internal="${C0_TEST_TMP}/undocumented-internal"
+cp -R "${fixture}" "${undocumented_internal}"
+printf '%s\n' '#include <cstdint>' 'struct InternalFixture { std::uint8_t value = 0; };' \
+    >"${undocumented_internal}/src/internal.cpp"
+printf 'src/internal.cpp\n' >"${undocumented_internal}/changed-files.txt"
+c0_capture undocumented-internal "${builder}" --profile portable --check \
+    --source-root "${undocumented_internal}" --output-dir "${C0_TEST_TMP}/docs-undocumented-internal" \
+    --debt-baseline "${undocumented_internal}/documentation-debt.txt" \
+    --changed-files "${undocumented_internal}/changed-files.txt"
+c0_expect_failure undocumented-internal
+c0_assert_contains "${C0_TEST_TMP}/undocumented-internal.stderr" \
+    "missing named-abstraction documentation: src/internal.cpp:2"
+c0_pass "undocumented internal named abstraction is rejected"
+
+missing_swift_throws="${C0_TEST_TMP}/missing-swift-throws"
+cp -R "${fixture}" "${missing_swift_throws}"
+mkdir -p "${missing_swift_throws}/Sources"
+printf '%s\n' '/// Performs fallible work.' 'public func fallible() throws {}' \
+    >"${missing_swift_throws}/Sources/Fixture.swift"
+c0_capture missing-swift-throws "${builder}" --profile portable --check \
+    --source-root "${missing_swift_throws}" \
+    --output-dir "${C0_TEST_TMP}/docs-missing-swift-throws" \
+    --debt-baseline "${missing_swift_throws}/documentation-debt.txt" \
+    --changed-files "${missing_swift_throws}/changed-files.txt"
+c0_expect_failure missing-swift-throws
+c0_assert_contains "${C0_TEST_TMP}/missing-swift-throws.stderr" \
+    "missing Swift throwing contract"
+c0_pass "public Swift throwing declarations require a Throws contract"
 
 invalid_markup="${C0_TEST_TMP}/invalid-markup"
 cp -R "${fixture}" "${invalid_markup}"
@@ -105,7 +181,7 @@ c0_pass "changed complex code requires rationale or a reviewed N/A"
 
 debt="${C0_TEST_TMP}/debt"
 cp -R "${fixture}" "${debt}"
-printf '%s\n' 'DEBT-001|src/legacy.cpp|low|Document when changed|C1' \
+printf '%s\n' 'INTERNAL_DEBT-001|src/legacy.cpp|low|Document when changed|C1' \
     >>"${debt}/documentation-debt.txt"
 c0_capture debt "${builder}" --profile portable --check \
     --source-root "${debt}" --output-dir "${C0_TEST_TMP}/docs-debt" \
@@ -113,7 +189,7 @@ c0_capture debt "${builder}" --profile portable --check \
     --changed-files "${debt}/changed-files.txt"
 c0_expect_failure debt
 c0_assert_contains "${C0_TEST_TMP}/debt.stderr" \
-    "documentation debt exceeds baseline: 1 > 0"
+    "internal documentation debt exceeds baseline: 1 > 0"
 c0_pass "documentation debt cannot grow"
 
 test "$(git check-ignore -v .build/docs/index.html | wc -l | tr -d ' ')" = "1"
@@ -127,4 +203,8 @@ rg -q '\*\*Code Documentation\*\*' .specify/templates/spec-template.md
 rg -q '\*\*Code Documentation\*\*' .specify/templates/plan-template.md
 rg -q 'Generate browsable code documentation' .specify/templates/tasks-template.md
 rg -q 'Code Documentation' .specify/templates/checklist-template.md
+rg -q 'private/internal named types' .specify/templates/spec-template.md
+rg -q 'private/internal named types or interfaces' .specify/templates/plan-template.md
+rg -q 'private/internal named types and interfaces' .specify/templates/tasks-template.md
+rg -q 'private/internal named-abstraction' .specify/templates/checklist-template.md
 c0_pass "Spec Kit templates enforce documentation impact and validation"

@@ -17,6 +17,11 @@ struct CPUState {
     std::uint8_t p = 0x24;    ///< Processor status flags.
     std::uint16_t pc = 0;     ///< Program counter.
     std::uint64_t cycles = 0; ///< Total completed CPU cycles.
+
+    /// Compares every programmer-visible register and the completed-cycle count.
+    /// Documentation rationale: runtime replay compares owned CPU values without
+    /// introducing access to the runtime-owned processor.
+    friend bool operator==(const CPUState&, const CPUState&) = default;
 };
 
 /// Deterministic instruction-level NMOS 6502 processor.
@@ -24,20 +29,22 @@ struct CPUState {
 /// The processor borrows its Bus for its entire lifetime. The class is not
 /// internally synchronized; one caller must serialize stepping and mutation.
 class CPU6502 {
-public:
+  public:
     /// Bit masks for the processor status register.
     enum Flag : std::uint8_t {
-        Carry = 0x01,           ///< Carry or borrow state.
-        Zero = 0x02,            ///< Result was zero.
-        InterruptDisable = 0x04,///< Maskable interrupt disable.
-        Decimal = 0x08,         ///< Binary-coded decimal arithmetic mode.
-        Break = 0x10,           ///< Break marker used in stacked status.
-        Unused = 0x20,          ///< Status bit held high by the processor.
-        Overflow = 0x40,        ///< Signed arithmetic overflow.
-        Negative = 0x80,        ///< Result sign bit.
+        Carry = 0x01,            ///< Carry or borrow state.
+        Zero = 0x02,             ///< Result was zero.
+        InterruptDisable = 0x04, ///< Maskable interrupt disable.
+        Decimal = 0x08,          ///< Binary-coded decimal arithmetic mode.
+        Break = 0x10,            ///< Break marker used in stacked status.
+        Unused = 0x20,           ///< Status bit held high by the processor.
+        Overflow = 0x40,         ///< Signed arithmetic overflow.
+        Negative = 0x80,         ///< Result sign bit.
     };
 
-    /// Observer called before execution with the current state and opcode.
+    /// Observer called after opcode fetch but before execution or device time.
+    /// The supplied PC therefore addresses the first operand byte. If the
+    /// observer throws, step() restores the complete pre-fetch CPU boundary.
     using TraceCallback = std::function<void(const CPUState&, std::uint8_t)>;
 
     /// Creates a processor borrowing `bus` for all memory and timing access.
@@ -50,6 +57,9 @@ public:
     /// Executes one instruction or pending interrupt as one atomic transition.
     /// @return CPU cycles consumed; the same count has been sent to Bus::tick().
     /// @throws std::runtime_error for an unsupported/illegal opcode.
+    /// @throws Any exception raised by the trace observer after restoring the
+    /// processor's pre-fetch state. Observer callbacks run synchronously on
+    /// the stepping thread and must not mutate the processor or bus.
     std::uint32_t step();
 
     /// Sets the level-sensitive maskable interrupt input.
@@ -81,7 +91,16 @@ public:
     /// @param callback Observer to own, or an empty function to disable tracing.
     void setTraceCallback(TraceCallback callback) { trace_ = std::move(callback); }
 
-private:
+  private:
+    friend class BBCMicro;
+
+    // The bus is borrowed, never owned, and must outlive this processor. The
+    // helpers below are grouped by the hardware boundary they preserve:
+    // fetch/read/write are bus cycles; addressing helpers report page crossing
+    // so dispatch can apply conditional penalties; push/pull and setNZ/compare
+    // maintain stack/flag invariants; adc/sbc and shifts implement NMOS ALU
+    // flags. branch and interrupt model extra bus cycles, while finish() is the
+    // single timing boundary that advances the bus and committed cycle count.
     Bus& bus_;
     std::uint8_t a_ = 0;
     std::uint8_t x_ = 0;
@@ -124,6 +143,7 @@ private:
     std::uint32_t branch(bool condition);
     std::uint32_t interrupt(std::uint16_t vector);
     std::uint32_t finish(std::uint32_t cycles);
+    std::uint32_t stepImpl();
     [[noreturn]] void illegal(std::uint8_t opcode, std::uint16_t address) const;
 };
 

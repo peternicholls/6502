@@ -10,7 +10,7 @@ No operating-system, BASIC, filing-system, game or character ROM is included.
 The demo deliberately loads user-supplied ROMs and media through the platform
 document picker.
 
-The current development version is **0.1.0**. Public releases use Semantic
+The current development version is **0.2.0**. Public releases use Semantic
 Versioning and `vMAJOR.MINOR.PATCH` Git tags.
 
 ## What works now
@@ -80,9 +80,13 @@ it does not add it to this MIT-licensed project.
   --frame boot.ppm
 ```
 
-Add `--trace` for an instruction trace. Add other sideways ROMs with another
-`--rom BANK FILE` pair. The core itself accepts SSD/DSD images; the Swift demo
-currently exposes mounting through its file importer.
+Add other sideways ROMs with another `--rom BANK FILE` pair. The BBC-mode
+headless path rejects `--trace` before runtime creation; tracing is an
+instruction-level diagnostic available only through standalone functional-test
+mode. The core itself accepts
+SSD/DSD images; the Swift demo currently exposes mounting through its file
+importer. Supported host ownership and concurrency are described in the
+[host-boundary guide](docs/code/host-boundary.md).
 
 Inspect the installed runtime version with:
 

@@ -16,22 +16,45 @@ window creation, audio-device access or network access. ROM/media bytes enter
 through explicit load methods. Video and audio leave as plain buffers.
 
 The C ABI in `beeb_c.h` is the stable cross-language seam. `BeebKit` owns the
-Swift lifetime and locking wrapper. `BeebDemo` owns document import and UI.
+Swift lifetime and typed value/error mapping. `BeebDemo` owns document import
+and UI.
 
-No C++ exception may cross the C ABI. Fallible entry points translate failures
-into sentinel return values and retain a per-machine diagnostic for the host to
-read immediately. `BeebKit` converts those diagnostics into `BeebError` values.
-The Swift wrapper serializes every read and mutation of core state with one
-lock, which is the basis for its `Sendable` conformance.
+No C++ exception may cross the C ABI. Fallible entry points return structured,
+operation-owned statuses and write outputs only on success. `BeebKit` preserves
+each category and diagnostic as a typed `BeebError` and returns Swift-owned
+values. It adds no lock because the runtime owner already serializes concurrent
+calls.
+
+Within C++, `MachineRuntime` is the supported synchronization boundary for a
+machine. It constructs one `BBCMicro` on one owner thread, accepts copied
+commands through a capacity-64 FIFO, and returns only operation-owned status or
+result values. Direct `BBCMicro` construction remains a low-level facility only
+for single-threaded core and standalone CPU diagnostics.
 
 ```mermaid
 flowchart TD
     Host["SwiftUI · Files · Metal · AVAudioEngine"] --> Kit[BeebKit]
     Kit --> ABI["C ABI · beeb_c.h"]
-    ABI --> Core["CPU + BBC bus"]
+    ABI --> Runtime["MachineRuntime · owner + FIFO"]
+    Runtime --> Core["CPU + BBC bus"]
     Core --> Devices["VIA · CRTC/ULA · 8271 · SN76489"]
     Devices --> Buffers["RGBA + float audio buffers"]
 ```
+
+## Runtime ownership closure
+
+Phase C1 makes this owner path mandatory for supported BBC hosts. The owner
+arbitrates a capacity-64 FIFO with sustained execution, completes commands at
+the quiescent instruction/device boundary, drains accepted work before joining,
+and contains failures as structured C++/C/Swift values. Exact replay records
+accepted host interleaving and emulated slices without turning the ledger into
+a persistence format.
+
+This boundary is now stable input to C2 and C3. C2 may add bounded completed
+frame/audio production behind the owner, and C3 may serialize architectural
+state only at the same quiescent safe point. Neither phase may reintroduce
+direct host access to `BBCMicro`. C1 does not itself define output overflow
+policy or snapshot compatibility.
 
 ## Evidence-tool boundary
 
@@ -77,6 +100,12 @@ CRTC clock and 8271 from that count before the next instruction. This provides
 correct long-term rates and instruction cycle totals, but hardware events can
 be observed several cycles late.
 
+`MachineRuntime` treats the boundary after that complete instruction and all
+aggregate device ticks as its quiescent safe point. Sustained execution occurs
+in deterministic minimum 2,048-cycle slices, with the command FIFO checked
+between slices. This ownership policy prevents host races; it does not claim
+bus-cycle fidelity or make host wall time part of emulated time.
+
 The next timing architecture should express every CPU operation as bus-cycle
 micro-steps:
 
@@ -87,7 +116,10 @@ micro-steps:
 5. commit the micro-operation and advance.
 
 Keep the current instruction tests as a semantic layer while adding bus-trace
-tests for the new sequencer.
+tests for the new sequencer. The sequencer must remain behind the same owner:
+host commands cannot observe a half-completed bus operation, and a finer public
+safe point requires a separately versioned contract and evidence rather than
+an incidental consequence of the implementation rewrite.
 
 ## Memory
 

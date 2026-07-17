@@ -37,8 +37,9 @@ validates, or explain why a principle is not applicable]
 
 ## Code Documentation *(for coding features)*
 
-- [ ] CHKXXX Public-contract and non-obvious-behavior documentation impact is
-      specified, or a concrete N/A rationale is present
+- [ ] CHKXXX Public-contract, private/internal named-abstraction, and non-obvious-
+      behavior documentation impact is specified, or a concrete N/A rationale
+      is present
 - [ ] CHKXXX Browsable generation, link/markup validation, and documentation
       debt impact have measurable acceptance criteria
 

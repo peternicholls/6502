@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(cd -P "$(dirname "$0")/.." && pwd -P)"
+home_root="$(cd -P "${HOME}" && pwd -P)"
 profile=""
 groups_file=""
 output_dir="${root}/.build/c0/run"
@@ -49,13 +50,35 @@ esac
 case "${output_dir}" in
     ""|/) printf 'unsafe output directory: %s\n' "${output_dir}" >&2; exit 2 ;;
 esac
+output_parent="$(cd -P "$(dirname "${output_dir}")" && pwd -P)"
+output_target="${output_parent}/$(basename "${output_dir}")"
+ownership_marker=".beeb-c0-verify-owned"
+case "${output_target}" in
+    "${root}/.build"/*)
+        if [[ -e "${output_target}" && ! -f "${output_target}/${ownership_marker}" ]]; then
+            printf 'refusing to remove an existing unowned directory: %s\n' "${output_target}" >&2
+            exit 2
+        fi
+        [[ ! -e "${output_target}" ]] || rm -rf -- "${output_target}"
+        mkdir -p "${output_target}"
+        ;;
+    "${root}"|"${root}"/*|"${home_root}"|"${home_root}"/*|/)
+        printf 'unsafe output directory: %s\n' "${output_target}" >&2; exit 2 ;;
+    *)
+        [[ ! -e "${output_target}" ]] || {
+            printf 'refusing to remove an existing unowned directory: %s\n' "${output_target}" >&2
+            exit 2
+        }
+        mkdir "${output_target}"
+        ;;
+esac
+: >"${output_target}/${ownership_marker}"
 if [[ -n "${groups_file}" && ! -f "${groups_file}" ]]; then
     printf 'groups file does not exist: %s\n' "${groups_file}" >&2
     exit 2
 fi
 
-rm -rf -- "${output_dir}"
-mkdir -p "${output_dir}"
+output_dir="${output_target}"
 results="${output_dir}/results.txt"
 : >"${results}"
 
@@ -156,6 +179,8 @@ run_group() {
         return
     fi
 
+    # Keep running later groups and retain every failure/interruption in the
+    # aggregate result instead of aborting at the first non-zero command.
     set +e
     if [[ "${command_path}" == "@internal" ]]; then
         run_internal "${id}" >"${log_path}" 2>&1

@@ -11,7 +11,7 @@ not leak into the core by convenience.
 2. `BBCMicro` implements that bus, owns RAM, ROMs, media, and devices, and
    advances devices from the CPU time consumed.
 3. `beeb_c.h` converts exceptions and C++ lifetimes into an explicit C ABI.
-4. `BeebKit` owns the C handle, serializes calls, and returns Swift-owned values.
+4. `BeebKit` owns the C handle, maps typed results, and returns Swift-owned values.
 5. Headless tools and tests drive those same supported boundaries to produce
    observable evidence.
 
@@ -22,9 +22,14 @@ graph.
 ## Ownership map
 
 `BBCMicro` owns every device. `CPU6502` only borrows its `Bus`. Disc and ROM
-loads copy caller bytes. The C handle owns its `BBCMicro`; Swift owns the handle.
-References and spans returned by the C++ layer, and pointers returned by the C
-layer, are borrowed views whose lifetime ends at the next relevant mutation.
+loads copy caller bytes. `MachineRuntime` owns the `BBCMicro`; the C handle owns
+that runtime, and Swift owns the opaque C handle.
+References and spans used inside the native C++ layer are borrowed views and do
+not cross the host boundary. Completed C 0.2 operations instead document each
+output explicitly: scalar aggregates are written to caller-provided storage,
+and `beeb_get_frame()` returns a caller-owned allocation released with
+`beeb_frame_release()`. Calling that frame "borrowed" would violate the public
+contract.
 
 For boundary details, continue with [The Host Boundary](host-boundary.md). For
 device advancement, see [The Timing Model](timing-model.md). For observable

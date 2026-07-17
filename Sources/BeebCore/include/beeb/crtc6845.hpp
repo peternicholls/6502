@@ -1,13 +1,17 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/timing-model.md owns aggregate CRTC timing.
+
 #include <array>
 #include <cstdint>
 
 namespace beeb {
 
 /// Character-clock timing and register model of the MC6845-compatible CRTC.
+/// Instances are single-owner state machines; callers must serialize reset,
+/// register access, and ticking when reusing one instance.
 class CRTC6845 {
-public:
+  public:
     /// Restores registers, counters, and frame notification state.
     void reset();
 
@@ -30,7 +34,9 @@ public:
     /// Reads a register without selected-register side effects.
     /// @param index Register number; only the low five bits are used.
     /// @return Stored register value.
-    [[nodiscard]] std::uint8_t reg(std::uint8_t index) const noexcept { return registers_[index & 0x1F]; }
+    [[nodiscard]] std::uint8_t reg(std::uint8_t index) const noexcept {
+        return registers_[index & 0x1F];
+    }
 
     /// Advances horizontal, raster, row, and frame counters.
     /// @param characterClocks Character clocks elapsed at the current CRTC rate.
@@ -63,7 +69,9 @@ public:
     /// @return `true` while display output is enabled.
     [[nodiscard]] bool displayEnabled() const noexcept;
 
-private:
+  private:
+    friend class BBCMicro;
+
     std::array<std::uint8_t, 32> registers_{};
     std::uint8_t selected_ = 0;
     std::uint16_t hCharacter_ = 0;

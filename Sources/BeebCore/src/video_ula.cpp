@@ -1,6 +1,13 @@
 #include "beeb/video_ula.hpp"
 
+// C0-DOC-RATIONALE: docs/REFERENCES.md owns Video ULA programming authority.
+
 namespace beeb {
+
+// BBC ULA palette values are active-low physical colours; bit 3 requests flash and
+// is XORed at the frame phase. Serializer control selects 4/2/1 logical bits per pixel;
+// unsupported/default control remains deterministic at one bit per pixel. See
+// docs/REFERENCES.md for the ULA mode table.
 
 void VideoULA::reset() {
     control_ = 0;
@@ -25,10 +32,14 @@ unsigned VideoULA::bitsPerPixel() const noexcept {
     // ULA bits 2-3 select 10/20/40/80-character serializer rates. The normal
     // bitmap modes use the latter three as 4/2/1 bits per logical pixel.
     switch ((control_ >> 2) & 0x03) {
-        case 1: return 4;
-        case 2: return 2;
-        case 3: return 1;
-        default: return 1;
+    case 1:
+        return 4;
+    case 2:
+        return 2;
+    case 3:
+        return 1;
+    default:
+        return 1;
     }
 }
 

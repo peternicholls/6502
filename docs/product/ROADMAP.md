@@ -45,7 +45,13 @@ technical sequencing belongs to the [core roadmap](../CORE_ROADMAP.md).
 
 ### 1. Host runtime and presentation
 
-- Move sustained emulation work off the main actor.
+Verified technical prerequisite: the C1 core now owns sustained emulation on a
+dedicated runtime thread with recoverable lifecycle commands and concurrent C
+and Swift boundaries. The product still needs to adopt that capability in its
+presentation loop.
+
+- Drive the Machine UI through the sustained runtime without blocking the main
+  actor.
 - Add a bounded completed-frame queue and timestamped host presentation.
 - Present frames through Metal with fixed 4:3 layout, nearest-neighbor scaling
   and correct 50-to-60/120 Hz repetition.

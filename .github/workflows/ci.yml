@@ -18,10 +18,20 @@ jobs:
         run: Tests/C0/test-baseline-verifier.sh
       - name: Build and test the C++ core
         run: make test all demo-rom
+      - name: Run C1 contract aggregate
+        env:
+          C1_REQUIRE_TSAN: "1"
+        run: make test-c1
       - name: Run native sanitizers
         run: make sanitize
+      - name: Run ThreadSanitizer race gate
+        env:
+          C1_REQUIRE_TSAN: "1"
+        run: make thread-sanitize
+      - name: Check C++ formatting
+        run: make format-check
       - name: Validate portable code documentation
-        run: make docs-check DOCS_PROFILE=portable
+        run: DOCS_BASE=origin/develop make docs-check DOCS_PROFILE=portable
 
   apple-package:
     runs-on: macos-latest
@@ -36,7 +46,7 @@ jobs:
       - name: Build the SwiftUI demo
         run: swift build
       - name: Validate complete code documentation
-        run: make docs-check DOCS_PROFILE=macos
+        run: DOCS_BASE=origin/develop make docs-check DOCS_PROFILE=macos
 
   c0-portable:
     runs-on: ubuntu-latest

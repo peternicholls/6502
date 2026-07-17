@@ -1,14 +1,15 @@
 <!--
 Sync Impact Report
-- Version: 1.1.0 -> 1.2.0
+- Version: 1.2.0 -> 1.3.0
 - Added principles: none
+- Modified principles: VIII. Code Documentation Is Maintained Knowledge
 - Modified sections: Specification and Delivery Workflow; Governance
 - Updated templates: plan-template.md, tasks-template.md, checklist-template.md
-- Updated guidance: AGENTS.md, specs/README.md, active C0 plan and tasks,
-  CHANGELOG.md
-- Migration: all active and future tasks use verified per-task commits and a
-  committed phase boundary before subsequent work; existing history is not
-  rewritten and empty duplicate phase commits are not required
+- Updated guidance: docs/CODE_DOCUMENTATION.md, specs/README.md, active C1
+  specification and tasks
+- Migration: active and future coding work documents private/internal named
+  types and interfaces as developer-facing architecture; trivial members and
+  self-evident helpers remain exempt from prose-for-coverage
 - Deferred items: none
 -->
 
@@ -98,6 +99,9 @@ work connected to a usable, inclusive product.
 Supported public C++, C, and Swift contracts MUST document their purpose and,
 where applicable, parameters, results, ownership, lifetime, nullability,
 failure behavior, threading expectations, side effects, and invariants.
+Private/internal named types and interfaces MUST document their purpose,
+responsibility boundary, and important invariants, plus ownership, lifetime,
+threading, collaborators, and extension constraints where applicable.
 Non-obvious hardware behavior, timing decisions, state transitions, and buffer
 rules MUST explain the rationale and observable consequences near the code or
 link to an authoritative conceptual guide. Comments MUST NOT merely restate
@@ -195,4 +199,4 @@ The per-task and per-phase commit requirement applies prospectively to active
 and future work. Amendments do not require rewriting compliant historical
 commits or creating empty commits solely to mark a phase.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15
+**Version**: 1.3.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15

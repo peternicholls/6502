@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project_root="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source_root="${project_root}"
 output_dir="${project_root}/.build/docs"
 profile="auto"
 check=false
 debt_baseline=""
 changed_files=""
+docs_base="${DOCS_BASE:-}"
 
 usage() {
     cat <<'EOF'
@@ -74,21 +75,59 @@ if [[ ! -d "${source_root}" ]]; then
     printf 'missing documentation source root: %s\n' "${source_root}" >&2
     exit 2
 fi
+source_root="$(cd -P "${source_root}" && pwd -P)"
+home_root="$(cd -P "${HOME}" && pwd -P)"
+
+prepare_output_dir() {
+    local target="$1" parent name marker=".beeb-docs-owned"
+    parent="$(cd -P "$(dirname "${target}")" && pwd -P)"
+    name="$(basename "${target}")"
+    target="${parent}/${name}"
+    case "${target}" in
+        "${source_root}/.build"/*)
+            if [[ -e "${target}" && ! -f "${target}/${marker}" ]]; then
+                printf 'refusing to remove an existing unowned directory: %s\n' "${target}" >&2
+                exit 2
+            fi
+            [[ ! -e "${target}" ]] || rm -rf -- "${target}"
+            mkdir -p "${target}"
+            ;;
+        /|"${source_root}"|"${source_root}"/*|"${home_root}"|"${home_root}"/*)
+            printf 'refusing to remove protected directory: %s\n' "${target}" >&2
+            exit 2
+            ;;
+        *)
+            if [[ -e "${target}" ]]; then
+                printf 'refusing to remove an existing unowned directory: %s\n' "${target}" >&2
+                exit 2
+            fi
+            mkdir "${target}"
+            ;;
+    esac
+    : >"${target}/${marker}"
+}
 case "${output_dir}" in
     ""|/)
         printf 'unsafe documentation output directory: %s\n' "${output_dir}" >&2
         exit 2
         ;;
 esac
+prepare_output_dir "${output_dir}"
 
 if [[ -z "${debt_baseline}" ]]; then
     debt_baseline="${source_root}/Tests/Fixtures/C0/documentation-debt.txt"
 fi
 if [[ -z "${changed_files}" ]]; then
     changed_files="$(mktemp "${TMPDIR:-/tmp}/beeb-docs-changed.XXXXXX")"
+    # This trap owns the process-created changed-files inventory. A later trap
+    # may add Doxygen cleanup, but must preserve this file's lifetime cleanup.
     trap 'rm -f -- "${changed_files}" "${doxygen_config:-}"' EXIT
     if git -C "${source_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        git -C "${source_root}" diff --name-only HEAD -- >"${changed_files}"
+        if [[ -n "${docs_base}" ]]; then
+            git -C "${source_root}" diff --name-only "${docs_base}"...HEAD -- >"${changed_files}"
+        else
+            git -C "${source_root}" diff --name-only HEAD -- >"${changed_files}"
+        fi
     fi
 fi
 
@@ -102,23 +141,24 @@ if [[ ! -f "${changed_files}" ]]; then
 fi
 
 validate_debt() {
-    local baseline_count current_count
-    baseline_count="$(sed -n 's/^baseline_count=//p' "${debt_baseline}")"
-    if [[ ! "${baseline_count}" =~ ^[0-9]+$ ]]; then
-        printf 'invalid documentation debt baseline_count: %s\n' "${debt_baseline}" >&2
-        return 1
-    fi
-    current_count="$(awk '
-        /^[[:space:]]*($|#)/ { next }
-        /^baseline_count=/ { next }
-        { count++ }
-        END { print count + 0 }
-    ' "${debt_baseline}")"
-    if ((current_count > baseline_count)); then
-        printf 'documentation debt exceeds baseline: %d > %d\n' \
-            "${current_count}" "${baseline_count}" >&2
-        return 1
-    fi
+    local scope prefix baseline_count current_count
+    for scope in public internal; do
+        baseline_count="$(sed -n "s/^${scope}_baseline_count=//p" "${debt_baseline}")"
+        if [[ ! "${baseline_count}" =~ ^[0-9]+$ ]]; then
+            printf 'invalid %s documentation debt baseline: %s\n' \
+                "${scope}" "${debt_baseline}" >&2
+            return 1
+        fi
+        if [[ "${scope}" == "public" ]]; then prefix="PUBLIC_DEBT-"; else prefix="INTERNAL_DEBT-"; fi
+        current_count="$(awk -F'|' -v prefix="${prefix}" \
+            'index($1, prefix) == 1 { count++ } END { print count + 0 }' \
+            "${debt_baseline}")"
+        if ((current_count > baseline_count)); then
+            printf '%s documentation debt exceeds baseline: %d > %d\n' \
+                "${scope}" "${current_count}" "${baseline_count}" >&2
+            return 1
+        fi
+    done
 }
 
 validate_public_headers() {
@@ -213,6 +253,10 @@ validate_public_headers() {
 }
 
 validate_changed_complex_code() {
+    # A changed implementation needs either an explicit path-scoped N/A
+    # decision or a rationale marker accepted by docs/CODE_DOCUMENTATION.md;
+    # the diff-status test below intentionally treats comment-only changes as
+    # documentation work rather than silently waiving the gate.
     local entry path rationale diff_text
     while IFS= read -r entry || [[ -n "${entry}" ]]; do
         [[ -z "${entry}" || "${entry}" == \#* ]] && continue
@@ -230,7 +274,11 @@ validate_changed_complex_code() {
         fi
         diff_text=""
         if git -C "${source_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-            diff_text="$(git -C "${source_root}" diff --unified=0 HEAD -- "${path}")"
+            if [[ -n "${docs_base}" ]]; then
+                diff_text="$(git -C "${source_root}" diff --unified=0 "${docs_base}"...HEAD -- "${path}")"
+            else
+                diff_text="$(git -C "${source_root}" diff --unified=0 HEAD -- "${path}")"
+            fi
         fi
         if [[ -n "${diff_text}" ]] && awk '
             /^\+\+\+|^---/ { next }
@@ -253,8 +301,87 @@ validate_changed_complex_code() {
     done <"${changed_files}"
 }
 
+validate_internal_named_abstractions() {
+    local path root
+    local -a scan_roots=()
+    for root in "${source_root}/Sources" "${source_root}/Tools" "${source_root}/Tests"; do
+        [[ -d "${root}" ]] && scan_roots+=("${root}")
+    done
+    if ((${#scan_roots[@]} == 0)); then
+        scan_roots=("${source_root}")
+    fi
+    while IFS= read -r -d '' path; do
+        local relative="${path#"${source_root}/"}"
+        if ! grep -Fqx -- "${relative}" "${changed_files}"; then
+            continue
+        fi
+        awk -v path="${path#"${source_root}/"}" '
+            function clear_doc() { documented = 0; in_block = 0 }
+            /^[[:space:]]*\/\/\// { documented = 1; next }
+            /^[[:space:]]*\/\*\*/ { documented = 1; in_block = 1; next }
+            in_block {
+                if ($0 ~ /\*\//) in_block = 0
+                next
+            }
+            /^[[:space:]]*(class|struct|enum([[:space:]]+class)?)[[:space:]]+[A-Za-z_][A-Za-z0-9_:]*/ {
+                if (!documented) {
+                    match($0, /^[[:space:]]*(class|struct|enum([[:space:]]+class)?)[[:space:]]+[A-Za-z_][A-Za-z0-9_:]*/)
+                    declaration = substr($0, RSTART, RLENGTH)
+                    sub(/^[[:space:]]*/, "", declaration)
+                    printf "missing named-abstraction documentation: %s:%d: %s\n", path, NR, declaration > "/dev/stderr"
+                    failed = 1
+                }
+                clear_doc()
+                next
+            }
+            /^[[:space:]]*$/ { next }
+            { clear_doc() }
+            END { exit failed }
+        ' "${path}" || return 1
+    done < <(find "${scan_roots[@]}" -type f \
+        \( -name '*.h' -o -name '*.hpp' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.swift' \) \
+        -print0 2>/dev/null || true)
+}
+
+validate_swift_throwing_contracts() {
+    local swift
+    while IFS= read -r -d '' swift; do
+        awk '
+            function fail() {
+                printf "missing Swift throwing contract: %s:%d\n", FILENAME, declaration_line > "/dev/stderr"
+                failed = 1
+            }
+            /^[[:space:]]*\/\/\// {
+                if ($0 ~ /- Throws:/) documented_throws = 1
+                next
+            }
+            /^[[:space:]]*$/ { next }
+            /^[[:space:]]*@/ { next }
+            {
+                if ($0 ~ /^[[:space:]]*public (init|func|var)[[:space:](]/) {
+                    pending = 1
+                    declaration_line = FNR
+                    pending_documented = documented_throws
+                    pending_var = $0 ~ /^[[:space:]]*public var[[:space:]]/
+                }
+                if (pending && ($0 ~ /(^|[[:space:]])throws([[:space:]]|\{|->)/ ||
+                                $0 ~ /^[[:space:]]*get[[:space:]]+throws/)) {
+                    if (!pending_documented) fail()
+                    pending = 0
+                } else if (pending && !pending_var && $0 ~ /\{/) {
+                    pending = 0
+                }
+                documented_throws = 0
+            }
+            END { exit failed }
+        ' "${swift}" || return 1
+    done < <(find "${source_root}/Sources" -type f -name '*.swift' -print0 2>/dev/null)
+}
+
 validate_debt
 validate_public_headers
+validate_internal_named_abstractions
+validate_swift_throwing_contracts
 validate_changed_complex_code
 
 command -v doxygen >/dev/null 2>&1 || {
@@ -262,10 +389,10 @@ command -v doxygen >/dev/null 2>&1 || {
     exit 2
 }
 
-rm -rf -- "${output_dir}"
-mkdir -p "${output_dir}"
 doxygen_config="$(mktemp "${TMPDIR:-/tmp}/beeb-doxygen.XXXXXX")"
 if [[ -z "${changed_files:-}" || "${changed_files}" != "${TMPDIR:-/tmp}"/beeb-docs-changed.* ]]; then
+    # The caller supplied the changed-files inventory, so only the generated
+    # Doxygen configuration belongs to this later cleanup trap.
     trap 'rm -f -- "${doxygen_config:-}"' EXIT
 fi
 

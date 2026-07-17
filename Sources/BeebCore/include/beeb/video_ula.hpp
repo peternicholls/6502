@@ -1,13 +1,17 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns pixel evidence.
+
 #include <array>
 #include <cstdint>
 
 namespace beeb {
 
 /// BBC Micro Video ULA control and logical-to-physical palette model.
+/// The machine's single owner serializes register writes and palette queries;
+/// this value type performs no internal synchronization.
 class VideoULA {
-public:
+  public:
     /// Restores the control register and default logical palette.
     void reset();
     /// Replaces the host-visible control register.
@@ -24,7 +28,8 @@ public:
     /// @param logical Logical colour selector; only the low four bits are used.
     /// @param flashPhase Whether flashing colours are currently inverted.
     /// @return Three-bit physical colour.
-    [[nodiscard]] std::uint8_t physicalColour(std::uint8_t logical, bool flashPhase = false) const noexcept;
+    [[nodiscard]] std::uint8_t physicalColour(std::uint8_t logical,
+                                              bool flashPhase = false) const noexcept;
     /// Returns the bitmap colour depth selected by the control register.
     /// @return One, two, or four bits per logical pixel.
     [[nodiscard]] unsigned bitsPerPixel() const noexcept;
@@ -41,7 +46,9 @@ public:
     /// @return `true` for the 2 MHz CRTC clock.
     [[nodiscard]] bool crtcTwoMHz() const noexcept { return (control_ & 0x10) != 0; }
 
-private:
+  private:
+    friend class BBCMicro;
+
     std::uint8_t control_ = 0;
     std::array<std::uint8_t, 16> palette_{};
 };

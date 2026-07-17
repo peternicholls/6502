@@ -14,20 +14,50 @@
 
 namespace {
 
+// Documentation rationale: docs/code/host-boundary.md owns structured status,
+// runtime-handle, and caller-owned frame rules shared by command-line hosts.
+
+/// One evidence artifact request; kind and path are parsed as a validated pair
+/// so state and frame outputs cannot be confused at serialization time.
 struct Output {
+    // Each output pairs one canonical schema (state or RGB PPM frame) with one path.
+    /// Output formats accepted by the evidence serializer.
     enum class Kind { State, Frame };
     Kind kind;
     std::string path;
 };
 
+/// Fully validated CLI configuration consumed by the evidence capture run.
 struct Options {
+    // parseOptions validates this complete configuration before any C handle is created.
     std::string romPath;
     std::string workload;
     std::uint64_t requestedCycles = 0;
     std::vector<Output> outputs;
 };
 
-using Machine = std::unique_ptr<beeb_machine, decltype(&beeb_destroy)>;
+void requireStatus(const beeb_status& status) {
+    if (status.code == BEEB_STATUS_OK) return;
+    throw std::runtime_error(status.message[0] != '\0' ? status.message
+                                                       : "emulator core operation failed");
+}
+
+/// Releases the evidence tool's C runtime on every exit path.
+struct MachineDeleter final {
+    void operator()(beeb_machine* machine) const noexcept {
+        if (machine) (void)beeb_destroy(machine);
+    }
+};
+
+/// Owning C-handle alias: adopts the handle returned by beeb_create and always
+/// releases it through beeb_destroy when the unique pointer leaves scope.
+using Machine = std::unique_ptr<beeb_machine, MachineDeleter>;
+
+/// Retains one caller-owned frame through all requested evidence writes.
+struct OwnedFrame final {
+    beeb_frame value{};
+    ~OwnedFrame() { (void)beeb_frame_release(&value); }
+};
 
 std::vector<std::uint8_t> readFile(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
@@ -71,10 +101,14 @@ Options parseOptions(int argc, char** argv) {
             if (++index >= argc) throw std::runtime_error("missing option value");
             return argv[index];
         };
-        if (argument == "--rom") options.romPath = next();
-        else if (argument == "--workload") options.workload = next();
-        else if (argument == "--cycles") options.requestedCycles = positiveNumber(next());
-        else if (argument == "--output") options.outputs.push_back(parseOutput(next()));
+        if (argument == "--rom")
+            options.romPath = next();
+        else if (argument == "--workload")
+            options.workload = next();
+        else if (argument == "--cycles")
+            options.requestedCycles = positiveNumber(next());
+        else if (argument == "--output")
+            options.outputs.push_back(parseOutput(next()));
         else if (argument == "--help" || argument == "-h") {
             std::cout << "beeb-evidence --rom ROM --workload bitmap|mode7 --cycles N "
                          "--output state:PATH [--output frame:PATH]\n";
@@ -97,28 +131,29 @@ Options parseOptions(int argc, char** argv) {
 void writeState(const std::string& path, const Options& options, const beeb_cpu_state& state,
                 std::uint64_t actualCycles, std::uint32_t width, std::uint32_t height,
                 std::uint64_t frameNumber) {
+    // evidence-and-testing.md defines the v1 field set and ordering used for comparisons.
     std::ofstream output(path);
     if (!output) throw std::runtime_error("cannot write state output: " + path);
     output << "schema=beeb-c0-evidence-v1\n"
            << "workload=" << options.workload << '\n'
            << "requested_cycles=" << options.requestedCycles << '\n'
            << "actual_cycles=" << actualCycles << '\n'
-           << std::hex << std::uppercase << std::setfill('0')
-           << "pc=$" << std::setw(4) << state.pc << '\n'
+           << std::hex << std::uppercase << std::setfill('0') << "pc=$" << std::setw(4) << state.pc
+           << '\n'
            << "a=$" << std::setw(2) << static_cast<unsigned>(state.a) << '\n'
            << "x=$" << std::setw(2) << static_cast<unsigned>(state.x) << '\n'
            << "y=$" << std::setw(2) << static_cast<unsigned>(state.y) << '\n'
            << "sp=$" << std::setw(2) << static_cast<unsigned>(state.sp) << '\n'
            << "p=$" << std::setw(2) << static_cast<unsigned>(state.p) << '\n'
-           << std::dec
-           << "frame_number=" << frameNumber << '\n'
+           << std::dec << "frame_number=" << frameNumber << '\n'
            << "frame_width=" << width << '\n'
            << "frame_height=" << height << '\n';
     if (!output) throw std::runtime_error("cannot write state output: " + path);
 }
 
-void writeFrame(const std::string& path, const std::uint8_t* rgba,
-                std::uint32_t width, std::uint32_t height) {
+void writeFrame(const std::string& path, const std::uint8_t* rgba, std::uint32_t width,
+                std::uint32_t height) {
+    // PPM P6 intentionally drops the source alpha byte: evidence compares RGB pixels only.
     if (!rgba || width == 0 || height == 0) throw std::runtime_error("no frame is available");
     std::ofstream output(path, std::ios::binary);
     if (!output) throw std::runtime_error("cannot write frame output: " + path);
@@ -132,36 +167,31 @@ void writeFrame(const std::string& path, const std::uint8_t* rgba,
 
 int run(const Options& options) {
     const auto rom = readFile(options.romPath);
-    Machine machine(beeb_create(), &beeb_destroy);
-    if (!machine) throw std::runtime_error("cannot create machine");
-    if (!beeb_load_os_rom(machine.get(), rom.data(), rom.size())) {
-        throw std::runtime_error(beeb_last_error(machine.get()));
-    }
-    beeb_reset(machine.get());
-    const auto actualCycles = beeb_run_cycles(machine.get(), options.requestedCycles);
-    if (actualCycles == 0) {
-        const auto* error = beeb_last_error(machine.get());
-        throw std::runtime_error(error && *error ? error : "execution failed");
-    }
+    beeb_machine* rawMachine = nullptr;
+    requireStatus(beeb_create(&rawMachine));
+    Machine machine(rawMachine);
+    requireStatus(beeb_load_os_rom(machine.get(), rom.data(), rom.size()));
+    requireStatus(beeb_reset(machine.get()));
+    std::uint64_t actualCycles = 0;
+    requireStatus(beeb_run_cycles(machine.get(), options.requestedCycles, &actualCycles));
 
-    const auto state = beeb_get_cpu_state(machine.get());
-    std::uint32_t width = 0;
-    std::uint32_t height = 0;
-    std::uint64_t frameNumber = 0;
-    const auto* frame = beeb_get_frame_rgba(machine.get(), &width, &height, &frameNumber);
+    beeb_cpu_state state{};
+    requireStatus(beeb_get_cpu_state(machine.get(), &state));
+    OwnedFrame frame;
+    requireStatus(beeb_get_frame(machine.get(), &frame.value));
 
     for (const auto& output : options.outputs) {
         if (output.kind == Output::Kind::State) {
-            writeState(output.path, options, state, actualCycles, width, height, frameNumber);
+            writeState(output.path, options, state, actualCycles, frame.value.width,
+                       frame.value.height, frame.value.number);
         } else {
-            writeFrame(output.path, frame, width, height);
+            writeFrame(output.path, frame.value.rgba, frame.value.width, frame.value.height);
         }
     }
 
-    std::cout << "workload=" << options.workload
-              << " requested_cycles=" << options.requestedCycles
-              << " actual_cycles=" << actualCycles
-              << " frame=" << frameNumber << ' ' << width << 'x' << height << '\n';
+    std::cout << "workload=" << options.workload << " requested_cycles=" << options.requestedCycles
+              << " actual_cycles=" << actualCycles << " frame=" << frame.value.number << ' '
+              << frame.value.width << 'x' << frame.value.height << '\n';
     return 0;
 }
 

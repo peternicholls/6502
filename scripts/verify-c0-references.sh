@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export LC_ALL=C
+# Manifest discovery and ordering must be locale-stable across verification
+# hosts so provenance comparisons remain deterministic.
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(cd -P "$(dirname "$0")/.." && pwd -P)"
+home_root="$(cd -P "${HOME}" && pwd -P)"
 runs=1
 fixture_root="${root}/Tests/Fixtures/C0"
 output_dir="${root}/.build/c0/references"
@@ -29,6 +32,30 @@ case "${check}" in
     *) printf 'unknown reference check: %s\n' "${check}" >&2; exit 2 ;;
 esac
 case "${output_dir}" in ""|/) printf 'unsafe output directory\n' >&2; exit 2 ;; esac
+output_parent="$(cd -P "$(dirname "${output_dir}")" && pwd -P)"
+output_target="${output_parent}/$(basename "${output_dir}")"
+ownership_marker=".beeb-c0-reference-owned"
+case "${output_target}" in
+    "${root}/.build"/*)
+        if [[ -e "${output_target}" && ! -f "${output_target}/${ownership_marker}" ]]; then
+            printf 'refusing to remove an existing unowned directory: %s\n' "${output_target}" >&2
+            exit 2
+        fi
+        [[ ! -e "${output_target}" ]] || rm -rf -- "${output_target}"
+        mkdir -p "${output_target}"
+        ;;
+    "${root}"|"${root}"/*|"${home_root}"|"${home_root}"/*|/)
+        printf 'unsafe output directory\n' >&2; exit 2 ;;
+    *)
+        [[ ! -e "${output_target}" ]] || {
+            printf 'refusing to remove an existing unowned directory: %s\n' "${output_target}" >&2
+            exit 2
+        }
+        mkdir "${output_target}"
+        ;;
+esac
+: >"${output_target}/${ownership_marker}"
+output_dir="${output_target}"
 
 manifest="${fixture_root}/manifest.txt"
 if [[ ! -f "${manifest}" ]]; then
@@ -148,9 +175,6 @@ fi
 [[ -x "${generator}" && -x "${evidence}" ]] || {
     printf 'required C0 generator or evidence tool is unavailable\n' >&2; exit 1;
 }
-
-rm -rf -- "${output_dir}"
-mkdir -p "${output_dir}"
 
 generate_workload() {
     local workload="$1"

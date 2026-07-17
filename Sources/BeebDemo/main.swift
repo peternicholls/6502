@@ -1,15 +1,21 @@
 import BeebKit
+
+// C0-DOC-RATIONALE: Sources/BeebKit/Documentation.docc/BeebKit.md owns host usage.
 import SwiftUI
 import UniformTypeIdentifiers
 
 #if os(macOS)
 import AppKit
+/// Native image type selected for the macOS build.
 typealias PlatformImage = NSImage
 #else
 import UIKit
+/// Native image type selected for the UIKit build.
 typealias PlatformImage = UIImage
 #endif
 
+/// Main-actor UI model owning the optional machine and 50 Hz display timer.
+/// It translates imported user files and runtime errors into view state.
 @MainActor
 final class EmulatorModel: ObservableObject {
     @Published var screen: PlatformImage?
@@ -32,7 +38,7 @@ final class EmulatorModel: ObservableObject {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
             try machine.loadOSROM(Data(contentsOf: url))
-            machine.reset()
+            try machine.reset()
             status = "OS loaded — running"
             start()
         } catch { status = error.localizedDescription }
@@ -62,14 +68,18 @@ final class EmulatorModel: ObservableObject {
         isRunning = false
     }
 
-    func reset() { machine?.reset() }
+    func reset() {
+        guard let machine else { return }
+        do { try machine.reset() }
+        catch { status = error.localizedDescription; stop() }
+    }
 
     private func stepFrame() {
         guard let machine else { return }
         do {
             _ = try machine.runToNextFrame()
-            if let frame = machine.videoFrame() { screen = platformImage(frame) }
-            let cpu = machine.cpuState
+            if let frame = try machine.videoFrame() { screen = platformImage(frame) }
+            let cpu = try machine.cpuState()
             status = String(format: "PC %04X   %,llu cycles", cpu.programCounter, cpu.cycles)
         } catch { status = error.localizedDescription; stop() }
     }
@@ -91,6 +101,8 @@ final class EmulatorModel: ObservableObject {
     }
 }
 
+/// Root SwiftUI view that binds user actions to `EmulatorModel` and renders
+/// the latest owned frame plus import controls.
 struct ContentView: View {
     @StateObject private var model = EmulatorModel()
 
@@ -128,6 +140,7 @@ struct ContentView: View {
 }
 
 @main
+/// Application root owning the single-window scene for the demo.
 struct BeebDemoApp: App {
     var body: some Scene { WindowGroup { ContentView() }.defaultSize(width: 900, height: 700) }
 }

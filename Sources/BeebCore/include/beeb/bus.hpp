@@ -1,5 +1,7 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/timing-model.md owns the bus timing boundary.
+
 #include <cstdint>
 
 namespace beeb {
@@ -9,7 +11,7 @@ namespace beeb {
 /// Implementations own the addressed storage and devices. CPU6502 calls tick()
 /// once after each complete instruction or interrupt sequence.
 class Bus {
-public:
+  public:
     /// Allows destruction through the interface.
     virtual ~Bus() = default;
 

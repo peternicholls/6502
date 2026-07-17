@@ -1,17 +1,21 @@
 #include "beeb/teletext_renderer.hpp"
 
+// C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns Mode 7 evidence limits.
+
 #include <algorithm>
 #include <cctype>
 
 namespace beeb {
 
+// Mode 7 rendering is a clean-room approximation: repository-authored 5x7 glyphs and
+// the evidence guide define the supported subset. Screen addresses wrap in the 1 KiB
+// page; control codes update state for the rest of the row, flash is frame-paced, and
+// mosaics/scaling are deterministic. Unimplemented C0 controls are intentionally omitted.
+
 std::array<std::uint8_t, 4> TeletextRenderer::colour(std::uint8_t c) {
-    return {
-        static_cast<std::uint8_t>((c & 1) ? 255 : 0),
-        static_cast<std::uint8_t>((c & 2) ? 255 : 0),
-        static_cast<std::uint8_t>((c & 4) ? 255 : 0),
-        255
-    };
+    return {static_cast<std::uint8_t>((c & 1) ? 255 : 0),
+            static_cast<std::uint8_t>((c & 2) ? 255 : 0),
+            static_cast<std::uint8_t>((c & 4) ? 255 : 0), 255};
 }
 
 void TeletextRenderer::pixel(TeletextBitmap& bitmap, unsigned x, unsigned y,
@@ -24,45 +28,144 @@ void TeletextRenderer::pixel(TeletextBitmap& bitmap, unsigned x, unsigned y,
 std::array<std::uint8_t, 7> TeletextRenderer::glyph(char c) {
     if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
     switch (c) {
-        case 'A': return {14,17,17,31,17,17,17}; case 'B': return {30,17,17,30,17,17,30};
-        case 'C': return {14,17,16,16,16,17,14}; case 'D': return {30,17,17,17,17,17,30};
-        case 'E': return {31,16,16,30,16,16,31}; case 'F': return {31,16,16,30,16,16,16};
-        case 'G': return {14,17,16,23,17,17,15}; case 'H': return {17,17,17,31,17,17,17};
-        case 'I': return {14,4,4,4,4,4,14};      case 'J': return {7,2,2,2,2,18,12};
-        case 'K': return {17,18,20,24,20,18,17}; case 'L': return {16,16,16,16,16,16,31};
-        case 'M': return {17,27,21,21,17,17,17}; case 'N': return {17,25,21,19,17,17,17};
-        case 'O': return {14,17,17,17,17,17,14}; case 'P': return {30,17,17,30,16,16,16};
-        case 'Q': return {14,17,17,17,21,18,13}; case 'R': return {30,17,17,30,20,18,17};
-        case 'S': return {15,16,16,14,1,1,30};   case 'T': return {31,4,4,4,4,4,4};
-        case 'U': return {17,17,17,17,17,17,14}; case 'V': return {17,17,17,17,17,10,4};
-        case 'W': return {17,17,17,21,21,21,10}; case 'X': return {17,17,10,4,10,17,17};
-        case 'Y': return {17,17,10,4,4,4,4};     case 'Z': return {31,1,2,4,8,16,31};
-        case '0': return {14,17,19,21,25,17,14}; case '1': return {4,12,4,4,4,4,14};
-        case '2': return {14,17,1,2,4,8,31};     case '3': return {30,1,1,14,1,1,30};
-        case '4': return {2,6,10,18,31,2,2};     case '5': return {31,16,16,30,1,1,30};
-        case '6': return {14,16,16,30,17,17,14}; case '7': return {31,1,2,4,8,8,8};
-        case '8': return {14,17,17,14,17,17,14}; case '9': return {14,17,17,15,1,1,14};
-        case '.': return {0,0,0,0,0,12,12};      case ',': return {0,0,0,0,0,12,8};
-        case ':': return {0,12,12,0,12,12,0};    case ';': return {0,12,12,0,12,8,0};
-        case '!': return {4,4,4,4,4,0,4};        case '?': return {14,17,1,2,4,0,4};
-        case '-': return {0,0,0,31,0,0,0};       case '_': return {0,0,0,0,0,0,31};
-        case '+': return {0,4,4,31,4,4,0};       case '=': return {0,0,31,0,31,0,0};
-        case '/': return {1,2,2,4,8,8,16};       case '\\': return {16,8,8,4,2,2,1};
-        case '(': return {2,4,8,8,8,4,2};        case ')': return {8,4,2,2,2,4,8};
-        case '[': return {14,8,8,8,8,8,14};      case ']': return {14,2,2,2,2,2,14};
-        case '<': return {2,4,8,16,8,4,2};       case '>': return {8,4,2,1,2,4,8};
-        case '*': return {0,17,10,31,10,17,0};   case '#': return {10,10,31,10,31,10,10};
-        case '$': return {4,15,20,14,5,30,4};    case '%': return {17,2,4,8,16,17,0};
-        case '&': return {12,18,20,8,21,18,13};  case '@': return {14,17,23,21,23,16,14};
-        case '\'': return {4,4,8,0,0,0,0};       case '"': return {10,10,20,0,0,0,0};
-        case '^': return {4,10,17,0,0,0,0};      case '|': return {4,4,4,4,4,4,4};
-        case '`': return {8,4,2,0,0,0,0};        case '~': return {0,0,9,22,0,0,0};
-        default: return {0,0,0,0,0,0,0};
+    case 'A':
+        return {14, 17, 17, 31, 17, 17, 17};
+    case 'B':
+        return {30, 17, 17, 30, 17, 17, 30};
+    case 'C':
+        return {14, 17, 16, 16, 16, 17, 14};
+    case 'D':
+        return {30, 17, 17, 17, 17, 17, 30};
+    case 'E':
+        return {31, 16, 16, 30, 16, 16, 31};
+    case 'F':
+        return {31, 16, 16, 30, 16, 16, 16};
+    case 'G':
+        return {14, 17, 16, 23, 17, 17, 15};
+    case 'H':
+        return {17, 17, 17, 31, 17, 17, 17};
+    case 'I':
+        return {14, 4, 4, 4, 4, 4, 14};
+    case 'J':
+        return {7, 2, 2, 2, 2, 18, 12};
+    case 'K':
+        return {17, 18, 20, 24, 20, 18, 17};
+    case 'L':
+        return {16, 16, 16, 16, 16, 16, 31};
+    case 'M':
+        return {17, 27, 21, 21, 17, 17, 17};
+    case 'N':
+        return {17, 25, 21, 19, 17, 17, 17};
+    case 'O':
+        return {14, 17, 17, 17, 17, 17, 14};
+    case 'P':
+        return {30, 17, 17, 30, 16, 16, 16};
+    case 'Q':
+        return {14, 17, 17, 17, 21, 18, 13};
+    case 'R':
+        return {30, 17, 17, 30, 20, 18, 17};
+    case 'S':
+        return {15, 16, 16, 14, 1, 1, 30};
+    case 'T':
+        return {31, 4, 4, 4, 4, 4, 4};
+    case 'U':
+        return {17, 17, 17, 17, 17, 17, 14};
+    case 'V':
+        return {17, 17, 17, 17, 17, 10, 4};
+    case 'W':
+        return {17, 17, 17, 21, 21, 21, 10};
+    case 'X':
+        return {17, 17, 10, 4, 10, 17, 17};
+    case 'Y':
+        return {17, 17, 10, 4, 4, 4, 4};
+    case 'Z':
+        return {31, 1, 2, 4, 8, 16, 31};
+    case '0':
+        return {14, 17, 19, 21, 25, 17, 14};
+    case '1':
+        return {4, 12, 4, 4, 4, 4, 14};
+    case '2':
+        return {14, 17, 1, 2, 4, 8, 31};
+    case '3':
+        return {30, 1, 1, 14, 1, 1, 30};
+    case '4':
+        return {2, 6, 10, 18, 31, 2, 2};
+    case '5':
+        return {31, 16, 16, 30, 1, 1, 30};
+    case '6':
+        return {14, 16, 16, 30, 17, 17, 14};
+    case '7':
+        return {31, 1, 2, 4, 8, 8, 8};
+    case '8':
+        return {14, 17, 17, 14, 17, 17, 14};
+    case '9':
+        return {14, 17, 17, 15, 1, 1, 14};
+    case '.':
+        return {0, 0, 0, 0, 0, 12, 12};
+    case ',':
+        return {0, 0, 0, 0, 0, 12, 8};
+    case ':':
+        return {0, 12, 12, 0, 12, 12, 0};
+    case ';':
+        return {0, 12, 12, 0, 12, 8, 0};
+    case '!':
+        return {4, 4, 4, 4, 4, 0, 4};
+    case '?':
+        return {14, 17, 1, 2, 4, 0, 4};
+    case '-':
+        return {0, 0, 0, 31, 0, 0, 0};
+    case '_':
+        return {0, 0, 0, 0, 0, 0, 31};
+    case '+':
+        return {0, 4, 4, 31, 4, 4, 0};
+    case '=':
+        return {0, 0, 31, 0, 31, 0, 0};
+    case '/':
+        return {1, 2, 2, 4, 8, 8, 16};
+    case '\\':
+        return {16, 8, 8, 4, 2, 2, 1};
+    case '(':
+        return {2, 4, 8, 8, 8, 4, 2};
+    case ')':
+        return {8, 4, 2, 2, 2, 4, 8};
+    case '[':
+        return {14, 8, 8, 8, 8, 8, 14};
+    case ']':
+        return {14, 2, 2, 2, 2, 2, 14};
+    case '<':
+        return {2, 4, 8, 16, 8, 4, 2};
+    case '>':
+        return {8, 4, 2, 1, 2, 4, 8};
+    case '*':
+        return {0, 17, 10, 31, 10, 17, 0};
+    case '#':
+        return {10, 10, 31, 10, 31, 10, 10};
+    case '$':
+        return {4, 15, 20, 14, 5, 30, 4};
+    case '%':
+        return {17, 2, 4, 8, 16, 17, 0};
+    case '&':
+        return {12, 18, 20, 8, 21, 18, 13};
+    case '@':
+        return {14, 17, 23, 21, 23, 16, 14};
+    case '\'':
+        return {4, 4, 8, 0, 0, 0, 0};
+    case '"':
+        return {10, 10, 20, 0, 0, 0, 0};
+    case '^':
+        return {4, 10, 17, 0, 0, 0, 0};
+    case '|':
+        return {4, 4, 4, 4, 4, 4, 4};
+    case '`':
+        return {8, 4, 2, 0, 0, 0, 0};
+    case '~':
+        return {0, 0, 9, 22, 0, 0, 0};
+    default:
+        return {0, 0, 0, 0, 0, 0, 0};
     }
 }
 
-TeletextBitmap TeletextRenderer::render(std::span<const std::uint8_t> ram,
-                                        const CRTC6845& crtc,
+TeletextBitmap TeletextRenderer::render(std::span<const std::uint8_t> ram, const CRTC6845& crtc,
                                         std::uint64_t frameNumber) const {
     constexpr unsigned cellWidth = 12;
     constexpr unsigned cellHeight = 20;
@@ -72,7 +175,8 @@ TeletextBitmap TeletextRenderer::render(std::span<const std::uint8_t> ram,
     bitmap.width = columns * cellWidth;
     bitmap.height = rows * cellHeight;
     bitmap.rgba.assign(static_cast<std::size_t>(bitmap.width) * bitmap.height * 4, 0);
-    for (std::size_t index = 3; index < bitmap.rgba.size(); index += 4) bitmap.rgba[index] = 255;
+    for (std::size_t index = 3; index < bitmap.rgba.size(); index += 4)
+        bitmap.rgba[index] = 255;
 
     const auto start = static_cast<unsigned>(crtc.displayStart() & 0x03FF);
     for (unsigned row = 0; row < rows; ++row) {
@@ -90,17 +194,28 @@ TeletextBitmap TeletextRenderer::render(std::span<const std::uint8_t> ram,
             const auto originX = columnIndex * cellWidth;
             const auto originY = row * cellHeight;
             for (unsigned y = 0; y < cellHeight; ++y) {
-                for (unsigned x = 0; x < cellWidth; ++x) pixel(bitmap, originX + x, originY + y, bg);
+                for (unsigned x = 0; x < cellWidth; ++x)
+                    pixel(bitmap, originX + x, originY + y, bg);
             }
             if (character < 0x20) {
-                if (character >= 0x01 && character <= 0x07) { foreground = character; graphics = false; }
-                else if (character == 0x08) flash = true;
-                else if (character == 0x09) flash = false;
-                else if (character >= 0x11 && character <= 0x17) { foreground = character - 0x10; graphics = true; }
-                else if (character == 0x19) separated = false;
-                else if (character == 0x1A) separated = true;
-                else if (character == 0x1C) background = 0;
-                else if (character == 0x1D) background = foreground;
+                if (character >= 0x01 && character <= 0x07) {
+                    foreground = character;
+                    graphics = false;
+                } else if (character == 0x08)
+                    flash = true;
+                else if (character == 0x09)
+                    flash = false;
+                else if (character >= 0x11 && character <= 0x17) {
+                    foreground = character - 0x10;
+                    graphics = true;
+                } else if (character == 0x19)
+                    separated = false;
+                else if (character == 0x1A)
+                    separated = true;
+                else if (character == 0x1C)
+                    background = 0;
+                else if (character == 0x1D)
+                    background = foreground;
                 continue;
             }
 

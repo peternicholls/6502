@@ -17,9 +17,10 @@ is governed separately by the [product strand](product/README.md).
 | Basic BBC boot | OS 1.20 + BASIC II smoke test reaches the BASIC idle loop and renders startup | Green smoke test |
 | Core build | GCC 13, C++20, warnings promoted to errors | Green |
 | Swift package | BeebKit tests and full package build on Apple Swift 6.2 | Green |
+| C1 runtime ownership | One owner, capacity-64 FIFO, safe-point lifecycle, exact replay, structured C/Swift recovery | Green; local TSan N/A |
 | C0 aggregate evidence | `make verify-c0`: all 11 macOS groups; explicit portable profile passes with Swift groups N/A | Green |
 | Lawful exact references | Ten identical clean-room runs; exact CPU state plus 320×200 bitmap and 480×500 Mode 7 PPMs | Green |
-| Code documentation | Strict Doxygen + DocC site, link/markup/public-surface checks, zero debt | Green |
+| Code documentation | Generated public Doxygen + DocC references; branch-aware internal named-abstraction checks; separate public/internal debt baselines at zero | Green within enforced scope |
 
 ## C0 foundation evidence
 
@@ -42,6 +43,112 @@ C++, provenance, exact-reference, and Doxygen groups pass, while the two
 Swift-specific groups are explicitly not applicable. CI retains both direct
 jobs and complete portable/macOS aggregate jobs.
 
+## C1 pre-release candidate evidence
+
+The clean detached candidate at revision
+`64e8ef6db48c09565b2c99d2def2a5493bba2191` passed the complete local macOS gate
+on 2026-07-15. This checkpoint deliberately precedes the 0.2.0 version and final
+roadmap synchronization tasks; the completion candidate is rerun after those
+changes rather than treating this intermediate revision as the release.
+
+| Command | Exact result |
+| --- | --- |
+| `make test` | 42/42 tests passed, including C 0.2, runtime replay, 10,000-command, and shutdown overlap cases |
+| `make sanitize` | 37/37 quick tests passed under UndefinedBehaviorSanitizer |
+| `make thread-sanitize` | N/A: the local Apple-clang ThreadSanitizer probe is not executable on this host |
+| `swift test` | 7/7 XCTest cases passed, including task-group lifecycle/input/observation concurrency |
+| `swift build` | Complete package and demo build passed |
+| `make verify-c0` | All 11 macOS groups passed; exact state, bitmap, and Mode 7 references remained unchanged |
+| `make test-c1` | All six aggregate groups passed; the injected-failure runner proved later groups are not masked |
+| `make docs-check` | Strict Doxygen and Swift-DocC macOS profile passed |
+| `git status --short` / `git diff --check` | No output in the detached candidate |
+
+ThreadSanitizer is not counted as a pass. The normal mixed-command and bounded
+shutdown races ran in both `make test` and `make test-c1`; supported CI must
+still execute the real ThreadSanitizer binary.
+
+## C1 completion candidate evidence
+
+After the 0.2.0 and roadmap changes, clean detached revision
+`5ed22995b0c79e708a02403bdb5799f623cf4cfd` reran every distinct command in the
+C1 quickstart on 2026-07-15:
+
+- `make test`: 42/42 passed;
+- `make sanitize`: 37/37 quick tests passed;
+- `swift test`: 7/7 passed, and `swift build` completed;
+- `make verify-c0`: all 11 macOS groups passed with exact references unchanged;
+- focused runtime contract, replay, and race scripts passed 10, 2, and 2 tests
+  respectively;
+- `make test-c1`: all six groups passed, including public-boundary,
+  documentation-negative, and aggregate-failure-propagation coverage;
+- `make docs-check` and `Tests/C1/test-documentation.sh` passed;
+- `make thread-sanitize` reported N/A after the unsupported local probe;
+- `git status --short`, `git diff --check`, and the tracked `.build` query
+  produced no output.
+
+The phase-closing commit changes only this evidence ledger and the completed
+task marker. Its committed revision is checked again for generated
+documentation and a clean tree; no empty checkpoint commit is created.
+
+## C1 remediation completion evidence
+
+The Phase 12 remediation candidate built from `f38ea42` plus the scoped T076
+changes passed the complete local macOS gate on 2026-07-17. A final read-only
+code review returned APPROVE with no CRITICAL or HIGH findings; its two medium
+documentation/traceability notes were corrected before the phase commit.
+
+| Command | Exact result |
+| --- | --- |
+| `make test` | 49/49 tests passed |
+| `make sanitize` | 44/44 quick tests passed under UndefinedBehaviorSanitizer |
+| `make thread-sanitize` | N/A: ThreadSanitizer is not supported by the local compiler/host combination; supported Linux CI remains strict |
+| `swift test` | 10/10 XCTest cases passed |
+| `swift build` | Complete package and demo build passed |
+| `make verify-c0` | All 11 macOS evidence groups passed with exact references unchanged |
+| `make test-c1` | All six groups passed, including ten normal 10,000-command race repetitions and the replay digest suite |
+| `make docs-check` / `make format-check` | Strict generated documentation and formatting gates passed |
+| Clang static analysis | Every `Sources/BeebCore/src/*.cpp` translation unit completed without a diagnostic |
+| `git diff --check` / `git ls-files .build` | No output |
+| `git status --short` | Before the phase commit, only the scoped T076 source, test, script, specification, and documentation paths were listed |
+
+The retained fault boundary now keeps legal completed instructions and their
+device ticks, while allocation/internal failures restore the whole-command
+checkpoint. Replay evidence includes hidden CPU interrupt latches, ROM/media,
+VIA timers and edges, CRTC adjustment state, sound phase/noise state, and FDC
+transfer state. Destructive tools require their own ownership marker before
+removing an existing `.build` directory. C and Swift evidence covers resource
+recovery and shutdown unavailability, and fault/reset recovery runs while
+observers contend for the runtime FIFO.
+
+## Release state
+
+Version 0.2.0 remains an unreleased development candidate. Live verification on
+2026-07-16 found no tags from `git ls-remote --tags origin`, no `v0.2.0` entry
+through the GitHub release API, and no releases or tags on the public repository
+pages. The annotated tag and published notes required by
+[RELEASING.md](RELEASING.md) therefore do not exist. `CHANGELOG.md` keeps the
+0.2.0 section explicitly `Unreleased`; no tag or release was created during
+remediation.
+
+## C1 verified outcome
+
+C1 is complete at the architectural and public-boundary level:
+
+- `MachineRuntime` is the only supported owner of aggregate BBC machine state;
+- start, pause, reset, media, input, observation, fault, and shutdown commands
+  share one bounded FIFO and complete at documented safe points;
+- sustained work uses deterministic 2,048-cycle minimum slices with no host
+  wall-clock input, and captured concurrent interleavings replay exactly;
+- C 0.2 returns operation-owned structured statuses and caller-owned frames;
+- Swift preserves typed categories and diagnostics without a redundant lock;
+- accepted-before-shutdown work drains, new entries reject, and destruction
+  waits calls already inside the C boundary.
+
+This evidence unlocks C2 bounded-output specification as the default next core
+work and C3 session-continuity specification as an allowed parallel path. It
+does not claim bounded frame/audio production, snapshot persistence, or
+bus-cycle fidelity.
+
 Approved evidence is clean-room and byte exact:
 
 | Observation | SHA-256 | Verified scope |
@@ -50,10 +157,20 @@ Approved evidence is clean-room and byte exact:
 | Bitmap frame | `5882cedf1a0939ab8e77144fd73bc713ae13a5b2e2faece7110c5fb40faf4f00` | Complete 320×200 PPM for the named bitmap workload |
 | Mode 7 frame | `c4c9884af9187ab1178f63480962b6921b98a87e1e674371c40904d505fcc994` | Complete 480×500 PPM for the named clean-room Mode 7 workload |
 
-The documentation gate covers all 12 exported C/C++/C ABI header surfaces, all
-public `BeebKit` symbols, and four focused conceptual guides. The module map and
-private header sections are classified internal-only; the tracked debt baseline
-is zero. Generated output remains ignored under `.build/docs/`.
+The generated public reference covers all 12 exported C/C++/C ABI header
+surfaces, all public `BeebKit` symbols, and four focused conceptual guides.
+Representative generated pages include `beeb_c.h`, `MachineRuntime`, runtime
+ownership, and the host boundary. Doxygen remains public-reference oriented; it
+does not claim generated private-member completeness.
+
+Changed private/internal named abstractions are instead enforced by the
+branch-aware source gate using `DOCS_BASE=<base>`. The tracked public and
+internal debt baselines are independently zero. That means no reviewed debt is
+currently recorded within either enforced scope, not that every private field
+is generated or requires prose. The only reviewed exclusions are SwiftPM's
+non-declaration module-map wiring and self-evident fields, accessors, and
+delegators without an independent responsibility boundary. Generated output
+remains ignored under `.build/docs/`.
 
 The descriptive throughput comparison used five 100,000-cycle Mode 7 samples
 on an Apple M2 Ultra with Apple clang 17.0.0 and the release `-O2` Make build.
@@ -79,13 +196,12 @@ latency, release, or product-performance guarantee.
 
 ## Current core focus
 
-C0 baseline evidence is complete. C1 runtime ownership is the next default
-feature source; it must define the single execution owner, recoverable command
-boundaries, and completed-instruction safe point before bounded output or
-snapshot work depends on them. Bounded output contracts and session continuity
-then unlock the active Machine horizon. Bus-cycle implementation follows the
-runtime safe-point and snapshot-invariant decisions so it cannot accidentally
-invalidate public session state.
+C0 baseline evidence and C1 runtime ownership are complete. C2 bounded frame,
+audio, and diagnostic contracts are the default next Spec Kit source. C3
+session continuity may be specified and implemented in parallel because the C1
+completed-instruction safe point is fixed. Bus-cycle implementation remains
+queued until C3 fixes the version-1 snapshot invariant, so it cannot
+accidentally invalidate public session state.
 
 The [core roadmap](CORE_ROADMAP.md) owns technical sequence; the tables above
 own verified hardware-fidelity status. The C0 evidence does not close any gap in

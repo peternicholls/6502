@@ -13,9 +13,12 @@ void CRTC6845::reset() {
 
 void CRTC6845::write(std::uint8_t value) {
     if (selected_ > 17) return;
-    static constexpr std::array<std::uint8_t, 18> masks{
-        0xFF,0xFF,0xFF,0xFF,0x7F,0x1F,0x7F,0x7F,0xF3,0x1F,0x7F,0x1F,0x3F,0xFF,0x3F,0xFF,0x3F,0xFF
-    };
+    // Register widths and read visibility follow the MC6845 programming model:
+    // writes discard reserved bits, while only cursor/light-pen registers are readable.
+    // See docs/REFERENCES.md for the 6845 reference used by this clean-room model.
+    static constexpr std::array<std::uint8_t, 18> masks{0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0x1F,
+                                                        0x7F, 0x7F, 0xF3, 0x1F, 0x7F, 0x1F,
+                                                        0x3F, 0xFF, 0x3F, 0xFF, 0x3F, 0xFF};
     registers_[selected_] = static_cast<std::uint8_t>(value & masks[selected_]);
 }
 

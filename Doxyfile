@@ -12,6 +12,8 @@ STRIP_FROM_PATH        = .
 # Only explicitly documented public declarations belong in the reference.
 EXTRACT_ALL            = NO
 EXTRACT_PRIVATE        = NO
+# Private/internal named abstractions are enforced branch-wise by
+# scripts/build-docs.sh; Doxygen output remains the supported public reference.
 EXTRACT_STATIC         = NO
 HIDE_UNDOC_MEMBERS     = NO
 HIDE_UNDOC_CLASSES     = NO

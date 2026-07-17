@@ -6,8 +6,8 @@ status message without relying on Acorn MOS, BASIC or a character ROM.
 
 ```sh
 make demo-rom all
-.build/beeb-headless --os .build/cleanroom-demo.rom \
-  --cycles 100000 --frame .build/cleanroom-demo.ppm
+.build/cpp/beeb-headless --os .build/cpp/cleanroom-demo.rom \
+  --cycles 100000 --frame .build/cpp/cleanroom-demo.ppm
 ```
 
 The generated `.rom` and `.ppm` files remain in `.build` and are not source

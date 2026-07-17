@@ -6,8 +6,27 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 
 ## [Unreleased]
 
+No post-0.2.0-candidate changes have been assigned to a later version.
+
+## [0.2.0] - Unreleased
+
+This is the current development candidate. It has not been published as an
+annotated `v0.2.0` tag or GitHub release; complete the release checklist before
+replacing `Unreleased` with a date.
+
 ### Added
 
+- A single-owner `MachineRuntime` with a capacity-64 FIFO, deterministic
+  instruction safe points, sustained execution, bounded commands, shutdown
+  drain/join, fault recovery, and opt-in exact replay evidence.
+- A completed structured C 0.2 boundary with eight operation-scoped status
+  categories, success-only out-parameters, caller-owned frame allocations, and
+  destroy-overlap safety.
+- Typed Swift lifecycle, safe-point, fault, and status values with concurrent
+  task-group coverage and no redundant host-side machine lock.
+- A C1 aggregate covering public boundaries, transaction ordering, exact replay,
+  10,000-command/shutdown races, negative documentation fixtures, and aggregate
+  failure propagation.
 - Swift package regression tests for the public host boundary.
 - A public runtime version contract and `--version` command.
 - A documented release checklist and version-consistency check.
@@ -26,6 +45,14 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 
 ### Changed
 
+- **Breaking:** Replaced the pre-1.0 C sentinel and `beeb_last_error` API with
+  structured status returns and explicit outputs; all repository consumers now
+  use the 0.2 contract.
+- Routed the headless BBC and evidence tools through the supported runtime
+  owner. BBC-mode `--trace` is rejected; instruction-level tracing remains
+  available only in standalone functional CPU mode.
+- Made Swift reset, input, audio, and observation failures explicit throwing
+  operations and moved serialization into the C++ runtime owner.
 - Reworked the emulator roadmap into dependency-aware delivery phases with
   explicit product traceability, Spec Kit feature slices, parallelism rules and
   measurable entry and exit evidence.
@@ -57,5 +84,4 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 - Corrected nonzero CRTC vertical-adjust frame timing.
 - Rendered Mode 7 control-code cells using the active background colour.
 
-[Unreleased]: https://github.com/peternicholls/6502/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/peternicholls/6502/releases/tag/v0.1.0
+[Unreleased]: https://github.com/peternicholls/6502/compare/develop...HEAD
