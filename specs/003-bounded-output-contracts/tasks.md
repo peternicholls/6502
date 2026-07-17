@@ -64,7 +64,7 @@
 **Goal**: Expose consistent progress, capacities, demand, pressure, and host-observed emulation-rate diagnostics.
 **Independent Test**: C++, C, Swift, replay, and race tests pass with exact counters and rate ratio within 0.1%, without changing core state.
 
-- [ ] T026 [P] [US3] Add failing diagnostic consistency, depth/capacity, demand, pressure-counter, and cycle-observation tests in `Tests/test_main.cpp`
+- [x] T026 [P] [US3] Add failing diagnostic consistency, depth/capacity, demand, pressure-counter, and cycle-observation tests in `Tests/test_main.cpp`
 - [ ] T027 [P] [US3] Add failing concurrent producer/consumer and shutdown/lifecycle diagnostic tests in `Tests/C2/test-output-races.sh`
 - [ ] T028 [P] [US3] Add failing C diagnostic snapshot and synthetic emulation-rate helper tests in `Tests/C2/test-output-contract.sh`
 - [ ] T029 [P] [US3] Add failing Swift diagnostic mapping, recovery, and 0.1%-tolerance rate tests in `Tests/BeebKitTests/BeebMachineTests.swift`

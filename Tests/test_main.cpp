@@ -2286,6 +2286,54 @@ void testC2AudioFIFOPressureDemandAndAccounting() {
              counters.audioSamplesConsumed + counters.audioSamplesOverrun + queue.depth());
 }
 
+void testC2DiagnosticsAreConsistentAndObservational() {
+    beeb::MachineRuntime runtime;
+    checkRuntimeOK(runtime.loadOSROM(makeLoopingOSROM()));
+    checkRuntimeOK(runtime.reset());
+
+    const auto initial = runtimeValue(runtime.outputDiagnostics());
+    const auto initialCPU = runtimeValue(runtime.cpuState());
+    CHECK_EQ(initial.totalCycles, initialCPU.cycles);
+    CHECK_EQ(initial.latestFrameNumber, 0U);
+    CHECK_EQ(initial.frameDepth, 0U);
+    CHECK_EQ(initial.frameCapacity, beeb::completedFrameCapacity);
+    CHECK_EQ(initial.audioDepth, 0U);
+    CHECK_EQ(initial.audioCapacity, beeb::audioSampleCapacity);
+    CHECK_EQ(initial.audioDemand, beeb::audioTargetDepth);
+    CHECK(initial.counters == beeb::OutputCounters{});
+    CHECK(initial.lastStatus == beeb::OutputStatusCode::ok);
+
+    const auto actualCycles = runtimeValue(runtime.runFor(250));
+    CHECK(actualCycles >= 250);
+    const auto produced = runtimeValue(runtime.outputDiagnostics());
+    CHECK_EQ(produced.totalCycles, initial.totalCycles + actualCycles);
+    CHECK_EQ(produced.audioDepth, produced.counters.audioSamplesProduced);
+    CHECK_EQ(produced.audioDemand, beeb::audioTargetDepth - produced.audioDepth);
+    CHECK_EQ(produced.counters.audioSamplesProduced, produced.counters.audioSamplesConsumed +
+                                                         produced.counters.audioSamplesOverrun +
+                                                         produced.audioDepth);
+    CHECK_EQ(produced.counters.framesProduced, produced.counters.framesConsumed +
+                                                   produced.counters.framesDropped +
+                                                   produced.frameDepth);
+
+    const auto partial = runtime.drainAudio(produced.audioDepth + 5);
+    CHECK(partial.status.code == beeb::OutputStatusCode::underrun);
+    CHECK_EQ(partial.chunk.samples.size(), produced.audioDepth);
+    CHECK_EQ(partial.chunk.shortfall, 5U);
+
+    const auto pressured = runtimeValue(runtime.outputDiagnostics());
+    CHECK_EQ(pressured.totalCycles, produced.totalCycles);
+    CHECK_EQ(pressured.audioDepth, 0U);
+    CHECK_EQ(pressured.audioDemand, beeb::audioTargetDepth);
+    CHECK_EQ(pressured.counters.audioSamplesConsumed, produced.audioDepth);
+    CHECK_EQ(pressured.counters.audioSamplesUnderrun, 5U);
+    CHECK(pressured.lastStatus == beeb::OutputStatusCode::underrun);
+
+    const auto repeated = runtimeValue(runtime.outputDiagnostics());
+    CHECK(repeated == pressured);
+    CHECK_EQ(runtimeValue(runtime.cpuState()).cycles, pressured.totalCycles);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2371,6 +2419,8 @@ int main(int argc, char** argv) {
          testC2CompletedFrameFIFOAndAccounting},
         {"C2 audio: FIFO pressure demand and accounting",
          testC2AudioFIFOPressureDemandAndAccounting},
+        {"C2 diagnostics: consistent observational pressure snapshot",
+         testC2DiagnosticsAreConsistentAndObservational},
     };
 
     unsigned failed = 0;
