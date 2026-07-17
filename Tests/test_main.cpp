@@ -927,6 +927,39 @@ std::array<std::uint8_t, 0x4000> makeLoopingOSROM() {
     return os;
 }
 
+std::array<std::uint8_t, 0x4000> makeOutputOSROM() {
+    auto os = makeNOPOSROM();
+    std::size_t cursor = 0;
+    const auto emit = [&](std::uint8_t byte) { os[cursor++] = byte; };
+    const auto loadImmediate = [&](std::uint8_t value) {
+        emit(0xA9);
+        emit(value);
+    };
+    const auto storeAbsolute = [&](std::uint16_t address) {
+        emit(0x8D);
+        emit(static_cast<std::uint8_t>(address));
+        emit(static_cast<std::uint8_t>(address >> 8));
+    };
+    const auto setCRTC = [&](std::uint8_t reg, std::uint8_t value) {
+        loadImmediate(reg);
+        storeAbsolute(0xFE00);
+        loadImmediate(value);
+        storeAbsolute(0xFE01);
+    };
+    setCRTC(1, 1);
+    setCRTC(6, 1);
+    setCRTC(9, 0);
+    setCRTC(12, 0);
+    setCRTC(13, 0);
+    loadImmediate(0x1C);
+    storeAbsolute(0xFE20);
+    const auto idle = static_cast<std::uint16_t>(0xC000 + cursor);
+    emit(0x4C);
+    emit(static_cast<std::uint8_t>(idle));
+    emit(static_cast<std::uint8_t>(idle >> 8));
+    return os;
+}
+
 std::array<std::uint8_t, 0x4000> makeLateFaultOSROM() {
     auto os = makeNOPOSROM();
     const std::array<std::uint8_t, 11> program{
@@ -2357,6 +2390,56 @@ void testC2DiagnosticsAreConsistentAndObservational() {
     CHECK_EQ(runtimeValue(runtime.cpuState()).cycles, pressured.totalCycles);
 }
 
+void testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting() {
+    beeb::MachineRuntime runtime;
+    checkRuntimeOK(runtime.loadOSROM(makeOutputOSROM()));
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.runUntilFrame(200'000)));
+    CHECK(runtimeValue(runtime.runFor(2'000'000)) >= 2'000'000);
+
+    const auto before = runtimeValue(runtime.outputDiagnostics());
+    CHECK(before.frameDepth > 0);
+    CHECK(before.audioDepth > 0);
+    checkRuntimeOK(runtime.reset());
+
+    const auto after = runtimeValue(runtime.outputDiagnostics());
+    CHECK_EQ(after.frameDepth, 0U);
+    CHECK_EQ(after.audioDepth, 0U);
+    CHECK_EQ(after.audioDemand, beeb::audioTargetDepth);
+    CHECK_EQ(after.latestFrameNumber, before.latestFrameNumber);
+    CHECK_EQ(after.counters.framesProduced, before.counters.framesProduced);
+    CHECK_EQ(after.counters.framesConsumed, before.counters.framesConsumed);
+    CHECK_EQ(after.counters.framesDropped, before.counters.framesDropped + before.frameDepth);
+    CHECK_EQ(after.counters.audioSamplesProduced, before.counters.audioSamplesProduced);
+    CHECK_EQ(after.counters.audioSamplesConsumed, before.counters.audioSamplesConsumed);
+    CHECK_EQ(after.counters.audioSamplesOverrun,
+             before.counters.audioSamplesOverrun + before.audioDepth);
+    CHECK(after.lastStatus == beeb::OutputStatusCode::ok);
+    CHECK(after.counters.framesProduced ==
+          after.counters.framesConsumed + after.counters.framesDropped + after.frameDepth);
+    CHECK(after.counters.audioSamplesProduced == after.counters.audioSamplesConsumed +
+                                                     after.counters.audioSamplesOverrun +
+                                                     after.audioDepth);
+    CHECK(runtime.dequeueFrame().status.code == beeb::OutputStatusCode::empty);
+    const auto audio = runtime.drainAudio(1);
+    CHECK(audio.status.code == beeb::OutputStatusCode::underrun);
+    CHECK(audio.chunk.samples.empty());
+
+    const auto postResetCycles = runtimeValue(runtime.runFor(122));
+    const auto resumed = runtimeValue(runtime.outputDiagnostics());
+    beeb::MachineRuntime fresh;
+    checkRuntimeOK(fresh.loadOSROM(makeOutputOSROM()));
+    checkRuntimeOK(fresh.reset());
+    const auto freshCycles = runtimeValue(fresh.runFor(122));
+    const auto freshOutput = runtimeValue(fresh.outputDiagnostics());
+    CHECK_EQ(postResetCycles, freshCycles);
+    CHECK_EQ(resumed.counters.audioSamplesProduced - after.counters.audioSamplesProduced,
+             freshOutput.counters.audioSamplesProduced);
+    const auto resumedAudio = runtime.drainAudio(resumed.audioDepth);
+    const auto freshAudio = fresh.drainAudio(freshOutput.audioDepth);
+    CHECK(resumedAudio.chunk.samples == freshAudio.chunk.samples);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2446,6 +2529,8 @@ int main(int argc, char** argv) {
          testC2AudioFIFOPressureDemandAndAccounting},
         {"C2 diagnostics: consistent observational pressure snapshot",
          testC2DiagnosticsAreConsistentAndObservational},
+        {"C2 reset: retained output is discarded with exact accounting",
+         testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting},
     };
 
     unsigned failed = 0;

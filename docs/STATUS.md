@@ -136,23 +136,23 @@ reproducible workload and pass/fail thresholds remain tracked in
 | Queue pressure stress | 10,000 frame and 10,000 audio publications; maximum depths reached and never exceeded 3 frames / 4,096 samples; exact consumed+dropped/overrun accounting |
 | Sustained duration | 10 emulated warm-up seconds followed by 120,000,060 measured cycles, exceeding the required 60 emulated seconds |
 | Runtime conservation | 46,666,683 frames produced = 71 consumed + 46,666,610 dropped + 2 retained; 3,360,001 samples produced = 286,720 consumed + 3,073,281 overrun + 0 retained |
-| Memory | RSS grew 49,152 bytes after warm-up, within the 16,777,216-byte tolerance |
+| Memory | RSS grew 32,768 bytes after warm-up, within the 16,777,216-byte tolerance |
 | Host-observed rate | Expected 2.0, observed 2.0, relative error 0; the helper left runtime diagnostics unchanged |
-| Xcode delivery | All three shared schemes listed; macOS and generic iOS Simulator builds succeeded; the test scheme ran 16 tests with zero failures; ignored local user state did not make the contract fail or rewrite maintained project metadata |
+| Xcode delivery | All three shared schemes listed; macOS and generic iOS Simulator builds succeeded; the test scheme ran 17 tests with zero failures; ignored local user state did not make the contract fail or rewrite maintained project metadata |
 | Independent build paths | The Xcode contract also passed `swift build`, `swift test`, and `make test` without source duplication or user/signing metadata |
 
 The complete local macOS exit matrix then passed on 2026-07-17:
 
 | Command | Exact result |
 | --- | --- |
-| `make test` | 53/53 tests passed |
-| `make sanitize` | 48/48 quick tests passed under UndefinedBehaviorSanitizer |
+| `make test` | 54/54 tests passed |
+| `make sanitize` | 49/49 quick tests passed under UndefinedBehaviorSanitizer |
 | `make thread-sanitize` | N/A: ThreadSanitizer is unsupported by the local compiler/host combination; supported CI remains required |
 | `make format-check` | Passed |
 | `make test-c1` | All six C1 groups passed, including ten normal race repetitions |
-| `make test-c2` | All nine C2 groups passed; the final measurement rerun reported 49,152 bytes RSS growth and zero rate error |
-| `swift test` / `swift build` | 16/16 XCTest cases passed; the package and demo built |
-| `make test-c2-xcode` | All shared schemes listed; macOS and generic iOS Simulator builds passed; 16/16 test-scheme cases passed; maintained project metadata was unchanged |
+| `make test-c2` | All nine C2 groups passed; the final measurement rerun reported 32,768 bytes RSS growth and zero rate error |
+| `swift test` / `swift build` | 17/17 XCTest cases passed; the package and demo built |
+| `make test-c2-xcode` | All shared schemes listed; macOS and generic iOS Simulator builds passed; 17/17 test-scheme cases passed; maintained project metadata was unchanged |
 | `make docs-check` | Complete Doxygen and Swift-DocC generation/link validation passed |
 | `git diff --check` | No output |
 
@@ -176,6 +176,11 @@ rerun also exposed and removed two scheduler-timing assumptions in earlier C1
 evidence: destroy overlap now holds a call after actual boundary admission, and
 the sustained lifecycle test waits for an execution-slice event rather than
 mistaking setup-command ledger entries for production.
+Reset is now an explicit output epoch boundary: retained pre-reset media and
+fractional audio timing are cleared, while runtime-lifetime identities remain
+monotonic and discarded depths enter the existing drop/overrun terms. Fresh
+C++, C, and Swift tests prove post-reset dequeue/drain behavior and both exact
+conservation equations.
 
 ## Release state
 

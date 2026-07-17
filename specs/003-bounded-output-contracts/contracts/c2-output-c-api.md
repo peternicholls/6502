@@ -14,3 +14,7 @@ audio demand, and exact pressure counters. A host helper accepts two snapshots
 and a positive host interval to calculate emulation-rate ratio; host time never
 enters core state. No C++ exception crosses the boundary, and empty, overrun,
 underrun, paused, faulted, and shutting-down outcomes remain distinguishable.
+After `beeb_reset`, dequeue reports empty and audio drain reports an empty
+underrun until new emulated progress produces output. Diagnostics retain
+monotonic identities/counters and include the reset-discarded depths in
+frame-drop/audio-overrun accounting.

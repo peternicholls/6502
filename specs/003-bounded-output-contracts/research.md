@@ -43,6 +43,20 @@ it cannot restore FIFO order after interleaved production); copy after dequeue
 
 **Alternatives considered**: Host timestamps as the source of progress (rejected by constitution and roadmap); sentinel values (rejected because C1 intentionally replaced ambiguous failure shapes).
 
+## Decision: Reset discards retained output without resetting lifetime accounting
+
+**Rationale**: Frames and samples produced before device reset are not current
+output afterward. Reset empties both queues and the fractional audio remainder,
+but frame/sample identities and counters remain monotonic for the runtime
+lifetime. Retained values are counted as frame drops/audio overruns so the
+published conservation equations remain exact at the zero-depth boundary.
+
+**Alternatives considered**: Retain queued output (rejected because it exposes
+pre-reset media as current); zero every counter/identity (rejected because it
+breaks runtime-lifetime diagnostics and delta observers); add reset-only discard
+counters (rejected because the pre-1.0 contract already has exact
+non-consumption discard terms and a wider ABI expansion adds no recovery value).
+
 ## Decision: Commit a top-level Xcode project over existing sources
 
 **Rationale**: `Beeb6502.xcodeproj` provides stable shared macOS app, iOS Simulator app, and test schemes from a clean checkout. It references the same local package/core sources and keeps `Package.swift` plus the Makefile as independent authorities. Shared project metadata is tracked; ignored local user data may exist during ordinary use, while signing identities and derived output are never tracked or required.

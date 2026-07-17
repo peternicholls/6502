@@ -232,13 +232,13 @@ The implemented `003-bounded-output-contracts` slice has passed its required
 measurement gate: 10,000 frames transferred with retained-value immutability;
 separate 10,000-item pressure stress reached but did not exceed capacities 3
 and 4,096; a 10-second warm-up plus 120,000,060 measured cycles balanced both
-conservation equations; the final remediation run's RSS growth was 49,152 bytes
+conservation equations; the final remediation run's RSS growth was 32,768 bytes
 against a 16 MiB limit; and
 the synthetic rate error was zero against a 0.1% tolerance. Shared Xcode
-schemes build macOS and generic iOS Simulator apps and run all 16 Swift tests,
+schemes build macOS and generic iOS Simulator apps and run all 17 Swift tests,
 while Swift Package Manager and Make remain independently green. The final
-matrix passed 53 C++ tests, 48 sanitizer tests, all six C1 groups, all nine C2
-groups, 16 Swift tests, both app schemes, the shared test scheme, formatting,
+matrix passed 54 C++ tests, 49 sanitizer tests, all six C1 groups, all nine C2
+groups, 17 Swift tests, both app schemes, the shared test scheme, formatting,
 and generated documentation. Local ThreadSanitizer remains explicitly N/A and
 requires its supported CI lane. That Linux lane requires the complete portable
 C2 aggregate and rejects an unavailable ThreadSanitizer run. Post-review C and
@@ -252,6 +252,9 @@ The final concurrency regressions synchronize on the semantic boundary they
 claim: actual C-call admission for destroy overlap and an execution-slice
 ledger event for sustained runtime production, rather than elapsed host time or
 the presence of unrelated setup entries.
+Reset now discards retained pre-reset frames/audio and fractional audio timing;
+runtime-lifetime identities remain monotonic, and exact frame-drop/audio-overrun
+accounting preserves the conservation equations at the empty new epoch.
 
 ### Non-goals
 

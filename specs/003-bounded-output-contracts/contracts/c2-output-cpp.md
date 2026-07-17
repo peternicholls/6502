@@ -7,6 +7,11 @@ unconsumed value on overflow. The audio ring retains 4,096 mono Float32 samples
 at 48,000 Hz, targets 2,048 available samples, and drops oldest samples on
 overflow.
 
+Reset discards every retained pre-reset frame/sample and clears fractional
+audio timing. Runtime-lifetime identities and counters remain monotonic; the
+discarded depths enter frame-drop/audio-overrun accounting so conservation
+still holds with both queues empty.
+
 Dequeue transfers an owned C++ value; no result aliases queue storage.
 Diagnostics report total cycles, depths/capacities, demand, and exact pressure
 counters. They never mutate machine state. No consumer callback runs while

@@ -601,6 +601,13 @@ class MachineRuntime::Impl final {
             return ok();
         case RuntimeCommandKind::reset:
             machine_->reset();
+            // Reset establishes a new device epoch. Retained pre-reset values are
+            // accounted as discarded so no stale output crosses that boundary and
+            // runtime-lifetime conservation counters remain exact.
+            frameOutput_.discardRetained();
+            audioOutput_.discardRetained();
+            audioCycleRemainder_ = 0;
+            lastOutputStatus_ = OutputStatusCode::ok;
             runtimeState_ = RuntimeState::paused;
             faultMessage_.clear();
             return ok();

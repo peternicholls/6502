@@ -50,6 +50,9 @@ replacing `Unreleased` with a date.
   through the C and Swift boundaries.
 - Replaced host-delay assumptions in destroy-overlap and sustained-lifecycle
   regressions with barriers on admitted work and the exact execution event.
+- Made reset an explicit output epoch boundary: retained frames/audio and
+  fractional audio timing are cleared, while monotonic identities and exact
+  drop/overrun conservation accounting are preserved.
 
 ## [0.2.0] - Unreleased
 

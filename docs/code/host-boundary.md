@@ -53,6 +53,12 @@ demand, exact flow counters, and latest output status. The standalone
 `beeb_calculate_emulation_rate()` helper compares two such values and one host
 interval without touching a machine or storing host time.
 
+After reset, C and Swift consumers cannot receive retained pre-reset media:
+frame dequeue is empty and audio drain produces an empty typed underrun until
+new emulated execution publishes output. Diagnostics keep runtime-lifetime
+identities and include the discarded reset depths in exact frame-drop and
+audio-overrun accounting.
+
 No C++ exception crosses C. Adapter allocation failures become
 `resource_exhausted`; contained standard or unknown failures become
 `internal_failure`. Outputs remain untouched on every non-OK path except the

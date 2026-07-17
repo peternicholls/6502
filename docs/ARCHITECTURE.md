@@ -76,6 +76,13 @@ view before returning the context, so the ownership chain remains runtime
 result -> C release context -> Swift value with no borrowed producer storage
 and no compensating requeue transaction.
 
+Device reset also forms an output epoch boundary. The owner discards retained
+pre-reset frame/audio storage, clears fractional audio timing, and restores the
+latest output status without rewinding runtime-lifetime identities or counters.
+The discarded depths are accounted as frame drops/audio overruns, preserving
+the same conservation equations while preventing stale media from crossing the
+reset boundary.
+
 ## Evidence-tool boundary
 
 `Tools/beeb-evidence` is a headless host of the same supported C ABI used by

@@ -231,8 +231,33 @@ int main(void) {
                 BEEB_STATUS_INVALID_ARGUMENT))
         return 48;
 
+    if (!produce_frame(machine) ||
+        !expect(beeb_run_cycles(machine, 2000000, &actual_cycles), BEEB_STATUS_OK))
+        return 49;
+    beeb_output_diagnostics before_reset = {0};
+    if (!expect(beeb_get_output_diagnostics(machine, &before_reset), BEEB_STATUS_OK) ||
+        before_reset.frame_depth == 0 || before_reset.audio_depth == 0)
+        return 50;
+    if (!expect(beeb_reset(machine), BEEB_STATUS_OK)) return 51;
+    beeb_output_diagnostics after_reset = {0};
+    if (!expect(beeb_get_output_diagnostics(machine, &after_reset), BEEB_STATUS_OK) ||
+        after_reset.frame_depth != 0 || after_reset.audio_depth != 0 ||
+        after_reset.audio_demand != 2048 ||
+        after_reset.latest_frame_number != before_reset.latest_frame_number ||
+        after_reset.frames_dropped != before_reset.frames_dropped + before_reset.frame_depth ||
+        after_reset.audio_samples_overrun !=
+            before_reset.audio_samples_overrun + before_reset.audio_depth ||
+        after_reset.last_status != BEEB_STATUS_OK)
+        return 52;
+    beeb_frame reset_frame = {0};
+    if (!expect(beeb_dequeue_frame(machine, &reset_frame), BEEB_STATUS_EMPTY)) return 53;
+    memset(&audio_result, 0, sizeof(audio_result));
+    if (!expect(beeb_drain_audio(machine, audio, 1, &audio_result), BEEB_STATUS_UNDERRUN) ||
+        audio_result.copied != 0 || audio_result.shortfall != 1)
+        return 54;
+
     free(audio);
-    return expect(beeb_destroy(machine), BEEB_STATUS_OK) ? 0 : 49;
+    return expect(beeb_destroy(machine), BEEB_STATUS_OK) ? 0 : 55;
 }
 C
 

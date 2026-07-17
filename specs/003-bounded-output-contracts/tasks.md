@@ -110,6 +110,7 @@
 - [x] T051 Require the full C2 aggregate in supported CI and reconcile the feature contracts, quickstart, architecture, status, roadmap, changelog, and contributor guidance with the remediated evidence in `.github/workflows/ci.yml`, `specs/003-bounded-output-contracts/`, `docs/`, `CHANGELOG.md`, and `CONTRIBUTING.md`
 - [x] T052 Replace scheduler-timing inference in the C destroy-overlap regression with direct, private observation of active-call admission in `Sources/BeebCore/src/beeb_c.cpp` and `Tests/test_main.cpp`
 - [x] T053 Make the sustained lifecycle regression wait for its claimed execution-slice event instead of treating earlier command-ledger entries as production evidence in `Tests/test_main.cpp`
+- [x] T054 Clear retained frame/audio output and fractional audio timing at reset without breaking runtime-lifetime identities or conservation accounting, with C++/C/Swift regression and documentation coverage
 
 **Checkpoint**: Review findings are closed with test-first evidence, wider documentation remains honest, and the complete branch exit matrix is rerun.
 

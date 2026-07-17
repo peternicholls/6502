@@ -59,6 +59,13 @@ validation.
 
 ## State transitions
 
+Reset begins a new device-output epoch: retained frame and audio depths become
+zero, fractional audio timing returns to zero, and the latest output status
+returns to success. Runtime-lifetime frame/sample identities and cumulative
+counters remain monotonic. Values discarded at that boundary increment the
+existing frame-drop/audio-overrun totals, preserving both conservation
+equations without presenting pre-reset media as current.
+
 `Produced -> Queued -> Transferred/Consumed` is the normal path. A full queue
 transitions a produced item through the documented overrun policy; an empty
 consumer request returns `Empty` or `Underrun` without creating an invalid

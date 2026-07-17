@@ -125,7 +125,7 @@ typedef struct beeb_audio_drain_result {
     size_t copied;           ///< Valid Float32 values written to the caller buffer.
     size_t shortfall;        ///< Requested values unavailable for this drain.
     size_t demand;           ///< Post-drain samples needed to reach the 2,048 target.
-    uint64_t overrun_count;  ///< Cumulative oldest samples discarded at capacity.
+    uint64_t overrun_count;  ///< Cumulative samples discarded at capacity or reset.
     uint64_t underrun_count; ///< Cumulative exact requested-sample shortfall.
 } beeb_audio_drain_result;
 
@@ -147,10 +147,10 @@ typedef struct beeb_output_diagnostics {
     size_t audio_demand;             ///< Samples needed to reach the target depth.
     uint64_t frames_produced;        ///< Complete frames offered to the FIFO.
     uint64_t frames_consumed;        ///< Complete frames transferred to callers.
-    uint64_t frames_dropped;         ///< Oldest frames discarded at capacity.
+    uint64_t frames_dropped;         ///< Frames discarded at capacity or reset.
     uint64_t audio_samples_produced; ///< Continuous samples offered to the FIFO.
     uint64_t audio_samples_consumed; ///< Continuous samples transferred to callers.
-    uint64_t audio_samples_overrun;  ///< Oldest samples discarded at capacity.
+    uint64_t audio_samples_overrun;  ///< Samples discarded at capacity or reset.
     uint64_t audio_samples_underrun; ///< Exact requested-sample shortfall.
     beeb_status_code last_status;    ///< Latest recoverable output outcome.
 } beeb_output_diagnostics;
@@ -196,7 +196,8 @@ beeb_status beeb_start(beeb_machine* machine);
 /// `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_pause(beeb_machine* machine);
 
-/// Resets CPU and devices, clears a fault, retains media, and finishes paused.
+/// Resets CPU/devices and fractional audio timing, discards retained output with
+/// exact monotonic accounting, clears a fault, retains media, and finishes paused.
 /// @param machine Live runtime token.
 /// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token,
 /// `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure, or

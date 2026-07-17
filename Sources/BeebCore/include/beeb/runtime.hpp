@@ -207,7 +207,8 @@ class MachineRuntime final {
     /// Pauses sustained execution at the next owner safe point.
     /// @return Operation-owned success; pausing while paused is idempotent.
     [[nodiscard]] RuntimeStatus pause();
-    /// Resets the machine, clears a runtime fault, and finishes paused.
+    /// Resets the machine, clears retained output/fractional audio timing and a fault,
+    /// preserves runtime-lifetime output identities/counters, and finishes paused.
     /// @return Operation-owned reset result.
     [[nodiscard]] RuntimeStatus reset();
     /// Executes a whole-instruction minimum budget while paused.

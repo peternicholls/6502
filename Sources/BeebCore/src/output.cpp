@@ -68,6 +68,14 @@ FrameDequeueResult CompletedFrameQueue::dequeue() noexcept {
     return result;
 }
 
+void CompletedFrameQueue::discardRetained() noexcept {
+    counters_.framesDropped += size_;
+    for (auto& slot : slots_)
+        slot.reset();
+    head_ = 0;
+    size_ = 0;
+}
+
 std::uint64_t CompletedFrameQueue::latestFrameNumber() const noexcept {
     return lastPublished_.value_or(0);
 }
@@ -120,6 +128,13 @@ AudioDrainResult AudioSampleQueue::drain(std::size_t maximumSamples) noexcept {
     result.demand = demand();
     result.counters = counters_;
     return result;
+}
+
+void AudioSampleQueue::discardRetained() noexcept {
+    counters_.audioSamplesOverrun += size_;
+    head_ = 0;
+    size_ = 0;
+    oldestSequence_ = nextSequence_;
 }
 
 std::size_t AudioSampleQueue::demand() const noexcept {

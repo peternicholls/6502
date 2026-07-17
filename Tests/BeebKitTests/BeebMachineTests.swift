@@ -460,6 +460,42 @@ final class BeebMachineTests: XCTestCase {
         XCTAssertEqual(first, second)
     }
 
+    func testC2ResetDoesNotExposePreResetOutput() throws {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(outputOSROM())
+        try machine.reset()
+        XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
+        _ = try machine.run(cycles: 2_000_000)
+
+        let before = try machine.outputDiagnostics()
+        XCTAssertGreaterThan(before.frameDepth, 0)
+        XCTAssertGreaterThan(before.audioDepth, 0)
+        try machine.reset()
+
+        let after = try machine.outputDiagnostics()
+        XCTAssertEqual(after.frameDepth, 0)
+        XCTAssertEqual(after.audioDepth, 0)
+        XCTAssertEqual(after.audioDemand, 2_048)
+        XCTAssertEqual(after.latestFrameNumber, before.latestFrameNumber)
+        XCTAssertEqual(
+            after.counters.framesDropped,
+            before.counters.framesDropped + UInt64(before.frameDepth)
+        )
+        XCTAssertEqual(
+            after.counters.audioSamplesOverrun,
+            before.counters.audioSamplesOverrun + UInt64(before.audioDepth)
+        )
+        XCTAssertEqual(after.lastStatus, .ok)
+        assertCoreStatus(.empty) { _ = try machine.dequeueVideoFrame() }
+        XCTAssertThrowsError(try machine.drainAudio(maximumSamples: 1)) { error in
+            guard case let BeebError.audioPressure(.underrun, drain) = error else {
+                return XCTFail("Expected empty post-reset audio underrun, got \(error)")
+            }
+            XCTAssertTrue(drain.samples.isEmpty)
+            XCTAssertEqual(drain.shortfall, 1)
+        }
+    }
+
     func testC2ConcurrentSwiftOutputProductionAndConsumption() async throws {
         let machine = try BeebMachine()
         try machine.loadOSROM(outputOSROM())

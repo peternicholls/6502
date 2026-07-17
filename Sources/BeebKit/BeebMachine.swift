@@ -87,7 +87,7 @@ public struct BeebAudioDrain: Sendable, Equatable {
     public let shortfall: Int
     /// Post-drain samples needed to reach the 2,048-sample target.
     public let demand: Int
-    /// Cumulative oldest samples discarded at capacity.
+    /// Cumulative samples discarded at capacity or reset.
     public let overrunCount: UInt64
     /// Cumulative exact requested-sample shortfall.
     public let underrunCount: UInt64
@@ -99,13 +99,13 @@ public struct BeebOutputCounters: Sendable, Equatable {
     public let framesProduced: UInt64
     /// Complete frames transferred to consumers.
     public let framesConsumed: UInt64
-    /// Oldest frames discarded at capacity.
+    /// Frames discarded at capacity or reset.
     public let framesDropped: UInt64
     /// Continuous audio samples offered to the bounded FIFO.
     public let audioSamplesProduced: UInt64
     /// Continuous audio samples transferred to consumers.
     public let audioSamplesConsumed: UInt64
-    /// Oldest audio samples discarded at capacity.
+    /// Audio samples discarded at capacity or reset.
     public let audioSamplesOverrun: UInt64
     /// Exact requested audio-sample shortfall.
     public let audioSamplesUnderrun: UInt64
@@ -299,7 +299,8 @@ public final class BeebMachine: @unchecked Sendable {
         try Self.check(status)
     }
 
-    /// Resets CPU and devices, clears a fault, retains media, and finishes paused.
+    /// Resets CPU/devices and fractional audio timing, discards retained output with
+    /// exact monotonic accounting, clears a fault, retains media, and finishes paused.
     /// - Throws: ``BeebError/coreStatus(_:_:)`` if reset cannot complete.
     public func reset() throws { try Self.check(beeb_reset(handle)) }
 

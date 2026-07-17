@@ -102,10 +102,10 @@ struct AudioChunk {
 struct OutputCounters {
     std::uint64_t framesProduced = 0;       ///< Complete frames offered to the FIFO.
     std::uint64_t framesConsumed = 0;       ///< Complete frames transferred to consumers.
-    std::uint64_t framesDropped = 0;        ///< Oldest frames discarded on overflow.
+    std::uint64_t framesDropped = 0;        ///< Frames discarded on overflow or reset.
     std::uint64_t audioSamplesProduced = 0; ///< Samples offered to the audio FIFO.
     std::uint64_t audioSamplesConsumed = 0; ///< Samples transferred to consumers.
-    std::uint64_t audioSamplesOverrun = 0;  ///< Oldest samples discarded on overflow.
+    std::uint64_t audioSamplesOverrun = 0;  ///< Samples discarded on overflow or reset.
     std::uint64_t audioSamplesUnderrun = 0; ///< Exact requested sample shortfall.
 
     /// Compares every monotonic accounting value.
@@ -157,6 +157,9 @@ class CompletedFrameQueue final {
     /// Transfers the oldest retained frame.
     /// @return An owned frame, or a structured empty result.
     [[nodiscard]] FrameDequeueResult dequeue() noexcept;
+    /// Discards retained frames at reset while preserving identity and accounting history.
+    /// Each removed frame increments `framesDropped`, keeping conservation exact.
+    void discardRetained() noexcept;
     /// Reports retained frame count.
     /// @return A value in the inclusive range zero to `completedFrameCapacity`.
     [[nodiscard]] std::size_t depth() const noexcept { return size_; }
@@ -200,6 +203,9 @@ class AudioSampleQueue final {
     /// @param maximumSamples Maximum samples to return in owned storage.
     /// @return Owned samples, exact shortfall, post-drain demand, and counters.
     [[nodiscard]] AudioDrainResult drain(std::size_t maximumSamples) noexcept;
+    /// Discards retained samples at reset while preserving sequence and accounting history.
+    /// Each removed sample increments `audioSamplesOverrun`, keeping conservation exact.
+    void discardRetained() noexcept;
     /// Reports the fixed storage limit.
     /// @return `audioSampleCapacity`.
     [[nodiscard]] constexpr std::size_t capacity() const noexcept { return audioSampleCapacity; }
