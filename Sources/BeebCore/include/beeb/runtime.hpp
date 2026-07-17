@@ -2,6 +2,7 @@
 
 #include "beeb/cpu6502.hpp"
 #include "beeb/disc_image.hpp"
+#include "beeb/output.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -160,8 +161,13 @@ struct MachineRuntimeOptions {
 ///
 /// Calls are synchronous to owner-thread completion. Inputs are copied before
 /// acceptance, outputs own their storage, and no machine or device reference
-/// escapes. `docs/code/runtime-ownership.md` owns the lifecycle and ordering model.
-/// Documentation rationale: that guide also owns safe-point and replay constraints.
+/// escapes. Completed-frame/audio producers and their bounded queues are also
+/// owned by the runtime implementation. Only the owner mutates those queues,
+/// after a completed instruction and aggregate device tick; consumer commands
+/// transfer owned values through the same FIFO. The runtime accepts no consumer
+/// callback, so host code never runs while command or output synchronization is
+/// held. `docs/code/runtime-ownership.md` owns the lifecycle and ordering model,
+/// and `docs/code/bounded-output.md` owns the output contract rationale.
 class MachineRuntime final {
   public:
     /// Maximum accepted commands that may remain incomplete.
@@ -245,6 +251,16 @@ class MachineRuntime final {
     /// @return Owned samples or validation/lifecycle/resource failure.
     [[nodiscard]] RuntimeResult<std::vector<float>> renderAudio(std::size_t frames,
                                                                 double sampleRate);
+    /// Transfers the oldest retained completed frame as an owned value.
+    /// @return Empty, lifecycle, allocation, or successful owned-frame result.
+    [[nodiscard]] FrameDequeueResult dequeueFrame();
+    /// Copies and removes up to the requested number of continuous audio samples.
+    /// @param maximumSamples Maximum samples transferred into the owned result.
+    /// @return Owned FIFO samples plus exact shortfall and operation status.
+    [[nodiscard]] AudioDrainResult drainAudio(std::size_t maximumSamples);
+    /// Observes output depths, demand, counters, and emulated progress consistently.
+    /// @return An owned diagnostic snapshot without changing machine state.
+    [[nodiscard]] RuntimeResult<OutputDiagnostics> outputDiagnostics();
     /// Queries the current completed-instruction/device-tick identity in FIFO order.
     /// @return Safe-point identity on success.
     [[nodiscard]] RuntimeResult<SafePoint> safePoint();
@@ -266,7 +282,9 @@ class MachineRuntime final {
     [[nodiscard]] std::uint64_t acceptedCommandCount() const noexcept;
 
   private:
-    /// Hides the machine, synchronization, queue, owner, and diagnostic ledger.
+    /// Hides the machine, owner, synchronization, command/output queues, producers,
+    /// and diagnostic ledger. Output mutation is owner-only; consumer commands
+    /// move or copy owned results and never invoke host callbacks.
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
