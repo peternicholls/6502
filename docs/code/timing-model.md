@@ -53,6 +53,23 @@ Allocation and unexpected implementation failures restore the process-local
 whole-machine checkpoint captured before the execution transaction, so they
 cannot mix restored CPU time with advanced peripheral state.
 
+## Output timebase
+
+C2 publication is part of the owner transaction after completed execution, not
+a host refresh callback. A newly completed machine frame is copied into the
+bounded output FIFO only after the instruction and aggregate device tick that
+made it complete. Continuous audio converts each committed CPU-cycle delta at
+the exact 2 MHz-to-48 kHz ratio `3 / 125`; the owner retains the fractional
+remainder between segments so slice boundaries do not change the sample stream.
+Frame and audio production therefore remain deterministic across bounded and
+sustained execution.
+
+Consumer drains do not advance emulation, and output diagnostics only observe
+one owner boundary. A host may later pair two diagnostic values with a measured
+wall-clock interval to calculate emulated seconds per host second. That pure
+calculation neither changes demand nor feeds time back into the CPU, device,
+frame, or audio schedule.
+
 ## Where to extend fidelity
 
 Future timing work should strengthen the device and bus model behind these
@@ -68,5 +85,7 @@ migration says otherwise, it must:
 - prevent pause, media, input, and observation commands from seeing a partial
   bus transaction;
 - retain one total owner order for command and execution evidence; and
+- preserve frame/audio publication only at complete externally visible safe
+  points, including the exact audio remainder across any finer internal steps;
 - revalidate the 2,048-cycle arbitration and pause-latency contract if internal
   execution no longer maps directly to `CPU6502::step()`.

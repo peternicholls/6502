@@ -50,6 +50,8 @@ paused, it remains paused.
 | runtime state / safe point / CPU / frame | Observe | Observe between slices | Observe | Owned values; frame storage never aliases the machine |
 | fault detail | Observe empty detail | Observe empty detail | Observe retained failure | Owned diagnostic and safe point |
 | audio render | Mutate sound phase and preserve state | Mutate sound phase between slices and preserve state | Rejected | Owned sample vector; finite positive sample rate |
+| completed-frame dequeue / continuous-audio drain | Transfer oldest retained output | Transfer between slices | Rejected | Owned frame or copied FIFO samples; structured empty/underrun/overrun pressure |
+| output diagnostics | Observe | Observe between slices | Observe | One owned, non-mutating snapshot of progress, depths, demand, counters, and latest output status |
 | shutdown | Stop acceptance and drain | Stop acceptance and drain | Stop acceptance and drain | One ordered marker, one owner join |
 
 Payload validation that depends on current machine state occurs on the owner.
@@ -81,6 +83,16 @@ The quiescent safe point is immediately after `CPU6502::step()` completes an
 instruction or interrupt and `BBCMicro::tick()` has advanced every aggregate
 device by that instruction's cycles. `SafePoint` identifies CPU cycles, frame
 number, lifecycle state, and the latest total ledger sequence at that boundary.
+
+C2 production uses that same boundary. After execution advances whole
+instructions and their aggregate device ticks, the owner publishes any newly
+completed RGBA frame and converts the retained CPU-cycle delta to continuous
+48 kHz mono samples. The owner alone mutates the capacity-three frame FIFO,
+capacity-4,096 audio ring, their counters, and the fractional `3 / 125`
+cycle-to-sample remainder. Dequeue, drain, and diagnostic commands therefore
+join the existing FIFO instead of acquiring a producer lock or calling a
+device directly. Reset changes machine state but does not erase runtime-lifetime
+output identities, retained values, or monotonic accounting.
 
 While running, the owner selects a minimum 2,048-cycle execution slice only
 when no command is queued. `BBCMicro::runFor()` finishes whole instructions, so
@@ -142,7 +154,7 @@ calls the same idempotent drain-and-join path. The C handle adds a separate oute
 lifetime guard so `beeb_destroy` can overlap calls already inside the C API
 without releasing the runtime early.
 
-## Diagnostic replay
+## Diagnostic replay and output observations
 
 Full ledger capture is disabled by default. Tests may opt in to an in-memory
 ledger containing one total sequence across accepted commands and internal
@@ -156,6 +168,13 @@ ignored `.build/c1/` storage.
 The ledger is evidence, not a persisted emulator format. C3 owns snapshots and
 versioned persistence. New result variants must extend the result digest, and
 new command payloads must preserve copied ownership and deterministic digesting.
+
+Output diagnostics are a smaller always-available observation, not the opt-in
+ledger. One owner command copies cycles, latest published output identity,
+queue depths and capacities, audio demand, exact counters, and latest output
+status without mutating them. Host elapsed time is accepted only by the pure
+rate calculation over two such values; it is never stored by the owner or used
+to schedule production.
 
 ## Future timing work
 

@@ -19,20 +19,19 @@ The C ABI in `beeb_c.h` is the stable cross-language seam. `BeebKit` owns the
 Swift lifetime and typed value/error mapping. `BeebDemo` owns document import
 and UI.
 
-C2 requires `Beeb6502.xcodeproj` to become the checked-in Apple development and
-application build surface. Its shared schemes will consume the same repository
-sources and package products used by Swift Package Manager; it must not fork,
-copy, or become an alternative authority for `BeebCore`. The portable Makefile
-and `Package.swift` remain required independent build paths. Project settings,
-schemes, and host entitlements may depend on Apple SDKs, but that dependency
-stops at the host boundary. Until C2 implementation evidence is complete,
-opening `Package.swift` remains the verified Apple setup.
+`Beeb6502.xcodeproj` is the checked-in Apple development and application build
+surface. Its shared macOS, iOS Simulator, and test schemes consume the same
+local package products and demo source used by Swift Package Manager; the
+project does not fork, copy, or become an alternative authority for `BeebCore`
+or `BeebKit`. The portable Makefile and `Package.swift` remain required
+independent build paths. Project settings and schemes may depend on Apple SDKs,
+but that dependency stops at the host boundary.
 
 No C++ exception may cross the C ABI. Fallible entry points return structured,
-operation-owned statuses and write outputs only on success. `BeebKit` preserves
-each category and diagnostic as a typed `BeebError` and returns Swift-owned
-values. It adds no lock because the runtime owner already serializes concurrent
-calls.
+operation-owned statuses and write outputs only on success or a documented
+recoverable partial result. `BeebKit` preserves each category and diagnostic as
+a typed `BeebError` and returns Swift-owned values. It adds no lock because the
+runtime owner already serializes concurrent calls.
 
 Within C++, `MachineRuntime` is the supported synchronization boundary for a
 machine. It constructs one `BBCMicro` on one owner thread, accepts copied
@@ -46,8 +45,8 @@ flowchart TD
     Kit --> ABI["C ABI · beeb_c.h"]
     ABI --> Runtime["MachineRuntime · owner + FIFO"]
     Runtime --> Core["CPU + BBC bus"]
+    Runtime --> Queues["Owned frame FIFO + continuous audio ring"]
     Core --> Devices["VIA · CRTC/ULA · 8271 · SN76489"]
-    Devices --> Buffers["RGBA + float audio buffers"]
 ```
 
 ## Runtime ownership closure
@@ -59,11 +58,14 @@ and contains failures as structured C++/C/Swift values. Exact replay records
 accepted host interleaving and emulated slices without turning the ledger into
 a persistence format.
 
-This boundary is now stable input to C2 and C3. C2 may add bounded completed
-frame/audio production behind the owner, and C3 may serialize architectural
-state only at the same quiescent safe point. Neither phase may reintroduce
-direct host access to `BBCMicro`. C1 does not itself define output overflow
-policy or snapshot compatibility.
+This boundary is now stable input to C3. C2 adds bounded completed-frame and
+continuous-audio production behind the same owner, plus non-mutating output
+diagnostics. The capacity-three frame FIFO drops the oldest frame under
+pressure; the capacity-4,096 audio ring does the same for samples and reports
+exact underrun demand. Outputs are owned across C++/C/Swift and publication is
+driven only by committed emulated cycles. C3 may serialize architectural state
+only at the same quiescent safe point. Neither phase may reintroduce direct host
+access to `BBCMicro`, and C2 output is not a persisted format.
 
 ## Evidence-tool boundary
 
@@ -147,8 +149,26 @@ BBC's interleaved bitplanes through the ULA palette. The Mode 7 renderer reads
 the 1 KiB teletext window, applies line-local control state and draws a
 clean-room font/mosaics.
 
-The rendering API returns owned RGBA bytes. A Metal front end can upload this
-as a texture now; a later cycle renderer can preserve the same output contract.
+The renderer supplies machine-owned RGBA bytes. `MachineRuntime` copies each
+newly completed frame into an owner-only capacity-three FIFO at the safe point;
+C++ transfers an owned value, C allocates a caller-released value, and Swift
+copies it into `Data`. A Metal front end can upload this now without borrowing
+renderer or queue storage. A later cycle renderer can preserve the same output
+contract.
+
+## Audio and output diagnostics
+
+Continuous output is fixed mono Float32 at 48 kHz. The runtime converts
+committed 2 MHz CPU cycles using the exact `3 / 125` ratio and retains the
+fractional remainder across slices. Its capacity-4,096 ring never waits for a
+host: oldest samples are dropped under producer pressure, drains return exact
+shortfall and demand, and all boundaries return owned or caller-buffer copies.
+
+One serialized diagnostic command copies progress, queue capacities and
+depths, demand, exact produced/consumed/dropped counters, and latest output
+status without advancing the machine. Host-observed emulation rate is a pure
+calculation over two snapshots and a supplied interval; host wall time never
+becomes an emulated clock.
 
 ## Media and legal boundary
 

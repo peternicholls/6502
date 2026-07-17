@@ -93,7 +93,7 @@
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 - [x] T041 [P] Add C2 aggregate failure propagation, documentation-negative, and Xcode-metadata hygiene coverage in `Tests/C2/test-aggregate-runner.sh`, `Tests/C2/test-documentation.sh`, and `Tests/C2/test-xcode-project.sh`
-- [ ] T042 [P] Update runtime ownership, host boundary, timing, and architecture guides in `docs/code/runtime-ownership.md`, `docs/code/host-boundary.md`, `docs/code/timing-model.md`, and `docs/ARCHITECTURE.md`
+- [x] T042 [P] Update runtime ownership, host boundary, timing, and architecture guides in `docs/code/runtime-ownership.md`, `docs/code/host-boundary.md`, `docs/code/timing-model.md`, and `docs/ARCHITECTURE.md`
 - [ ] T043 [P] Update verified C2 and Xcode-project evidence only after measurements pass in `docs/STATUS.md`, `docs/CORE_ROADMAP.md`, and `docs/product/LEGACY_DECISIONS.md`
 - [ ] T044 Update release notes and synchronized version sources for public contract changes in `CHANGELOG.md`, `VERSION`, and `Sources/BeebCore/include/beeb/version.h`
 - [ ] T045 Run 60 emulated seconds after warm-up plus 10,000-item stress, exact accounting, 16 MiB RSS tolerance, and 0.1% rate tolerance in `Tests/C2/test-output-measurement.sh` using `specs/003-bounded-output-contracts/quickstart.md`
