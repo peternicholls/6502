@@ -1,5 +1,6 @@
 #include "beeb/output.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <type_traits>
 #include <utility>
@@ -66,6 +67,60 @@ FrameDequeueResult CompletedFrameQueue::dequeue() noexcept {
 
 std::uint64_t CompletedFrameQueue::latestFrameNumber() const noexcept {
     return lastPublished_.value_or(0);
+}
+
+OutputStatus AudioSampleQueue::publish(std::span<const float> samples) noexcept {
+    bool overflow = false;
+    for (const auto sample : samples) {
+        if (size_ == 0) oldestSequence_ = nextSequence_;
+        if (size_ == audioSampleCapacity) {
+            samples_[head_] = sample;
+            head_ = (head_ + 1) % audioSampleCapacity;
+            ++oldestSequence_;
+            ++counters_.audioSamplesOverrun;
+            overflow = true;
+        } else {
+            const auto tail = (head_ + size_) % audioSampleCapacity;
+            samples_[tail] = sample;
+            ++size_;
+        }
+        ++nextSequence_;
+        ++counters_.audioSamplesProduced;
+    }
+    return outputStatus(overflow ? OutputStatusCode::overrun : OutputStatusCode::ok);
+}
+
+AudioDrainResult AudioSampleQueue::drain(std::size_t maximumSamples) noexcept {
+    AudioDrainResult result;
+    result.chunk.requested = maximumSamples;
+    result.chunk.firstSample = oldestSequence_;
+    const auto copied = std::min(maximumSamples, size_);
+    try {
+        result.chunk.samples.resize(copied);
+    } catch (...) {
+        result.status.code = OutputStatusCode::resourceExhausted;
+        result.demand = demand();
+        result.counters = counters_;
+        return result;
+    }
+    for (std::size_t index = 0; index < copied; ++index)
+        result.chunk.samples[index] = samples_[(head_ + index) % audioSampleCapacity];
+
+    head_ = (head_ + copied) % audioSampleCapacity;
+    size_ -= copied;
+    oldestSequence_ += copied;
+    counters_.audioSamplesConsumed += copied;
+    result.chunk.shortfall = maximumSamples - copied;
+    counters_.audioSamplesUnderrun += result.chunk.shortfall;
+    result.status.code =
+        result.chunk.shortfall == 0 ? OutputStatusCode::ok : OutputStatusCode::underrun;
+    result.demand = demand();
+    result.counters = counters_;
+    return result;
+}
+
+std::size_t AudioSampleQueue::demand() const noexcept {
+    return size_ < audioTargetDepth ? audioTargetDepth - size_ : 0;
 }
 
 } // namespace beeb

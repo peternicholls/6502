@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -165,6 +166,45 @@ class CompletedFrameQueue final {
 struct AudioDrainResult {
     OutputStatus status; ///< Success, underrun, lifecycle, or failure outcome.
     AudioChunk chunk;    ///< Owned samples and exact request/shortfall accounting.
+    std::size_t demand = audioTargetDepth; ///< Post-drain samples needed to reach target.
+    OutputCounters counters;               ///< Exact pressure totals observed with this drain.
+};
+
+/// Owner-thread-only fixed ring for continuous mono Float32 output.
+///
+/// Publication and drain are serialized by `MachineRuntime`. Storage is fixed
+/// at 4,096 samples, overflow replaces oldest samples, and drains allocate an
+/// owned result before mutating the ring so allocation failure consumes nothing.
+class AudioSampleQueue final {
+  public:
+    /// Publishes ordered samples, dropping oldest retained values at capacity.
+    /// @param samples Deterministic mono Float32 values in production order.
+    /// @return Success, or overrun when one or more oldest samples were dropped.
+    [[nodiscard]] OutputStatus publish(std::span<const float> samples) noexcept;
+    /// Copies and consumes up to the requested number of FIFO samples.
+    /// @param maximumSamples Maximum samples to return in owned storage.
+    /// @return Owned samples, exact shortfall, post-drain demand, and counters.
+    [[nodiscard]] AudioDrainResult drain(std::size_t maximumSamples) noexcept;
+    /// Reports the fixed storage limit.
+    /// @return `audioSampleCapacity`.
+    [[nodiscard]] constexpr std::size_t capacity() const noexcept { return audioSampleCapacity; }
+    /// Reports retained samples.
+    /// @return A value from zero through `audioSampleCapacity`.
+    [[nodiscard]] std::size_t depth() const noexcept { return size_; }
+    /// Reports samples needed to reach the 2,048-sample target.
+    /// @return `max(0, audioTargetDepth - depth())`.
+    [[nodiscard]] std::size_t demand() const noexcept;
+    /// Copies exact audio-flow counters; frame fields remain unchanged.
+    /// @return Monotonic produced, consumed, overrun, and underrun totals.
+    [[nodiscard]] OutputCounters counters() const noexcept { return counters_; }
+
+  private:
+    std::array<float, audioSampleCapacity> samples_{};
+    std::size_t head_ = 0;
+    std::size_t size_ = 0;
+    std::uint64_t oldestSequence_ = 1;
+    std::uint64_t nextSequence_ = 1;
+    OutputCounters counters_;
 };
 
 } // namespace beeb
