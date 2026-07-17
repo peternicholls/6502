@@ -126,6 +126,25 @@ typedef struct beeb_audio_drain_result {
     uint64_t underrun_count; ///< Cumulative exact requested-sample shortfall.
 } beeb_audio_drain_result;
 
+/// Value-only observation of emulated progress and bounded output state.
+typedef struct beeb_output_diagnostics {
+    uint64_t total_cycles;           ///< Completed emulated CPU cycles.
+    uint64_t latest_frame_number;    ///< Latest complete output-frame identity.
+    size_t frame_depth;              ///< Complete frames currently retained.
+    size_t frame_capacity;           ///< Fixed completed-frame capacity.
+    size_t audio_depth;              ///< Continuous samples currently retained.
+    size_t audio_capacity;           ///< Fixed continuous-sample capacity.
+    size_t audio_demand;             ///< Samples needed to reach the target depth.
+    uint64_t frames_produced;        ///< Complete frames offered to the FIFO.
+    uint64_t frames_consumed;        ///< Complete frames transferred to callers.
+    uint64_t frames_dropped;         ///< Oldest frames discarded at capacity.
+    uint64_t audio_samples_produced; ///< Continuous samples offered to the FIFO.
+    uint64_t audio_samples_consumed; ///< Continuous samples transferred to callers.
+    uint64_t audio_samples_overrun;  ///< Oldest samples discarded at capacity.
+    uint64_t audio_samples_underrun; ///< Exact requested-sample shortfall.
+    beeb_status_code last_status;    ///< Latest recoverable output outcome.
+} beeb_output_diagnostics;
+
 /// Returns the immutable library version string.
 /// @return Borrowed process-owned semantic-version string; never null.
 const char* beeb_version_string(void);
@@ -299,6 +318,15 @@ beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
 /// allocated, or `BEEB_STATUS_UNAVAILABLE` during shutdown.
 beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity,
                              beeb_audio_drain_result* out_result);
+
+/// Copies one owner-consistent bounded-output diagnostic observation.
+/// @param machine Live runtime token.
+/// @param out_diagnostics Required output, written only on success.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// output, `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure, or
+/// `BEEB_STATUS_UNAVAILABLE` during shutdown.
+beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
+                                        beeb_output_diagnostics* out_diagnostics);
 
 /// Changes one keyboard-matrix bit in FIFO order.
 /// @param machine Live runtime token.

@@ -63,54 +63,84 @@ beeb_status translateStatus(const beeb::RuntimeStatus& status) noexcept {
 }
 
 /// Maps structured output pressure and failures into the extended C vocabulary.
-beeb_status translateOutputStatus(const beeb::OutputStatus& status) noexcept {
+beeb_status_code translateOutputStatusCode(beeb::OutputStatusCode status) noexcept {
     beeb_status_code code = BEEB_STATUS_INTERNAL_FAILURE;
-    std::string_view fallback = "bounded output failed";
-    switch (status.code) {
+    switch (status) {
     case beeb::OutputStatusCode::ok:
         code = BEEB_STATUS_OK;
-        fallback = {};
         break;
     case beeb::OutputStatusCode::empty:
         code = BEEB_STATUS_EMPTY;
-        fallback = "no completed output is available";
         break;
     case beeb::OutputStatusCode::underrun:
         code = BEEB_STATUS_UNDERRUN;
-        fallback = "output demand exceeded available data";
         break;
     case beeb::OutputStatusCode::overrun:
         code = BEEB_STATUS_OVERRUN;
-        fallback = "oldest bounded output was discarded";
         break;
     case beeb::OutputStatusCode::capacityExceeded:
         code = BEEB_STATUS_CAPACITY_EXCEEDED;
-        fallback = "output capacity was exceeded";
         break;
     case beeb::OutputStatusCode::invalidArgument:
         code = BEEB_STATUS_INVALID_ARGUMENT;
-        fallback = "output argument is invalid";
         break;
     case beeb::OutputStatusCode::invalidState:
         code = BEEB_STATUS_INVALID_STATE;
-        fallback = "output operation is invalid in the current lifecycle";
         break;
     case beeb::OutputStatusCode::resourceExhausted:
         code = BEEB_STATUS_RESOURCE_EXHAUSTED;
-        fallback = "output storage could not be allocated";
         break;
     case beeb::OutputStatusCode::unavailable:
         code = BEEB_STATUS_UNAVAILABLE;
-        fallback = "output runtime is unavailable";
         break;
     case beeb::OutputStatusCode::productionFailed:
         code = BEEB_STATUS_OUTPUT_FAILED;
+        break;
+    case beeb::OutputStatusCode::internalFailure:
+        break;
+    }
+    return code;
+}
+
+/// Maps structured output pressure and failures into the extended C vocabulary.
+beeb_status translateOutputStatus(const beeb::OutputStatus& status) noexcept {
+    std::string_view fallback = "bounded output failed";
+    switch (status.code) {
+    case beeb::OutputStatusCode::ok:
+        fallback = {};
+        break;
+    case beeb::OutputStatusCode::empty:
+        fallback = "no completed output is available";
+        break;
+    case beeb::OutputStatusCode::underrun:
+        fallback = "output demand exceeded available data";
+        break;
+    case beeb::OutputStatusCode::overrun:
+        fallback = "oldest bounded output was discarded";
+        break;
+    case beeb::OutputStatusCode::capacityExceeded:
+        fallback = "output capacity was exceeded";
+        break;
+    case beeb::OutputStatusCode::invalidArgument:
+        fallback = "output argument is invalid";
+        break;
+    case beeb::OutputStatusCode::invalidState:
+        fallback = "output operation is invalid in the current lifecycle";
+        break;
+    case beeb::OutputStatusCode::resourceExhausted:
+        fallback = "output storage could not be allocated";
+        break;
+    case beeb::OutputStatusCode::unavailable:
+        fallback = "output runtime is unavailable";
+        break;
+    case beeb::OutputStatusCode::productionFailed:
         fallback = "output production failed";
         break;
     case beeb::OutputStatusCode::internalFailure:
         break;
     }
-    return makeStatus(code, status.message.empty() ? fallback : std::string_view(status.message));
+    return makeStatus(translateOutputStatusCode(status.code),
+                      status.message.empty() ? fallback : std::string_view(status.message));
 }
 
 /// Maps runtime lifecycle state without exposing implementation storage.
@@ -505,6 +535,35 @@ beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity
                        result.counters.audioSamplesOverrun,
                        result.counters.audioSamplesUnderrun};
         return translateOutputStatus(result.status);
+    });
+}
+
+beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
+                                        beeb_output_diagnostics* out_diagnostics) {
+    if (!out_diagnostics) return missingOutput("output diagnostics are null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.outputDiagnostics();
+        if (!result.status) return translateStatus(result.status);
+        const auto& value = *result.value;
+        const beeb_output_diagnostics output{
+            value.totalCycles,
+            value.latestFrameNumber,
+            value.frameDepth,
+            value.frameCapacity,
+            value.audioDepth,
+            value.audioCapacity,
+            value.audioDemand,
+            value.counters.framesProduced,
+            value.counters.framesConsumed,
+            value.counters.framesDropped,
+            value.counters.audioSamplesProduced,
+            value.counters.audioSamplesConsumed,
+            value.counters.audioSamplesOverrun,
+            value.counters.audioSamplesUnderrun,
+            translateOutputStatusCode(value.lastStatus),
+        };
+        *out_diagnostics = output;
+        return makeStatus(BEEB_STATUS_OK);
     });
 }
 
