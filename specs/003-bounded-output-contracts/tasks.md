@@ -66,7 +66,7 @@
 
 - [x] T026 [P] [US3] Add failing diagnostic consistency, depth/capacity, demand, pressure-counter, and cycle-observation tests in `Tests/test_main.cpp`
 - [x] T027 [P] [US3] Add failing concurrent producer/consumer and shutdown/lifecycle diagnostic tests in `Tests/C2/test-output-races.sh`
-- [ ] T028 [P] [US3] Add failing C diagnostic snapshot and synthetic emulation-rate helper tests in `Tests/C2/test-output-contract.sh`
+- [x] T028 [P] [US3] Add failing C diagnostic snapshot and synthetic emulation-rate helper tests in `Tests/C2/test-output-contract.sh`
 - [ ] T029 [P] [US3] Add failing Swift diagnostic mapping, recovery, and 0.1%-tolerance rate tests in `Tests/BeebKitTests/BeebMachineTests.swift`
 - [ ] T030 [US3] Implement consistent diagnostic snapshots and exact pressure counters in `Sources/BeebCore/include/beeb/output.hpp` and `Sources/BeebCore/src/output.cpp`
 - [ ] T031 [US3] Expose total cycles, depths, capacities, demand, and counters through the C boundary in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`

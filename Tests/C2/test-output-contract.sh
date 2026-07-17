@@ -10,6 +10,7 @@ binary_path="${c2_build_dir}/output-contract"
 cat >"${source_path}" <<'C'
 #include "beeb_c.h"
 
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,8 +130,75 @@ int main(void) {
     if (audio_result.copied != 0 || audio_result.shortfall != 1 ||
         audio_result.underrun_count != underrun_before + 1)
         return 32;
+
+    beeb_output_diagnostics untouched_diagnostics = {0};
+    untouched_diagnostics.frame_depth = 77;
+    if (!expect(beeb_get_output_diagnostics(NULL, &untouched_diagnostics),
+                BEEB_STATUS_INVALID_ARGUMENT))
+        return 33;
+    if (untouched_diagnostics.frame_depth != 77) return 34;
+    if (!expect(beeb_get_output_diagnostics(machine, NULL), BEEB_STATUS_INVALID_ARGUMENT))
+        return 35;
+
+    beeb_output_diagnostics diagnostics = {0};
+    if (!expect(beeb_get_output_diagnostics(machine, &diagnostics), BEEB_STATUS_OK)) return 36;
+    if (diagnostics.total_cycles == 0 || diagnostics.latest_frame_number < 2) return 37;
+    if (diagnostics.frame_capacity != 3 || diagnostics.frame_depth > 3) return 38;
+    if (diagnostics.audio_capacity != 4096 || diagnostics.audio_depth != 0 ||
+        diagnostics.audio_demand != 2048)
+        return 39;
+    if (diagnostics.frames_produced != diagnostics.frames_consumed +
+                                               diagnostics.frames_dropped +
+                                               diagnostics.frame_depth)
+        return 40;
+    if (diagnostics.audio_samples_produced != diagnostics.audio_samples_consumed +
+                                                     diagnostics.audio_samples_overrun +
+                                                     diagnostics.audio_depth)
+        return 41;
+    if (diagnostics.audio_samples_overrun != audio_result.overrun_count ||
+        diagnostics.audio_samples_underrun != audio_result.underrun_count ||
+        diagnostics.last_status != BEEB_STATUS_UNDERRUN)
+        return 42;
+
+    beeb_output_diagnostics repeated = {0};
+    if (!expect(beeb_get_output_diagnostics(machine, &repeated), BEEB_STATUS_OK) ||
+        memcmp(&diagnostics, &repeated, sizeof(diagnostics)) != 0)
+        return 43;
+
+    beeb_output_diagnostics before = {0};
+    beeb_output_diagnostics after = {0};
+    before.total_cycles = 2000000;
+    after.total_cycles = 6000000;
+    double rate = 77.0;
+    if (!expect(beeb_calculate_emulation_rate(&before, &after, 2.0, &rate), BEEB_STATUS_OK))
+        return 44;
+    if (fabs(rate - 1.0) > 0.001) return 45;
+
+    const double invalid_intervals[] = {0.0, -1.0, NAN, INFINITY};
+    for (size_t index = 0; index < sizeof(invalid_intervals) / sizeof(invalid_intervals[0]);
+         ++index) {
+        rate = 77.0;
+        if (!expect(beeb_calculate_emulation_rate(&before, &after, invalid_intervals[index],
+                                                  &rate),
+                    BEEB_STATUS_INVALID_ARGUMENT) ||
+            rate != 77.0)
+            return 46;
+    }
+    rate = 77.0;
+    if (!expect(beeb_calculate_emulation_rate(&after, &before, 1.0, &rate),
+                BEEB_STATUS_INVALID_ARGUMENT) ||
+        rate != 77.0)
+        return 47;
+    if (!expect(beeb_calculate_emulation_rate(NULL, &after, 1.0, &rate),
+                BEEB_STATUS_INVALID_ARGUMENT) ||
+        !expect(beeb_calculate_emulation_rate(&before, NULL, 1.0, &rate),
+                BEEB_STATUS_INVALID_ARGUMENT) ||
+        !expect(beeb_calculate_emulation_rate(&before, &after, 1.0, NULL),
+                BEEB_STATUS_INVALID_ARGUMENT))
+        return 48;
+
     free(audio);
-    return expect(beeb_destroy(machine), BEEB_STATUS_OK) ? 0 : 33;
+    return expect(beeb_destroy(machine), BEEB_STATUS_OK) ? 0 : 49;
 }
 C
 
