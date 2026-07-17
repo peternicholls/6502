@@ -8,7 +8,7 @@
 
 **Purpose**: Establish independent C2 test, evidence, and documentation surfaces.
 
-- [ ] T001 [P] Add C2 test helper conventions and bounded-output fixture paths in `Tests/C2/testlib.sh`
+- [x] T001 [P] Add C2 test helper conventions and bounded-output fixture paths in `Tests/C2/testlib.sh`
 - [ ] T002 [P] Add a dedicated C2 aggregate failure-propagating runner in `Tests/C2/test-aggregate-runner.sh`
 - [ ] T003 Wire `test-c2` and C2 evidence targets without changing C1 aggregation in `Makefile`
 - [ ] T004 [P] Add the bounded-output conceptual guide skeleton in `docs/code/bounded-output.md`
