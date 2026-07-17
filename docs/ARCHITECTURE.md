@@ -67,6 +67,15 @@ driven only by committed emulated cycles. C3 may serialize architectural state
 only at the same quiescent safe point. Neither phase may reintroduce direct host
 access to `BBCMicro`, and C2 output is not a persisted format.
 
+The C frame adapter preallocates an opaque release context before requesting a
+destructive dequeue. Once the owner returns an owned frame, its pixel vector is
+moved into that context without a second allocation or copy. This orders every
+fallible adapter resource before queue mutation: resource exhaustion preserves
+caller output, FIFO depth, and consumed accounting. Swift copies the resulting
+view before returning the context, so the ownership chain remains runtime
+result -> C release context -> Swift value with no borrowed producer storage
+and no compensating requeue transaction.
+
 ## Evidence-tool boundary
 
 `Tools/beeb-evidence` is a headless host of the same supported C ABI used by

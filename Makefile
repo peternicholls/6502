@@ -7,6 +7,7 @@ CORE_HEADERS = $(wildcard Sources/BeebCore/include/*.h Sources/BeebCore/include/
 C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
 C1_TEST_SCRIPTS ?= $(filter-out Tests/C1/testlib.sh,$(wildcard Tests/C1/test-*.sh))
 C2_TEST_SCRIPTS ?= $(filter-out Tests/C2/testlib.sh,$(wildcard Tests/C2/test-*.sh))
+C2_PORTABLE_TEST_SCRIPTS ?= $(filter-out Tests/C2/test-xcode-project.sh,$(C2_TEST_SCRIPTS))
 BUILD_DIR = .build/cpp
 C0_PROFILE ?=
 DOCS_PROFILE ?= auto
@@ -17,7 +18,8 @@ else
 SANITIZERS ?= address,undefined
 endif
 
-.PHONY: all test sanitize thread-sanitize test-c1 test-c2 verify-c2 measure-c2 \
+.PHONY: all test sanitize thread-sanitize test-c1 test-c2 test-c2-portable \
+		test-c2-xcode verify-c2 measure-c2 \
 	format-check check-version demo-rom test-c0 verify-c0 \
 	verify-c0-references update-c0-reference measure-c0 \
 	validate-c0-measurement docs docs-check clean
@@ -92,6 +94,14 @@ test-c2:
 		fi; \
 	done; \
 	exit $$status
+
+test-c2-portable:
+	@$(MAKE) --no-print-directory test-c2 \
+		C2_TEST_SCRIPTS="$(C2_PORTABLE_TEST_SCRIPTS)"
+
+test-c2-xcode:
+	@$(MAKE) --no-print-directory test-c2 \
+		C2_TEST_SCRIPTS="Tests/C2/test-xcode-project.sh"
 
 verify-c2: test-c2
 

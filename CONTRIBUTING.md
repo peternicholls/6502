@@ -16,6 +16,7 @@ make test all
 make sanitize
 make verify-c0
 make test-c1
+make test-c2
 make thread-sanitize
 make docs-check
 make format-check
@@ -39,18 +40,18 @@ make demo-rom
 ## Apple project checks
 
 Open `Beeb6502.xcodeproj`, not `Package.swift`, for interactive Apple app work.
-The committed shared schemes must remain usable without `xcuserdata`, signing
-credentials, absolute checkout paths, or pre-existing derived data. Verify all
-three maintained Xcode entry points with:
+The committed shared schemes must remain usable without requiring `xcuserdata`,
+signing credentials, absolute checkout paths, or pre-existing derived data.
+Ignored local user state is permitted; tracked or unignored state is not. Verify
+all three maintained Xcode entry points and the independent build paths with:
 
 ```sh
-xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-macOS \
-  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-iOS \
-  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project Beeb6502.xcodeproj -scheme Beeb6502-Tests \
-  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO test
+make test-c2-xcode
 ```
+
+Linux CI runs `C2_REQUIRE_TSAN=1 make test-c2-portable`; this covers every C2
+group except the Xcode-only contract and fails if the executable TSan runtime is
+unavailable. Local unsupported TSan remains `N/A`, never a pass.
 
 Do not add package-owned `BeebCore` or `BeebKit` sources directly to Xcode
 targets. The project consumes those products from the local package. Continue

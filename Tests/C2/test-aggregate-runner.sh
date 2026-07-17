@@ -57,3 +57,16 @@ if rg -q 'C2 group FAIL' "${output}"; then
     printf 'successful C2 aggregate retained a failure\n' >&2
     exit 1
 fi
+
+# The required portable CI surface must retain every C2 group except the
+# Xcode-only contract, and its concurrent boundary evidence must require TSan.
+portable_plan="${fixture}/portable-plan.txt"
+make -C "${repo_root}" --no-print-directory -n test-c2-portable >"${portable_plan}"
+rg -q 'test-output-races\.sh' "${portable_plan}"
+if rg -q 'test-xcode-project\.sh' "${portable_plan}"; then
+    printf 'portable C2 aggregate included the Xcode-only contract\n' >&2
+    exit 1
+fi
+rg -q 'C2_REQUIRE_TSAN:[[:space:]]*"1"' "${repo_root}/.github/workflows/ci.yml"
+rg -q 'make test-c2-portable' "${repo_root}/.github/workflows/ci.yml"
+rg -q 'make test-c2-xcode' "${repo_root}/.github/workflows/ci.yml"

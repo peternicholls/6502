@@ -232,14 +232,26 @@ The implemented `003-bounded-output-contracts` slice has passed its required
 measurement gate: 10,000 frames transferred with retained-value immutability;
 separate 10,000-item pressure stress reached but did not exceed capacities 3
 and 4,096; a 10-second warm-up plus 120,000,060 measured cycles balanced both
-conservation equations; RSS growth was 32,768 bytes against a 16 MiB limit; and
+conservation equations; the final remediation run's RSS growth was 49,152 bytes
+against a 16 MiB limit; and
 the synthetic rate error was zero against a 0.1% tolerance. Shared Xcode
-schemes build macOS and generic iOS Simulator apps and run all 14 Swift tests,
+schemes build macOS and generic iOS Simulator apps and run all 16 Swift tests,
 while Swift Package Manager and Make remain independently green. The final
-matrix passed 52 C++ tests, 47 sanitizer tests, all six C1 groups, all nine C2
-groups, 14 Swift tests, both app schemes, the shared test scheme, formatting,
+matrix passed 53 C++ tests, 48 sanitizer tests, all six C1 groups, all nine C2
+groups, 16 Swift tests, both app schemes, the shared test scheme, formatting,
 and generated documentation. Local ThreadSanitizer remains explicitly N/A and
-requires its supported CI lane.
+requires its supported CI lane. That Linux lane requires the complete portable
+C2 aggregate and rejects an unavailable ThreadSanitizer run. Post-review C and
+Swift evidence now crosses the public boundaries for repeated replay and real
+producer/consumer contention; recoverable C frame allocation failures occur
+before dequeue and preserve queue accounting, while an opaque release context
+authenticates the transferred bytes. Xcode validation tolerates ignored local
+user state but still rejects tracked or unignored metadata and proves ordinary
+validation does not rewrite maintained project files.
+The final concurrency regressions synchronize on the semantic boundary they
+claim: actual C-call admission for destroy overlap and an execution-slice
+ledger event for sustained runtime production, rather than elapsed host time or
+the presence of unrelated setup entries.
 
 ### Non-goals
 

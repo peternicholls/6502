@@ -34,6 +34,8 @@ Versioning and `vMAJOR.MINOR.PATCH` Git tags.
   reads, writes, seeks, drive status and special registers.
 - A C API, Swift wrapper, multiplatform SwiftUI shell, user file importers and
   a headless command-line runner.
+- Owner-serialized capacity-three completed-frame output, continuous bounded
+  48 kHz mono audio, and exact pressure/progress diagnostics across C++/C/Swift.
 
 The core has also booted a privately supplied OS 1.20 plus BASIC II ROM pair to
 the familiar `BBC COMPUTER 32K` / `BASIC` Mode 7 screen. Those ROMs are not
@@ -112,6 +114,9 @@ swift test
 ```
 
 The portable core remains independently buildable with `make test all`.
+Run `make test-c2-portable` for the Linux-compatible bounded-output aggregate
+and `make test-c2-xcode` for the maintained Apple project contract. Ordinary
+ignored `xcuserdata` is permitted; tracked or unignored user state is not.
 
 ## Accuracy boundary
 
@@ -150,9 +155,9 @@ Run `make check-version` before tagging a release.
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md), the
 [project constitution](.specify/memory/constitution.md), and the
 [Spec Kit feature workflow](specs/README.md). Continuous integration builds the
-warning-clean C++ core on Linux and independently verifies the Swift package,
-the macOS app, the iOS Simulator app, and the shared Xcode test scheme on
-macOS.
+warning-clean C++ core and the portable C2 aggregate under required
+ThreadSanitizer on Linux. It independently verifies the Swift package, macOS
+app, iOS Simulator app, and shared Xcode test scheme on macOS.
 
 ## Licence and references
 

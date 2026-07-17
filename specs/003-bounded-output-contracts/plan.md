@@ -28,7 +28,7 @@ iOS Simulator, and test schemes over the existing sources and package products.
 
 **Storage**: In-memory bounded output queues and operation-owned result values; no persisted format.
 
-**Testing**: Existing C++ harness and `make test`/`make sanitize`, dedicated `Tests/C2/` aggregate and shell contracts, Swift XCTest, deterministic sustained-production/RSS measurement, `make thread-sanitize`, `make format-check`, `make docs-check`, `xcodebuild` shared-scheme builds/tests, and `git diff --check`.
+**Testing**: Existing C++ harness and `make test`/`make sanitize`, dedicated `Tests/C2/` aggregate and shell contracts, Swift XCTest, deterministic sustained-production/RSS measurement, `make thread-sanitize`, strict `C2_REQUIRE_TSAN=1 make test-c2-portable` on supported Linux CI, `make test-c2-xcode` on Apple CI, `make format-check`, branch-aware `make docs-check`, and `git diff --check`.
 
 **Code Documentation**: Doxygen and Swift-DocC source comments for changed public contracts; purpose/invariant comments for internal output queues, owned results, producers, and diagnostics; guides in `docs/code/runtime-ownership.md`, `docs/code/host-boundary.md`, `docs/code/timing-model.md`, plus a C2 output guide; generated documentation must remain a build artifact and debt must not increase.
 

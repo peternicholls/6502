@@ -24,6 +24,19 @@
 
 **Alternatives considered**: Preserve arbitrary synchronous render rates (rejected because it is not a sustained producer contract); block on a full ring (rejected because host callbacks would control runtime progress); discard newest samples (rejected because it retains stale latency).
 
+## Decision: Preallocate the C frame release context before dequeue
+
+**Rationale**: C must not report a frame as consumed until ownership reaches the
+caller. A small opaque context is allocated before the runtime command; the
+returned vector then moves into it without allocating or copying pixels. This
+keeps allocation failure atomic across the C boundary and gives release one
+explicit ownership token.
+
+**Alternatives considered**: Peek then consume (rejected because separate owner
+commands admit interleaving consumers); requeue after failure (rejected because
+it cannot restore FIFO order after interleaved production); copy after dequeue
+(rejected because allocation failure loses the consumed frame).
+
 ## Decision: Core diagnostics expose counters; hosts calculate emulation rate
 
 **Rationale**: Total emulated cycles, frame number, queue depth/capacity/demand, and pressure counters explain core behavior. C and Swift host helpers calculate `emulated-seconds delta / positive host-seconds delta` from two snapshots. Host time is an explicit observation input and is never stored in or used to advance BeebCore.
@@ -32,7 +45,7 @@
 
 ## Decision: Commit a top-level Xcode project over existing sources
 
-**Rationale**: `Beeb6502.xcodeproj` provides stable shared macOS app, iOS Simulator app, and test schemes from a clean checkout. It references the same local package/core sources and keeps `Package.swift` plus the Makefile as independent authorities. Shared project metadata is tracked; user data, signing identities, and derived output are not.
+**Rationale**: `Beeb6502.xcodeproj` provides stable shared macOS app, iOS Simulator app, and test schemes from a clean checkout. It references the same local package/core sources and keeps `Package.swift` plus the Makefile as independent authorities. Shared project metadata is tracked; ignored local user data may exist during ordinary use, while signing identities and derived output are never tracked or required.
 
 **Alternatives considered**: Continue opening `Package.swift` only (rejected because the requested delivery surface is an Xcode project); copy sources into a separate Apple tree (rejected because it creates divergent authorities); adopt Xcode Cloud/signing in C2 (rejected as distribution scope).
 

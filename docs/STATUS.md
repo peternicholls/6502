@@ -18,7 +18,7 @@ is governed separately by the [product strand](product/README.md).
 | Core build | GCC 13, C++20, warnings promoted to errors | Green |
 | Swift package | BeebKit tests and full package build on Apple Swift 6.2 | Green |
 | C1 runtime ownership | One owner, capacity-64 FIFO, safe-point lifecycle, exact replay, structured C/Swift recovery | Green; local TSan N/A |
-| C2 bounded output | Owned frame/audio queues, exact diagnostics, 10,000-frame lifetime transfer, 60-second sustained measurement | Green; local TSan N/A |
+| C2 bounded output | Owned frame/audio queues, allocation-safe C transfer, exact C/Swift replay and concurrency evidence, 10,000-frame lifetime transfer, 60-second sustained measurement | Green; supported CI requires TSan |
 | Xcode project | Shared macOS, iOS Simulator, and test schemes over the local package and existing demo source | Green clean-checkout contract |
 | C0 aggregate evidence | `make verify-c0`: all 11 macOS groups; explicit portable profile passes with Swift groups N/A | Green |
 | Lawful exact references | Ten identical clean-room runs; exact CPU state plus 320×200 bitmap and 480×500 Mode 7 PPMs | Green |
@@ -136,23 +136,23 @@ reproducible workload and pass/fail thresholds remain tracked in
 | Queue pressure stress | 10,000 frame and 10,000 audio publications; maximum depths reached and never exceeded 3 frames / 4,096 samples; exact consumed+dropped/overrun accounting |
 | Sustained duration | 10 emulated warm-up seconds followed by 120,000,060 measured cycles, exceeding the required 60 emulated seconds |
 | Runtime conservation | 46,666,683 frames produced = 71 consumed + 46,666,610 dropped + 2 retained; 3,360,001 samples produced = 286,720 consumed + 3,073,281 overrun + 0 retained |
-| Memory | Peak RSS grew 32,768 bytes after warm-up, within the 16,777,216-byte tolerance |
+| Memory | RSS grew 49,152 bytes after warm-up, within the 16,777,216-byte tolerance |
 | Host-observed rate | Expected 2.0, observed 2.0, relative error 0; the helper left runtime diagnostics unchanged |
-| Xcode delivery | All three shared schemes listed; macOS and generic iOS Simulator builds succeeded; the test scheme ran 14 tests with zero failures |
+| Xcode delivery | All three shared schemes listed; macOS and generic iOS Simulator builds succeeded; the test scheme ran 16 tests with zero failures; ignored local user state did not make the contract fail or rewrite maintained project metadata |
 | Independent build paths | The Xcode contract also passed `swift build`, `swift test`, and `make test` without source duplication or user/signing metadata |
 
 The complete local macOS exit matrix then passed on 2026-07-17:
 
 | Command | Exact result |
 | --- | --- |
-| `make test` | 52/52 tests passed |
-| `make sanitize` | 47/47 quick tests passed under UndefinedBehaviorSanitizer |
+| `make test` | 53/53 tests passed |
+| `make sanitize` | 48/48 quick tests passed under UndefinedBehaviorSanitizer |
 | `make thread-sanitize` | N/A: ThreadSanitizer is unsupported by the local compiler/host combination; supported CI remains required |
 | `make format-check` | Passed |
 | `make test-c1` | All six C1 groups passed, including ten normal race repetitions |
-| `make test-c2` | All nine C2 groups passed; the final measurement rerun reported 65,536 bytes RSS growth and zero rate error |
-| `swift test` / `swift build` | 14/14 XCTest cases passed; the package and demo built |
-| Quickstart `xcodebuild` commands | All shared schemes listed; macOS and generic iOS Simulator builds passed; 14/14 test-scheme cases passed |
+| `make test-c2` | All nine C2 groups passed; the final measurement rerun reported 49,152 bytes RSS growth and zero rate error |
+| `swift test` / `swift build` | 16/16 XCTest cases passed; the package and demo built |
+| `make test-c2-xcode` | All shared schemes listed; macOS and generic iOS Simulator builds passed; 16/16 test-scheme cases passed; maintained project metadata was unchanged |
 | `make docs-check` | Complete Doxygen and Swift-DocC generation/link validation passed |
 | `git diff --check` | No output |
 
@@ -161,6 +161,21 @@ checks the entire DocC/Doxygen tree in one Perl process instead of launching a
 parser per HTML file. The existing broken-link negative fixture and both C0/C2
 documentation suites pass with unchanged validation semantics. C2 is complete;
 local ThreadSanitizer remains N/A rather than a pass.
+
+The post-review remediation makes the C frame hand-off failure-atomic: storage
+for its opaque release context is secured before the runtime dequeues a frame,
+and an allocation failure leaves the queue, counters, and caller output
+unchanged. The release context now authenticates the exact byte pointer and
+length being released instead of asking callers to free core-owned storage.
+Fresh-runtime replay and real producer/consumer contention cross both the C ABI
+and Swift actor boundary. CI runs the portable C2 aggregate with
+`C2_REQUIRE_TSAN=1` on its supported Linux toolchain, while Apple-only Xcode
+evidence remains in the macOS lane. Local unsupported ThreadSanitizer results
+therefore remain N/A without weakening the supported CI requirement. The exit
+rerun also exposed and removed two scheduler-timing assumptions in earlier C1
+evidence: destroy overlap now holds a call after actual boundary admission, and
+the sustained lifecycle test waits for an execution-slice event rather than
+mistaking setup-command ledger entries for production.
 
 ## Release state
 

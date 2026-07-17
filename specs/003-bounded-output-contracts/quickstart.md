@@ -6,6 +6,7 @@ Run from `/Users/peternicholls/Dev/6502` on a clean worktree.
 
 ```sh
 make test
+make test-c2-portable
 bash Tests/C2/test-output-contract.sh
 bash Tests/C2/test-output-lifetime.sh
 bash Tests/C2/test-output-replay.sh
@@ -14,9 +15,11 @@ bash Tests/C2/test-output-measurement.sh
 swift test
 ```
 
-The focused scripts must cover empty, full, sustained production, retained
-owned-value lifetime, lifecycle failure, deterministic replay, and concurrent C/Swift
-consumer pressure. Each script records its exact count and failure status.
+The focused scripts cover empty, full, sustained production, retained
+owned-value lifetime, lifecycle failure, deterministic replay, and concurrent
+C/Swift consumer pressure. Each script records its exact count and failure
+status. On a supported Linux CI host, run
+`C2_REQUIRE_TSAN=1 make test-c2-portable`; local unsupported TSan is `N/A`.
 
 ## Bounded-production measurement
 
@@ -33,17 +36,16 @@ within 0.1% and that taking observations does not alter core state.
 ## Xcode project elevation
 
 ```sh
-xcodebuild -project Beeb6502.xcodeproj -list
-xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-macOS -destination 'platform=macOS' build
-xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-iOS -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project Beeb6502.xcodeproj -scheme Beeb6502-Tests -destination 'platform=macOS' test
+make test-c2-xcode
 swift build
 swift test
 ```
 
-The project and shared schemes must work from a clean checkout without
+The project and shared schemes work from a clean checkout without requiring
 `xcuserdata`, an absolute checkout path, signing credentials, or existing
-derived data. Swift Package Manager remains independently usable.
+derived data. Ignored local `xcuserdata` is permitted during repeat validation;
+tracked or unignored state fails. Swift Package Manager remains independently
+usable.
 
 ## Wider validation
 

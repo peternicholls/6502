@@ -35,14 +35,17 @@ call completes. CPU, lifecycle, safe-point, and fault results are plain value
 aggregates. Audio renders into a caller buffer only after validation and
 successful owner completion.
 
-`beeb_get_frame()` allocates a complete caller-owned RGBA copy. No completed
+`beeb_get_frame()` returns a complete caller-owned RGBA value. No completed
 frame is a successful value with `available == 0`, null storage, and zero
-metadata; it is not a failure. Every successful frame value is passed to
-`beeb_frame_release()`, which releases its allocation and clears the aggregate.
-A failed frame call leaves the caller's aggregate untouched.
+metadata; it is not a failure. Every successful frame carries an opaque
+`release_context` passed back unchanged to `beeb_frame_release()`, which releases
+the vector storage and clears the aggregate. Callers read but never free `rgba`
+directly. A failed frame call leaves the caller's aggregate untouched.
 
-`beeb_dequeue_frame()` transfers the oldest frame from the capacity-three
-runtime FIFO into a fresh `beeb_frame`; `EMPTY` leaves the aggregate untouched.
+`beeb_dequeue_frame()` allocates its small release context before it asks the
+owner to consume the oldest frame from the capacity-three FIFO. The returned
+pixel vector moves into that context without a second allocation. Allocation
+failure and `EMPTY` both leave the aggregate and FIFO accounting untouched.
 `beeb_drain_audio()` copies FIFO samples into caller storage and reports
 recoverable `UNDERRUN` with valid partial output. `beeb_get_output_diagnostics()`
 copies one owner-consistent, non-mutating value containing depths, capacities,

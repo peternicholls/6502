@@ -12,6 +12,10 @@ Represents one complete video observation published at a C1 safe point.
 | bytes | Owned by the dequeued result; never aliases queue or producer storage |
 | status | Success, empty, lifecycle, capacity, or production failure as applicable |
 
+At the C boundary, an opaque release context is allocated before destructive
+dequeue. The owned pixel vector moves into it without a second pixel allocation;
+resource failure therefore cannot advance `frames consumed` without transfer.
+
 ## AudioChunk
 
 Represents an ordered bounded sequence of generated samples.
@@ -49,7 +53,9 @@ is never retained by or passed into a core state transition.
 
 Tracked project metadata and shared macOS, iOS Simulator, and test schemes that
 reference existing package/core products. User-specific state, absolute paths,
-signing identities, and derived data are excluded.
+signing identities, and derived data are excluded from version control. Ignored
+local `xcuserdata` created during ordinary use is permitted and never deleted by
+validation.
 
 ## State transitions
 

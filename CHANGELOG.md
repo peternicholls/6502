@@ -35,12 +35,21 @@ replacing `Unreleased` with a date.
 - **Breaking:** Expanded the pre-1.0 C and Swift status vocabularies for bounded
   output pressure and added a recoverable Swift audio error that carries valid
   partial samples and exact shortfall accounting.
+- **Breaking:** Added the opaque `beeb_frame.release_context` ownership token.
+  Frame transfer now allocates that context before destructive dequeue, moves
+  pixel storage without a second copy, and preserves queue/accounting state on
+  resource failure.
 - Made completed-frame publication and continuous audio production part of the
   existing `MachineRuntime` owner transaction without adding host clocks,
   callbacks, locks, or borrowed producer storage.
 - Elevated the committed Xcode project to the primary Apple development entry
   point while retaining Swift Package Manager and Make as independent required
   build surfaces.
+- Split required C2 CI into a portable Linux aggregate with strict output-race
+  TSan and an Apple Xcode contract, and expanded replay/concurrency evidence
+  through the C and Swift boundaries.
+- Replaced host-delay assumptions in destroy-overlap and sustained-lifecycle
+  regressions with barriers on admitted work and the exact execution event.
 
 ## [0.2.0] - Unreleased
 
