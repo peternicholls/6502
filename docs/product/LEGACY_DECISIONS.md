@@ -1,7 +1,7 @@
 # Legacy design decision register
 
 **Status:** Canonical interpretation of historical material  
-**Updated:** 2026-07-15
+**Updated:** 2026-07-17
 
 The files under `../Archive/` came from an abandoned version
 of the project. They capture useful product discovery, but their implementation
@@ -39,7 +39,7 @@ Disposition meanings:
 | --- | --- | --- |
 | C++ core behind a stable C API and Swift wrapper. | Retained | Implemented as `BeebCore` → `beeb_c.h` → `BeebKit`; C++ exceptions are contained at the ABI. |
 | Reuse and adapt the old davepoo-derived fork. | Superseded | The current repository contains a new dependency-free C++20 implementation with its own tests and documented legal boundary. |
-| Separate submodule, Xcode project or prebuilt XCFramework. | Superseded | The current monorepo uses Swift Package Manager plus a portable Makefile build. Binary distribution can be reconsidered later. |
+| Separate submodule, Xcode project or prebuilt XCFramework. | Refined | C2 adds a committed top-level Xcode project as an Apple host/build surface over the monorepo. It consumes the same local package/core sources; Swift Package Manager and the portable Makefile remain authoritative, and binary distribution remains deferred. |
 | C++17 and Google Test/CMake are required. | Superseded | The core uses C++20 and a dependency-free test executable. New dependencies require an explicit need. |
 | Host file, window and audio concerns remain outside the deterministic core. | Retained | Bytes enter explicitly; frames, samples and state leave through stable data contracts. |
 | Swift wrapper failures use `throws`; C failures use error codes. | Refined | Sentinel results plus a per-machine C diagnostic map to typed Swift errors. A future API may add structured error codes. |

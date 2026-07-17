@@ -186,6 +186,12 @@ making host timing authoritative.
 **Product capability unlocked:** Continuous Machine video and audio that do not
 stall the UI.
 
+**Delivery elevation:** C2 promotes the Apple host from opening `Package.swift`
+directly to a committed `Beeb6502.xcodeproj` with shared macOS, iOS Simulator,
+and test schemes. The Xcode project is a host/build surface over the same local
+Swift package products; Swift Package Manager and the portable Makefile remain
+authoritative build paths, and no Apple framework enters `BeebCore`.
+
 **Depends on:** C1.
 
 **Parallelism:** C3 may proceed in parallel after the C1 safe-point contract is
@@ -208,7 +214,7 @@ accepted.
 
 ### Exit evidence
 
-- A consumer retaining a valid frame or audio view cannot observe invalidated
+- A consumer retaining a valid frame or audio value cannot observe invalidated
   or concurrently mutated storage.
 - Capacity and overflow behavior are deterministic and covered at empty, full
   and sustained-production boundaries.
@@ -218,11 +224,16 @@ accepted.
   values never drive core state.
 - C and Swift boundary tests cover lifetime, failure and back-pressure
   behavior.
+- The committed Xcode project builds the macOS app, iOS Simulator app, and test
+  scheme from a clean checkout through `xcodebuild`, without duplicating core
+  sources or weakening the Makefile/Swift Package gates.
 
 ### Non-goals
 
 - Metal presentation, AVAudioEngine callbacks or host refresh scheduling.
 - Visual CRT effects or host UI diagnostics.
+- Xcode Cloud, signing/distribution automation, App Store packaging, or replacing
+  Swift Package Manager and the portable Makefile.
 
 ## Phase C3 — versioned session continuity
 

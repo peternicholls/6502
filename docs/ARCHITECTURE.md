@@ -19,6 +19,15 @@ The C ABI in `beeb_c.h` is the stable cross-language seam. `BeebKit` owns the
 Swift lifetime and typed value/error mapping. `BeebDemo` owns document import
 and UI.
 
+C2 requires `Beeb6502.xcodeproj` to become the checked-in Apple development and
+application build surface. Its shared schemes will consume the same repository
+sources and package products used by Swift Package Manager; it must not fork,
+copy, or become an alternative authority for `BeebCore`. The portable Makefile
+and `Package.swift` remain required independent build paths. Project settings,
+schemes, and host entitlements may depend on Apple SDKs, but that dependency
+stops at the host boundary. Until C2 implementation evidence is complete,
+opening `Package.swift` remains the verified Apple setup.
+
 No C++ exception may cross the C ABI. Fallible entry points return structured,
 operation-owned statuses and write outputs only on success. `BeebKit` preserves
 each category and diagnostic as a typed `BeebError` and returns Swift-owned

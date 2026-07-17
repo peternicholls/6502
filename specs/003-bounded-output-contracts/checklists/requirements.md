@@ -32,3 +32,6 @@
 ## Notes
 
 - Specification is a core contract feature; accessibility is explicitly N/A because host presentation is out of scope.
+- 2026-07-17 amendment fixes output ownership, capacities, overflow policies,
+  emulation-rate measurement, memory tolerance, and the committed Xcode project
+  delivery surface; no clarification markers remain.

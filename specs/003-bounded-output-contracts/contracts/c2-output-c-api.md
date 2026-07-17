@@ -1,10 +1,13 @@
 # C2 C ABI Contract
 
 New or changed C entry points return structured operation statuses and write
-output only on success or a documented partial-success result. Every frame or
-audio view names its format, byte/sample count, ownership, lifetime, release or
-copy rule, nullability, thread-safety, and lifecycle failures.
+output only on success or a documented partial-success result. Frames are
+caller-owned RGBA values released explicitly. Audio is copied into
+caller-provided Float32 storage and reports copied count plus exact shortfall.
+No output aliases runtime queue or producer storage.
 
-The ABI never exposes a pointer to concurrently mutated active storage and no
-C++ exception crosses the boundary. Empty, overrun, underrun, paused, faulted,
-and shutting-down outcomes remain distinguishable.
+Diagnostics expose total emulated cycles, frame/audio depths and capacities,
+audio demand, and exact pressure counters. A host helper accepts two snapshots
+and a positive host interval to calculate emulation-rate ratio; host time never
+enters core state. No C++ exception crosses the boundary, and empty, overrun,
+underrun, paused, faulted, and shutting-down outcomes remain distinguishable.
