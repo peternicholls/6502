@@ -108,6 +108,7 @@ enum class RuntimeCommandKind {
     cpuState,
     frame,
     renderAudio,
+    dequeueFrame,
     shutdown,
 };
 

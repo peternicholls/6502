@@ -1034,6 +1034,37 @@ C1MatrixObservation invokeC1MatrixCommand(beeb::MachineRuntime& runtime,
         return result(runtime.frame());
     case beeb::RuntimeCommandKind::renderAudio:
         return result(runtime.renderAudio(1, 48'000));
+    case beeb::RuntimeCommandKind::dequeueFrame: {
+        const auto output = runtime.dequeueFrame();
+        beeb::RuntimeStatusCode code = beeb::RuntimeStatusCode::internalFailure;
+        switch (output.status.code) {
+        case beeb::OutputStatusCode::ok:
+        case beeb::OutputStatusCode::empty:
+        case beeb::OutputStatusCode::underrun:
+        case beeb::OutputStatusCode::overrun:
+            code = beeb::RuntimeStatusCode::ok;
+            break;
+        case beeb::OutputStatusCode::capacityExceeded:
+        case beeb::OutputStatusCode::resourceExhausted:
+            code = beeb::RuntimeStatusCode::resourceExhausted;
+            break;
+        case beeb::OutputStatusCode::invalidArgument:
+            code = beeb::RuntimeStatusCode::invalidArgument;
+            break;
+        case beeb::OutputStatusCode::invalidState:
+            code = beeb::RuntimeStatusCode::invalidState;
+            break;
+        case beeb::OutputStatusCode::unavailable:
+            code = beeb::RuntimeStatusCode::unavailable;
+            break;
+        case beeb::OutputStatusCode::productionFailed:
+            code = beeb::RuntimeStatusCode::executionFailed;
+            break;
+        case beeb::OutputStatusCode::internalFailure:
+            break;
+        }
+        return {{code, output.status.message, 0}, output.frame.has_value()};
+    }
     case beeb::RuntimeCommandKind::shutdown:
         return {runtime.shutdown(), false};
     }

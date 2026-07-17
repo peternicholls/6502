@@ -35,7 +35,7 @@
 - [x] T010 [P] [US1] Add failing C caller-owned frame, nullability, release, and no-alias tests in `Tests/C2/test-output-contract.sh`
 - [x] T011 [P] [US1] Add failing Swift independently owned frame and typed lifecycle/empty tests in `Tests/BeebKitTests/BeebMachineTests.swift`
 - [x] T012 [US1] Implement immutable owned frame values and capacity-three drop-oldest FIFO in `Sources/BeebCore/src/output.cpp`
-- [ ] T013 [US1] Publish completed frames from the C1 instruction/device safe point in `Sources/BeebCore/src/runtime.cpp`
+- [x] T013 [US1] Publish completed frames from the C1 instruction/device safe point in `Sources/BeebCore/src/runtime.cpp`
 - [ ] T014 [US1] Expose caller-owned frame dequeue/release operations in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`
 - [ ] T015 [US1] Map dequeued C frames into independently owned Swift values in `Sources/BeebKit/BeebMachine.swift`
 - [ ] T016 [US1] Document RGBA format, ownership, capacity three, drop-oldest behavior, counters, and safe-point rationale in `Sources/BeebCore/include/beeb/output.hpp`, `Sources/BeebCore/include/beeb_c.h`, and `docs/code/bounded-output.md`
