@@ -1072,6 +1072,8 @@ C1MatrixObservation invokeC1MatrixCommand(beeb::MachineRuntime& runtime,
         const auto output = runtime.drainAudio(0);
         return outputResult(output, true);
     }
+    case beeb::RuntimeCommandKind::outputDiagnostics:
+        return result(runtime.outputDiagnostics());
     case beeb::RuntimeCommandKind::shutdown:
         return {runtime.shutdown(), false};
     }

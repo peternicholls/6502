@@ -123,4 +123,28 @@ std::size_t AudioSampleQueue::demand() const noexcept {
     return size_ < audioTargetDepth ? audioTargetDepth - size_ : 0;
 }
 
+OutputDiagnostics captureOutputDiagnostics(std::uint64_t totalCycles,
+                                           const CompletedFrameQueue& frames,
+                                           const AudioSampleQueue& audio,
+                                           OutputStatusCode lastStatus) noexcept {
+    OutputDiagnostics result;
+    result.totalCycles = totalCycles;
+    result.latestFrameNumber = frames.latestFrameNumber();
+    result.frameDepth = frames.depth();
+    result.audioDepth = audio.depth();
+    result.audioDemand = audio.demand();
+
+    const auto frameCounters = frames.counters();
+    const auto audioCounters = audio.counters();
+    result.counters.framesProduced = frameCounters.framesProduced;
+    result.counters.framesConsumed = frameCounters.framesConsumed;
+    result.counters.framesDropped = frameCounters.framesDropped;
+    result.counters.audioSamplesProduced = audioCounters.audioSamplesProduced;
+    result.counters.audioSamplesConsumed = audioCounters.audioSamplesConsumed;
+    result.counters.audioSamplesOverrun = audioCounters.audioSamplesOverrun;
+    result.counters.audioSamplesUnderrun = audioCounters.audioSamplesUnderrun;
+    result.lastStatus = lastStatus;
+    return result;
+}
+
 } // namespace beeb

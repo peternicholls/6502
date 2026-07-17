@@ -110,6 +110,7 @@ enum class RuntimeCommandKind {
     renderAudio,
     dequeueFrame,
     drainAudio,
+    outputDiagnostics,
     shutdown,
 };
 

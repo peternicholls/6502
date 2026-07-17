@@ -80,9 +80,9 @@ using CommandPayload = std::variant<std::monostate, std::uint64_t, std::vector<s
                                     SidewaysPayload, DiscPayload, KeyPayload, bool, AudioPayload>;
 
 /// Closed owned-result vocabulary returned through one caller-specific promise.
-using CompletionValue =
-    std::variant<std::monostate, RuntimeState, std::uint64_t, bool, CPUState, OwnedFrame,
-                 std::vector<float>, FrameDequeueResult, AudioDrainResult, SafePoint, RuntimeFault>;
+using CompletionValue = std::variant<std::monostate, RuntimeState, std::uint64_t, bool, CPUState,
+                                     OwnedFrame, std::vector<float>, FrameDequeueResult,
+                                     AudioDrainResult, OutputDiagnostics, SafePoint, RuntimeFault>;
 
 std::uint64_t hashString(const std::string& value) noexcept {
     return hashBytes(std::span(reinterpret_cast<const std::uint8_t*>(value.data()), value.size()));
@@ -134,6 +134,21 @@ std::uint64_t completionDigest(const CompletionValue& value) noexcept {
                 for (const auto sample : result.chunk.samples)
                     digest = mix(digest, std::bit_cast<std::uint32_t>(sample));
                 return digest;
+            } else if constexpr (std::is_same_v<Result, OutputDiagnostics>) {
+                auto digest = mix(result.totalCycles, result.latestFrameNumber);
+                digest = mix(digest, result.frameDepth);
+                digest = mix(digest, result.frameCapacity);
+                digest = mix(digest, result.audioDepth);
+                digest = mix(digest, result.audioCapacity);
+                digest = mix(digest, result.audioDemand);
+                digest = mix(digest, result.counters.framesProduced);
+                digest = mix(digest, result.counters.framesConsumed);
+                digest = mix(digest, result.counters.framesDropped);
+                digest = mix(digest, result.counters.audioSamplesProduced);
+                digest = mix(digest, result.counters.audioSamplesConsumed);
+                digest = mix(digest, result.counters.audioSamplesOverrun);
+                digest = mix(digest, result.counters.audioSamplesUnderrun);
+                return mix(digest, static_cast<std::uint64_t>(result.lastStatus));
             } else if constexpr (std::is_same_v<Result, SafePoint>) {
                 auto digest = mix(result.cpuCycles, result.frameNumber);
                 digest = mix(digest, static_cast<std::uint64_t>(result.state));
@@ -715,6 +730,9 @@ class MachineRuntime::Impl final {
                 lastOutputStatus_ = result.status.code;
                 return ok(std::move(result));
             }
+        case RuntimeCommandKind::outputDiagnostics:
+            return ok(captureOutputDiagnostics(machine_->cpu().state().cycles, frameOutput_,
+                                               audioOutput_, lastOutputStatus_));
         case RuntimeCommandKind::shutdown:
             break;
         }
@@ -1073,6 +1091,11 @@ AudioDrainResult MachineRuntime::drainAudio(std::size_t maximumSamples) {
     return audioResultFromCompletion(impl_->submit(RuntimeCommandKind::drainAudio,
                                                    static_cast<std::uint64_t>(maximumSamples),
                                                    maximumSamples));
+}
+
+RuntimeResult<OutputDiagnostics> MachineRuntime::outputDiagnostics() {
+    return resultFromCompletion<OutputDiagnostics>(
+        impl_->submit(RuntimeCommandKind::outputDiagnostics));
 }
 
 RuntimeResult<SafePoint> MachineRuntime::safePoint() {

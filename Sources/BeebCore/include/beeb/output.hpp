@@ -213,4 +213,15 @@ class AudioSampleQueue final {
     OutputCounters counters_;
 };
 
+/// Captures one owner-consistent observation of emulated progress and outputs.
+/// @param totalCycles Completed emulated CPU cycles at the observation boundary.
+/// @param frames Owner's completed-frame FIFO.
+/// @param audio Owner's continuous-audio FIFO.
+/// @param lastStatus Latest recoverable output outcome at the same boundary.
+/// @return A value-only snapshot with merged exact counters and no queue mutation.
+[[nodiscard]] OutputDiagnostics captureOutputDiagnostics(std::uint64_t totalCycles,
+                                                         const CompletedFrameQueue& frames,
+                                                         const AudioSampleQueue& audio,
+                                                         OutputStatusCode lastStatus) noexcept;
+
 } // namespace beeb
