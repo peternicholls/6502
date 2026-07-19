@@ -33,14 +33,16 @@ replacing `Unreleased` with a date.
 ### Changed
 
 - Established `docs/product/MACHINE_DELIVERY_PLAN.md` as the sole forward
-  programme authority. Product and core roadmaps are now supporting catalogues,
-  every future Spec Kit feature must trace to a named delivery-plan row or gate,
-  and the profile model reserves later B+ 128K, Master-family, Tube, network and
-  peripheral options without treating them as current M3 commitments. Spec Kit
-  context and path resolution now use only the explicit active-feature pointer
-  and cannot resurrect completed plans by branch, directory or modification
-  time. A dated delivery ledger and per-gate/per-specification states now
-  distinguish verified work from active, next, undelivered and reserved work.
+  programme authority. Current direction, verified status, architecture,
+  technical constraints, completed evidence and archived material now have
+  separate owners. Superseded documents are preserved intact under
+  `docs/Archive/`; C0-C2 evidence and Spec Kit runs are isolated under
+  `docs/completed/` and `specs/completed/`. Feature selection uses only the
+  explicit active-feature pointer, and numbering includes completed runs.
+  Model B and B+ 64K remain committed profiles while later B+, Master, Tube,
+  network and peripheral options remain reserved. Constitution 1.5.0 makes the
+  temporal separation mandatory and requires user-facing acceptance to run and
+  observe the built application rather than rely on unit tests alone.
 - **Breaking:** Expanded the pre-1.0 C and Swift status vocabularies for bounded
   output pressure and added a recoverable Swift audio error that carries valid
   partial samples and exact shortfall accounting.

@@ -145,11 +145,11 @@ This is a booting development core, not yet a preservation-grade emulator.
 Start with the
 [Machine application delivery plan](docs/product/MACHINE_DELIVERY_PLAN.md), the
 sole authority for programme direction, feature order and delivery gates. The
-[delivery status ledger](docs/product/MACHINE_DELIVERY_PLAN.md#delivery-status--2026-07-19)
+[delivery ledger](docs/product/MACHINE_DELIVERY_PLAN.md#current-ledger)
 clearly separates completed foundations from active, next, undelivered and
 reserved work. The
 [documentation index](docs/README.md) links supporting product intent, core
-dependencies, verified [status](docs/STATUS.md) and
+constraints, verified [status](docs/STATUS.md) and
 [architecture](docs/ARCHITECTURE.md).
 
 ## Releases and compatibility

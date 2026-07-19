@@ -101,13 +101,13 @@ if [ -z "$FEATURE_DESCRIPTION" ]; then
     exit 1
 fi
 
-# Function to get highest number from specs directory
+# Function to get highest number from active and completed spec directories
 get_highest_from_specs() {
     local specs_dir="$1"
     local highest=0
 
     if [ -d "$specs_dir" ]; then
-        for dir in "$specs_dir"/*; do
+        for dir in "$specs_dir"/* "$specs_dir"/completed/*; do
             [ -d "$dir" ] || continue
             dirname=$(basename "$dir")
             # Match sequential prefixes (>=3 digits), but skip timestamp dirs.

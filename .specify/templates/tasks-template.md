@@ -12,6 +12,9 @@ description: "Task list template for feature implementation"
 **Evidence**: Behavior changes REQUIRE tests written and observed failing before
 implementation. Documentation-only or process-only changes REQUIRE appropriate
 link, formatting, schema, or tooling validation instead of synthetic unit tests.
+User-facing changes also REQUIRE a task that builds and launches the maintained
+application, executes the specified journey, and records the observed result;
+unit tests alone do not close product acceptance.
 
 **Code Documentation**: Every coding story MUST include tasks for affected
 public contracts, private/internal named types and interfaces, non-obvious
@@ -173,14 +176,21 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Additional regression and boundary tests in the affected test suites
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
-- [ ] TXXX Update docs/STATUS.md, architecture, CHANGELOG.md, and supporting
-      catalogues as applicable; update MACHINE_DELIVERY_PLAN.md only if the
-      programme direction or gate state changed
+- [ ] TXXX For user-facing work, build and launch the maintained application,
+      execute each claimed journey on its named platform/device or simulator,
+      and record observed visual, audio and interaction results
+- [ ] TXXX Update docs/STATUS.md, architecture, implementation constraints,
+      CHANGELOG.md, release or user documentation only where its owned concern
+      changed; update MACHINE_DELIVERY_PLAN.md only when direction or gate state
+      changed
 - [ ] TXXX Run applicable repository gates: make test, make sanitize, swift test, swift build
 - [ ] TXXX Generate browsable code documentation and fail on invalid markup,
       broken internal links, missing required public or private/internal
       changed-surface documentation, or increased documentation debt
 - [ ] TXXX Run git diff --check and documentation link validation
+- [ ] TXXX After all acceptance evidence passes, clear
+      `.specify/feature.json`, move the feature directory to
+      `specs/completed/`, and verify the next feature number will not be reused
 
 ---
 
@@ -274,9 +284,12 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
+- Treat unit tests as necessary but insufficient for user-facing acceptance;
+  run and observe the built application
 - Preserve the declared product/core strand boundary
 - Trace every task back to the selected MACHINE_DELIVERY_PLAN.md row or gate;
-  supporting catalogues and completed features cannot add scope
+  current supporting context, completed evidence and archived research cannot
+  add scope
 - Cite evidence for fidelity, compatibility, and performance claims
 - Cover ownership, errors, threading, versioning, user content, recovery, and accessibility where applicable
 - Document affected public contracts and complex invariants at the useful level;

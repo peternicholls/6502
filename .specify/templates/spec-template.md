@@ -13,19 +13,22 @@
 **Delivery-Plan Trace**: [Link the named row or gate in
 docs/product/MACHINE_DELIVERY_PLAN.md that selects this feature]
 
-**Supporting Context**: [Link only the product intent, capability catalogue,
-core dependency catalogue, architecture, and verified status needed by this
-feature]
+**Supporting Context**: [Link only the current vision, architecture,
+implementation constraints and verified status needed by this feature; label
+completed/archive evidence explicitly]
 
 ## Constitution Alignment *(mandatory)*
 
 - **Outcome**: [The independently demonstrable user outcome or core capability]
 - **Programme Authority**: [Confirm the feature is already named by the
   delivery plan; otherwise stop and amend the plan before specifying]
+- **Temporal Boundary**: [Confirm completed/archive material is evidence or
+  research only and does not add scope or completion claims]
 - **Boundaries and Non-Goals**: [What changes, what remains outside the slice,
   and where product/host/core responsibilities meet]
-- **Evidence**: [Tests, traces, measurements, or primary references required to
-  prove the behavior and any fidelity, compatibility, or performance claims]
+- **Evidence**: [Tests, traces, measurements, primary references and, for
+  user-facing work, the built-application launch/observation procedure required
+  to prove behavior and fidelity, compatibility, or performance claims]
 - **Failure and Recovery**: [Expected failures and how users or callers recover]
 - **Content and Legal**: [Provenance, import/export, mutation, and distribution
   constraints, or a concrete N/A rationale]
@@ -60,6 +63,10 @@ feature]
 
 **Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
 
+**Application Observation**: [For user-facing work: maintained platform/device
+or simulator, launch path, inputs, and visible/audio/interaction result. For
+non-UI work: concrete N/A rationale.]
+
 **Acceptance Scenarios**:
 
 1. **Given** [initial state], **When** [action], **Then** [expected outcome]
@@ -75,6 +82,9 @@ feature]
 
 **Independent Test**: [Describe how this can be tested independently]
 
+**Application Observation**: [Maintained platform/device or simulator, launch
+path, inputs and observed result; or concrete N/A rationale.]
+
 **Acceptance Scenarios**:
 
 1. **Given** [initial state], **When** [action], **Then** [expected outcome]
@@ -88,6 +98,9 @@ feature]
 **Why this priority**: [Explain the value and why it has this priority level]
 
 **Independent Test**: [Describe how this can be tested independently]
+
+**Application Observation**: [Maintained platform/device or simulator, launch
+path, inputs and observed result; or concrete N/A rationale.]
 
 **Acceptance Scenarios**:
 

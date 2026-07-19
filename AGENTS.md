@@ -3,8 +3,8 @@ No Spec Kit feature is currently active.
 docs/product/MACHINE_DELIVERY_PLAN.md is the sole forward programme authority.
 Select a named bounded slice from it, then create its feature branch and verify
 .specify/feature.json before running plan, tasks or implementation workflows.
-Do not select work independently from supporting catalogues, archived documents,
-or completed feature artifacts.
+Use only current vision, architecture, status and implementation constraints as
+support. Completed and archived material cannot add scope.
 <!-- SPECKIT END -->
 
 ## Git Checkpoints

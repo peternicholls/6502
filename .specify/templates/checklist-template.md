@@ -39,8 +39,16 @@ validates, or explain why a principle is not applicable]
 
 - [ ] CHKXXX The feature links the named row or gate in
       `docs/product/MACHINE_DELIVERY_PLAN.md` that selected it
-- [ ] CHKXXX No supporting catalogue, completed feature, or archived document
-      independently adds scope, priority, or a delivery commitment
+- [ ] CHKXXX No supporting document, completed feature, or archived document
+      independently adds scope, priority, completion, or a delivery commitment
+
+## Temporal Separation
+
+- [ ] CHKXXX Current docs state only current intent, boundaries, constraints or
+      verified status; passed ledgers and superseded prose are not copied into
+      them
+- [ ] CHKXXX Completion clears the active pointer and moves the accepted feature
+      to `specs/completed/` without rewriting its historical decisions
 
 ## Code Documentation *(for coding features)*
 
@@ -49,6 +57,15 @@ validates, or explain why a principle is not applicable]
       is present
 - [ ] CHKXXX Browsable generation, link/markup validation, and documentation
       debt impact have measurable acceptance criteria
+
+## Application Acceptance *(for user-facing features)*
+
+- [ ] CHKXXX The maintained application is built and launched on every claimed
+      platform/device or simulator
+- [ ] CHKXXX The documented journey specifies inputs and expected visible,
+      audible and interaction state, and observed results are recorded
+- [ ] CHKXXX Unit and contract tests are not used as a substitute for direct
+      application observation
 
 ## Git Execution
 

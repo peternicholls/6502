@@ -25,14 +25,17 @@
 **Delivery-Plan Trace**: [link to the selecting row or gate in
 docs/product/MACHINE_DELIVERY_PLAN.md]
 
-**Supporting Context**: [links to the required intent, capability, core,
-architecture and status documents]
+**Supporting Context**: [links to the required current vision, architecture,
+implementation constraints and status documents; label any completed/archive
+research explicitly]
 
 **Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Testing**: [unit, contract and integration commands plus, for user-facing
+work, the built-application launch/observation procedure and maintained
+platform/device or simulator]
 
 **Code Documentation**: [language-appropriate browsable generators; affected
 public contracts and private/internal named types or interfaces; source
@@ -60,14 +63,19 @@ phase boundary]
       authority, `docs/product/MACHINE_DELIVERY_PLAN.md`; any unlisted proposal
       has stopped for a reviewed delivery-plan amendment.
 - [ ] The feature is classified as product, core, or cross-strand and links only
-      the supporting intent, capability, dependency, architecture and status
-      documents required by that slice.
+      the current vision, architecture, implementation constraints and status
+      required by that slice.
+- [ ] Completed or archived material is cited only as labelled evidence or
+      research; it does not add scope, priority or completion claims.
 - [ ] The outcome is a bounded vertical slice that can be demonstrated and
       tested independently; non-goals are explicit.
 - [ ] Core determinism and portability are preserved; host wall-clock timing or
       host frameworks do not become core dependencies.
 - [ ] Test-first evidence is identified across C++, C, Swift, and product
       acceptance boundaries as applicable.
+- [ ] User-facing work builds and launches the maintained application, executes
+      a documented journey and records observed visual/audio/interaction
+      results; unit tests are not treated as sufficient acceptance.
 - [ ] Fidelity, compatibility, and performance claims name their test, trace,
       measurement, or primary reference, and known limits remain explicit.
 - [ ] Ownership, lifetime, errors, threading, ABI compatibility, and persisted
@@ -87,6 +95,8 @@ phase boundary]
 - [ ] Every task has a focused verification and commit checkpoint before the
       next task, and every phase boundary will be committed without requiring
       empty duplicate commits.
+- [ ] Completion will clear `.specify/feature.json`, update only affected live
+      owners and move the accepted feature to `specs/completed/`.
 
 ## Project Structure
 

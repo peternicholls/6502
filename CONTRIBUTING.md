@@ -4,9 +4,9 @@ Beeb6502 keeps the emulation core deterministic, dependency-free and separate
 from host UI and file access. Changes should preserve the boundaries described
 in `docs/ARCHITECTURE.md`. Every new feature must trace to a named slice or gate
 in `docs/product/MACHINE_DELIVERY_PLAN.md`, the sole forward programme
-authority. `docs/product/ROADMAP.md` and `docs/CORE_ROADMAP.md` are supporting
-catalogues, not alternative sources of next work. Legacy product documents and
-completed feature artifacts are reference material, not active specifications.
+authority. `docs/IMPLEMENTATION_CONSTRAINTS.md` supplies non-prioritizing
+technical requirements. Completed evidence lives under `docs/completed/` and
+`specs/completed/`; archived material is research only. Neither may add scope.
 
 ## Development checks
 
@@ -53,6 +53,12 @@ make test-c2-xcode
 Linux CI runs `C2_REQUIRE_TSAN=1 make test-c2-portable`; this covers every C2
 group except the Xcode-only contract and fails if the executable TSan runtime is
 unavailable. Local unsupported TSan remains `N/A`, never a pass.
+
+For user-facing work, automated checks are necessary but not sufficient. Build
+and launch the maintained application, execute the feature's documented journey
+on each claimed platform/device or simulator, and record the observed visual,
+audio and interaction result. A passing unit suite alone cannot close product
+acceptance.
 
 Do not add package-owned `BeebCore` or `BeebKit` sources directly to Xcode
 targets. The project consumes those products from the local package. Continue

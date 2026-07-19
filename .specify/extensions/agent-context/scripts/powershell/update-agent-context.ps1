@@ -214,12 +214,13 @@ if (-not $FeatureDir) {
     $lines += 'docs/product/MACHINE_DELIVERY_PLAN.md is the sole forward programme authority.'
     $lines += 'Select a named bounded slice from it, then create its feature branch and verify'
     $lines += '.specify/feature.json before running plan, tasks or implementation workflows.'
-    $lines += 'Do not select work independently from supporting catalogues, archived documents,'
-    $lines += 'or completed feature artifacts.'
+    $lines += 'Use only current vision, architecture, status and implementation constraints as'
+    $lines += 'support. Completed and archived material cannot add scope.'
 } else {
     $lines += "Active Spec Kit feature: $FeatureDir"
     $lines += 'Its scope must trace to a named row or gate in'
     $lines += 'docs/product/MACHINE_DELIVERY_PLAN.md, the sole forward programme authority.'
+    $lines += 'Completed and archived material cannot add scope.'
     if ($PlanPath) {
         $lines += "Read the current implementation plan at $PlanPath"
     } else {

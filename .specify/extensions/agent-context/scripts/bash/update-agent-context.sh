@@ -185,12 +185,13 @@ trap 'rm -f "$TMP_SECTION"' EXIT
     echo "docs/product/MACHINE_DELIVERY_PLAN.md is the sole forward programme authority."
     echo "Select a named bounded slice from it, then create its feature branch and verify"
     echo ".specify/feature.json before running plan, tasks or implementation workflows."
-    echo "Do not select work independently from supporting catalogues, archived documents,"
-    echo "or completed feature artifacts."
+    echo "Use only current vision, architecture, status and implementation constraints as"
+    echo "support. Completed and archived material cannot add scope."
   else
     echo "Active Spec Kit feature: $FEATURE_DIR"
     echo "Its scope must trace to a named row or gate in"
     echo "docs/product/MACHINE_DELIVERY_PLAN.md, the sole forward programme authority."
+    echo "Completed and archived material cannot add scope."
     if [[ -n "$PLAN_PATH" ]]; then
       echo "Read the current implementation plan at $PLAN_PATH"
     else

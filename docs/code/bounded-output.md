@@ -3,8 +3,8 @@
 Phase C2 adds host-consumable video, audio, and diagnostic observations behind
 the C1 `MachineRuntime` ownership boundary. This guide is the conceptual home
 for those contracts as they are implemented. The approved requirements and
-evidence remain in `specs/003-bounded-output-contracts/spec.md` and
-`specs/003-bounded-output-contracts/plan.md`.
+evidence remain in `specs/completed/003-bounded-output-contracts/spec.md` and
+`specs/completed/003-bounded-output-contracts/plan.md`.
 
 ## Ownership boundary
 

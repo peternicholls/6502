@@ -1,38 +1,25 @@
-# Historical product-design reference
+# Documentation archive
 
-This directory contains documents imported from an abandoned version of the
-project. They remain valuable discovery and design research, especially around
-the Machine, Media and Editor product model, native Apple UX, accessibility and
-legal boundaries.
+Everything below this directory is historical and non-authoritative. Archived
+documents may explain earlier intent or decisions, but they cannot select work,
+define current architecture or prove completion.
 
-They are **not current implementation specifications**. Repository layout,
-framework choices, milestone dates, RFC approval labels and story numbering in
-these files apply to the abandoned project unless explicitly adopted by the
-current documentation.
+Use the current [documentation index](../README.md),
+[implementation status](../STATUS.md) and
+[Machine delivery plan](../product/MACHINE_DELIVERY_PLAN.md) instead.
 
-Use the current authority hierarchy instead:
+## Superseded 2026-07-19 baseline
 
-- [Machine application delivery plan](../product/MACHINE_DELIVERY_PLAN.md) —
-  sole forward programme authority.
-- [Product vision](../product/VISION.md) and
-  [capability catalogue](../product/ROADMAP.md) — supporting product context.
-- [Implementation status](../STATUS.md) — verified behavior only.
-- [Core phase catalogue](../CORE_ROADMAP.md) and
-  [current architecture](../ARCHITECTURE.md) — supporting technical context.
-- [Legacy decision register](../product/LEGACY_DECISIONS.md) — historical
-  interpretation.
+[`baseline-2026-07-19/`](baseline-2026-07-19/) preserves the complete previous
+programme, architecture and documentation-index set before the streamlined
+baseline replaced it. Files were moved intact.
 
-Consult the decision register before carrying an idea from this directory into
-implementation. Do not edit these historical files to describe current state;
-record delivery decisions in the Machine application delivery plan and update
-supporting documents only within their narrower roles.
+## Abandoned-project material
 
-## UX reference set
+The remaining PRD, epics, architecture, RFC, UX and Xcode Cloud documents came
+from an abandoned version of the project. They remain research only. The prior
+[archive index](README-2026-07-19.md) is preserved for its original context.
 
-- [User UX ideas](UX_user_ideas.md) records the original brainstorming input.
-- [UX design specification](ux-design-specification.md) develops that input
-  into the abandoned project's design direction.
-- [Colour theme explorer](ux-color-themes.html) is the specification's
-  self-contained interactive palette reference.
-- [Design direction showcase](ux-design-directions.html) is the
-  specification's self-contained visual direction reference.
+Adopting any archived idea requires a named amendment to the current delivery
+plan and a new bounded specification. Never edit an archived source to describe
+current state.
