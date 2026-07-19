@@ -233,6 +233,9 @@ std::unordered_map<beeb_machine*, std::shared_ptr<HandleState>> registry;
 /// RAII admission record that prevents handle release while one C call is inside.
 class ActiveCall final {
   public:
+    /// Validates a raw token under the registry lock, then records admission
+    /// under the retained state's lock. Every failure is captured in `status_`
+    /// so construction remains safe at the `noexcept` C boundary.
     explicit ActiveCall(beeb_machine* machine) noexcept {
         if (!machine) {
             status_ = makeStatus(BEEB_STATUS_INVALID_ARGUMENT, "machine handle is null");
@@ -262,9 +265,12 @@ class ActiveCall final {
         }
     }
 
+    /// One admission has exactly one matching active-call decrement.
     ActiveCall(const ActiveCall&) = delete;
     ActiveCall& operator=(const ActiveCall&) = delete;
 
+    /// Releases admission before dropping the shared state that keeps the
+    /// runtime alive; destroy waiters are notified after the count changes.
     ~ActiveCall() {
         if (!state_) return;
         try {
@@ -283,7 +289,9 @@ class ActiveCall final {
     beeb::MachineRuntime& runtime() noexcept { return state_->runtime; }
 
   private:
+    /// Retains the runtime state from successful admission through call exit.
     std::shared_ptr<HandleState> state_;
+    /// Self-contained admission result returned when no runtime was acquired.
     beeb_status status_ = makeStatus(BEEB_STATUS_INTERNAL_FAILURE);
 };
 
@@ -308,6 +316,8 @@ beeb_status missingOutput(const char* name) noexcept {
     return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, name);
 }
 
+/// Constructs state before publishing its stable token, leaving caller output
+/// untouched unless both allocations and registry insertion succeed.
 beeb_status createMachine(beeb_machine** out_machine, beeb::MachineRuntimeOptions options) {
     if (!out_machine) return missingOutput("machine output is null");
     try {
@@ -330,6 +340,8 @@ beeb_status createMachine(beeb_machine** out_machine, beeb::MachineRuntimeOption
 
 } // namespace
 
+/// Creates a runtime with one deterministic allocation failure injected for
+/// the C-boundary construction tests; this is not part of the public C ABI.
 beeb_status beeb_test_create_with_allocation_failure(beeb_machine** out_machine,
                                                      beeb::RuntimeAllocationFailurePoint point) {
     return createMachine(out_machine, {.failAllocationAt = point});
@@ -348,6 +360,9 @@ beeb_status beeb_test_hold_admitted_call(beeb_machine* machine, std::latch& admi
 
 extern "C" {
 
+// Public contracts for the functions below live in beeb_c.h. These notes
+// document adapter-specific ordering, ownership, and failure-atomicity choices.
+
 /// Arms the private C-adapter failure seam for one pre-dequeue allocation.
 void beeb_test_fail_next_frame_storage_allocation(void) {
     failNextFrameStorageAllocation.store(true, std::memory_order_relaxed);
@@ -357,6 +372,7 @@ const char* beeb_version_string(void) {
     return BEEB_VERSION_STRING;
 }
 
+// Keep creation on the same transactional helper used by allocation-failure tests.
 beeb_status beeb_create(beeb_machine** out_machine) {
     return createMachine(out_machine, {});
 }
@@ -423,6 +439,8 @@ beeb_status beeb_get_runtime_state(beeb_machine* machine, beeb_runtime_state* ou
     });
 }
 
+// Lifecycle commands enter through `operation` so token admission, exception
+// containment, and serialization stay identical across every thin adapter.
 beeb_status beeb_start(beeb_machine* machine) {
     return operation(
         machine, [](beeb::MachineRuntime& runtime) { return translateStatus(runtime.start()); });
@@ -438,6 +456,8 @@ beeb_status beeb_reset(beeb_machine* machine) {
         machine, [](beeb::MachineRuntime& runtime) { return translateStatus(runtime.reset()); });
 }
 
+// Execution result outputs are assigned only after the runtime command returns
+// a successful owned value, preserving caller storage on every failure path.
 beeb_status beeb_run_cycles(beeb_machine* machine, uint64_t cycles, uint64_t* out_actual_cycles) {
     if (!out_actual_cycles) return missingOutput("cycle-count output is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
@@ -459,6 +479,8 @@ beeb_status beeb_run_until_frame(beeb_machine* machine, uint64_t maximum_cycles,
     });
 }
 
+// Media bytes are borrowed only to build the span for this call; MachineRuntime
+// owns any copy required after the serialized command completes.
 beeb_status beeb_load_os_rom(beeb_machine* machine, const uint8_t* bytes, size_t count) {
     if (!bytes) return missingOutput("OS ROM data is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
@@ -485,6 +507,8 @@ beeb_status beeb_mount_disc(beeb_machine* machine, unsigned drive, const uint8_t
     });
 }
 
+// Assemble the portable value locally so a failed runtime query cannot expose
+// a partially updated register snapshot.
 beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state) {
     if (!out_state) return missingOutput("CPU-state output is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
@@ -498,6 +522,8 @@ beeb_status beeb_get_cpu_state(beeb_machine* machine, beeb_cpu_state* out_state)
     });
 }
 
+// Allocate caller-ownership storage before requesting the runtime value; the
+// output is committed only after the pixel buffer can be transferred intact.
 beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame) {
     if (!out_frame) return missingOutput("frame output is null");
     if (out_frame->rgba != nullptr || out_frame->release_context != nullptr) {
@@ -516,6 +542,8 @@ beeb_status beeb_get_frame(beeb_machine* machine, beeb_frame* out_frame) {
     });
 }
 
+// The release context must exist before destructive dequeue. This ordering is
+// the C adapter's failure-atomicity boundary for queue depth and accounting.
 beeb_status beeb_dequeue_frame(beeb_machine* machine, beeb_frame* out_frame) {
     if (!out_frame) return missingOutput("frame output is null");
     if (out_frame->rgba != nullptr || out_frame->release_context != nullptr) {
@@ -535,6 +563,8 @@ beeb_status beeb_dequeue_frame(beeb_machine* machine, beeb_frame* out_frame) {
     });
 }
 
+// Validate the caller-visible ownership triple before deleting its private
+// context; rejected values remain intact so callers can diagnose corruption.
 beeb_status beeb_frame_release(beeb_frame* frame) {
     if (!frame) return missingOutput("frame is null");
     if (!frame->release_context) {
@@ -555,6 +585,8 @@ beeb_status beeb_frame_release(beeb_frame* frame) {
     return makeStatus(BEEB_STATUS_OK);
 }
 
+// Runtime-owned samples are copied only after successful rendering, keeping the
+// caller buffer unchanged when validation, lifecycle, or allocation fails.
 beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
                               double sample_rate) {
     if (!mono) return missingOutput("audio output buffer is null");
@@ -566,6 +598,8 @@ beeb_status beeb_render_audio(beeb_machine* machine, float* mono, size_t frames,
     });
 }
 
+// UNDERRUN is the sole partial-success path: samples and their accounting are
+// copied from one owner result only after its internal invariants are checked.
 beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity,
                              beeb_audio_drain_result* out_result) {
     if (capacity != 0 && !mono) return missingOutput("audio output buffer is null");
@@ -590,6 +624,8 @@ beeb_status beeb_drain_audio(beeb_machine* machine, float* mono, size_t capacity
     });
 }
 
+// Translate into a local aggregate before publishing, so all depths, counters,
+// demand, and status come from one owner-consistent observation.
 beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
                                         beeb_output_diagnostics* out_diagnostics) {
     if (!out_diagnostics) return missingOutput("output diagnostics are null");
@@ -619,6 +655,8 @@ beeb_status beeb_get_output_diagnostics(beeb_machine* machine,
     });
 }
 
+// Host time participates only in this pure presentation calculation; neither
+// observation nor the derived rate can feed back into emulated state.
 beeb_status beeb_calculate_emulation_rate(const beeb_output_diagnostics* before,
                                           const beeb_output_diagnostics* after, double host_seconds,
                                           double* out_rate) {
@@ -641,6 +679,8 @@ beeb_status beeb_calculate_emulation_rate(const beeb_output_diagnostics* before,
     return makeStatus(BEEB_STATUS_OK);
 }
 
+// Input adapters preserve FIFO ordering by submitting changes through the same
+// admitted runtime operation path as lifecycle and execution commands.
 beeb_status beeb_set_key(beeb_machine* machine, uint8_t column, uint8_t row, int pressed) {
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
         return translateStatus(runtime.setKey(column, row, pressed != 0));
@@ -653,6 +693,8 @@ beeb_status beeb_set_break(beeb_machine* machine, int pressed) {
     });
 }
 
+// Observation adapters commit complete local values only after their serialized
+// queries succeed; neither exposes a borrowed view of runtime-owned state.
 beeb_status beeb_get_safe_point(beeb_machine* machine, beeb_safe_point* out_safe_point) {
     if (!out_safe_point) return missingOutput("safe-point output is null");
     return operation(machine, [&](beeb::MachineRuntime& runtime) {
