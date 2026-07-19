@@ -1,37 +1,27 @@
-# Emulator core roadmap
+# Emulator core phase catalogue
 
-**Status:** Canonical core planning document  
-**Updated:** 2026-07-17
+**Status:** Supporting technical dependency catalogue; not a delivery authority
+**Updated:** 2026-07-19
 
-This roadmap governs the portable BBC Model B emulation foundation, the planned
-evidence-led Model B+ 64K profile and their public host boundary. It does not
-define the wider application experience; those priorities live in the
-[product strand](product/README.md).
+This catalogue records the portable emulator's technical outcomes,
+dependencies, invariants and possible bounded decompositions. The
+[Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md) is the
+sole authority for selecting, ordering, promoting or closing forward work.
+This file cannot independently make a phase active, choose the next feature or
+add a machine-profile commitment.
 
-## How to use this roadmap
+## How to use this catalogue
 
-This document sequences outcomes and dependencies. It is not a sprint backlog
-and it does not promise dates. Each candidate slice enters delivery through the
-[Spec Kit workflow](../specs/README.md): specification, clarification where
-needed, plan, tasks, consistency analysis, then implementation.
+Use this document only after the delivery plan has selected a named core or
+cross-strand slice. It supplies technical constraints for that slice; it is not
+a sprint backlog and does not promise dates. Each selected slice enters
+delivery through the [Spec Kit workflow](../specs/README.md): specification,
+clarification where needed, plan, tasks, consistency analysis, then
+implementation.
 
 A phase may require several feature specifications. Do not schedule an entire
-phase as one sprint. Sprint planning may select tasks only from reviewed feature
-artifacts whose dependencies and entry criteria are satisfied.
-
-### Phase status
-
-- **Ready:** sufficiently bounded for the next Spec Kit specification.
-- **Active:** at least one approved feature specification is in implementation.
-- **Queued:** sequenced, but an earlier dependency or decision remains.
-- **Later:** held until its named product horizon becomes active.
-- **Blocked:** an identified external decision or dependency prevents progress.
-- **Complete:** exit evidence is recorded in `STATUS.md` and all associated
-  feature acceptance evidence passes.
-
-Only one phase is the default source of the next core feature. Explicitly
-independent preparation or compatibility work may run in parallel under the
-rules below.
+phase as one sprint. The delivery plan may select only a bounded slice whose
+technical dependencies and entry criteria here are satisfied.
 
 ## Current baseline
 
@@ -44,46 +34,15 @@ Exact verified coverage and hardware gaps are recorded in
 [STATUS.md](STATUS.md). Architecture changes must preserve the deterministic,
 host-agnostic boundary in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Delivery map
+## Relationship to the delivery plan
 
-| Phase | Status | Product trace | Depends on | May overlap |
-| --- | --- | --- | --- | --- |
-| C0 — Baseline evidence | Complete | Machine foundation | Current verified core | Compatibility fixture research |
-| C1 — Runtime ownership | Complete | Horizon 1: sustained Machine runtime | C0 | C2/C3 research only |
-| C2 — Bounded output contracts | Complete | Horizon 1: continuous video and audio | C1 | C3 implementation |
-| C3 — Session continuity | Ready | Horizon 1: background and restore | C1 safe-point contract; `machine-target-profile` identity | M1 host slices |
-| C4 — Bus-cycle timing | Queued | Compatibility and timing fidelity | C1; C3 snapshot invariant | Pull-based compatibility fixtures |
-| C5 — Dependable media core | Later | Horizon 2: Media | C1; slice-specific timing prerequisites | Curated device fixtures |
-| C6 — Inspection and editor bridge | Later | Horizon 3: Editor | C1 and C3 | Read-only inspector research |
-| P+ — Model B+ 64K profile | Queued | M3: post-C6 Developer Preview | C3 profile-aware snapshots; relevant C4 timing foundation | C5/C6 product evidence |
-
-The default next core phase is C3 after the bounded `machine-target-profile`
-slice fixes the identifiers that its snapshot envelope records. C2 is complete,
-and C1 defines and verifies the quiescent safe point that C3 consumes. The
-remaining cross-strand M1 application slices may proceed from C1/C2 in parallel
-with C3. C4 implementation begins only after the snapshot invariant described
-in C3 is fixed. C5 and C6 do not block the first running Machine application,
-but selected C4/C5 evidence, completed C6 contracts and the P+ profile feed the
-post-C6 M3 gate.
-
-### Cross-strand application hooks
-
-Core phases unlock product capabilities; they do not silently complete the
-application that consumes them. The canonical
-[Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md) defines:
-
-- **M1:** a running Model B application consuming C1/C2 runtime and output;
-- **M2:** the same application with C3-backed session continuity; and
-- **M3:** a post-C6 Model B+ 64K Developer Preview demonstrating selected
-  timing and Media progress through the completed C6 inspection/editor bridge.
-
-Each core slice names the product or cross-strand specification it unlocks. M1
-must become green before C5 or C6 can be presented as progress in a usable
-application.
+C0, C1 and C2 are verified complete in [STATUS.md](STATUS.md). All remaining
+order, parallelism and gate membership—including M1, M2, M3 and the Model B+
+64K option—lives only in the delivery plan. The sections below preserve the
+technical contracts that plan consumes. Completion of a core contract never
+silently completes a product gate.
 
 ## Phase C0 — baseline evidence
-
-**Status:** Complete
 
 **Outcome:** Lock the observable foundation before changing execution and
 buffer ownership.
@@ -91,7 +50,7 @@ buffer ownership.
 **Product capability unlocked:** Safe delivery of the sustained Machine
 runtime.
 
-### Candidate Spec Kit slice
+### Technical decomposition
 
 - `core-baseline-evidence`: consolidate deterministic boot, representative
   frame, ABI and performance baselines with documented fixture provenance.
@@ -140,8 +99,6 @@ hardware-fidelity status; it makes that status reproducible and safe to evolve.
 
 ## Phase C1 — runtime ownership and recoverable boundaries
 
-**Status:** Complete
-
 **Outcome:** Make machine execution a single owned state machine with explicit
 commands and recoverable public failures.
 
@@ -150,7 +107,7 @@ cross-thread races or undefined pause/reset behavior.
 
 **Depends on:** C0.
 
-### Candidate Spec Kit slices
+### Technical decomposition
 
 1. `single-owner-runtime`: execution states, command serialization and
    run/pause/reset lifecycle.
@@ -199,8 +156,6 @@ producer queues or C3's versioned snapshot format.
 
 ## Phase C2 — bounded frame, audio and diagnostic contracts
 
-**Status:** Complete
-
 **Outcome:** Give decoupled host consumers stable, bounded output without
 making host timing authoritative.
 
@@ -218,7 +173,7 @@ authoritative build paths, and no Apple framework enters `BeebCore`.
 **Parallelism:** C3 may proceed in parallel after the C1 safe-point contract is
 accepted.
 
-### Candidate Spec Kit slices
+### Technical decomposition
 
 1. `completed-frame-contract`: immutable or explicitly owned completed frames,
    bounded capacity and an overflow policy.
@@ -286,24 +241,23 @@ accounting preserves the conservation equations at the empty new epoch.
 
 ## Phase C3 — versioned session continuity
 
-**Status:** Ready
-
 **Outcome:** Save and restore architectural machine state deterministically and
 reject incompatible or damaged state safely.
 
 **Product capability unlocked:** Backgrounding and session restoration for the
 Machine experience.
 
-**Depends on:** The C1 safe-point contract and the stable identifiers and
-cross-profile rejection policy from `machine-target-profile`.
+**Depends on:** The C1 safe-point contract and the stable profile/expansion
+identifiers and incompatible-configuration rejection policy from
+`machine-target-profile`.
 
 **Parallelism:** Its slices may run beside the remaining M1 host work after
 `machine-target-profile` completes.
 
-### Candidate Spec Kit slices
+### Technical decomposition
 
 1. `snapshot-format-v1`: format envelope, version policy and architectural
-   state model, including stable machine-profile identity.
+   state model, including extensible machine-profile and expansion identity.
 2. `snapshot-round-trip`: CPU, memory, ROM selection and device state.
 3. `snapshot-mounted-media`: mounted-media identity and modified in-memory
    media state.
@@ -317,17 +271,19 @@ not an in-progress CPU micro-operation. C4 MUST preserve this safe point. A
 future requirement for mid-instruction snapshots requires a new format version
 and an explicit compatibility or migration plan.
 
-Version 1 also identifies the machine profile explicitly. A snapshot may restore
-only into a compatible profile; host selection or a filename must never silently
-reinterpret Model B state as Model B+ state or vice versa.
+Version 1 also identifies the base machine profile and configured expansions
+explicitly. A snapshot may restore only into a compatible configuration; host
+selection or a filename must never silently reinterpret Model B state as Model
+B+ state, discard a Tube configuration, or fall back from an unknown future
+identifier.
 
 ### Entry criteria
 
 - The quiescent safe point is tested and documented.
 - The specification defines compatibility policy, size limits, corruption
   handling and whether unknown optional data can be skipped.
-- `machine-target-profile` has fixed the stable profile identifiers and
-  cross-profile rejection behavior.
+- `machine-target-profile` has fixed the extensible profile/expansion
+  identifiers and incompatible-configuration rejection behavior.
 
 ### Exit evidence
 
@@ -350,8 +306,6 @@ reinterpret Model B state as Model B+ state or vice versa.
 
 ## Phase C4 — bus-cycle timing foundation
 
-**Status:** Queued
-
 **Outcome:** Replace instruction-end device advancement with ordered bus-cycle
 micro-operations while preserving the semantic layer.
 
@@ -360,7 +314,7 @@ timing-sensitive Machine software.
 
 **Depends on:** C1 completion and the C3 snapshot invariant being fixed.
 
-### Candidate Spec Kit sequence
+### Technical decomposition
 
 1. `bus-trace-contract`: trace vocabulary and fixtures for reset, interrupts,
    branches, indexed crossings, read-modify-write and representative I/O.
@@ -426,22 +380,20 @@ copy-protection remain outside the current horizon.
 
 ## Model B+ 64K profile workstream
 
-**Status:** Queued
-
-**Product trace:** M3 — Post-C6 Model B+ Developer Preview.
+**Delivery-plan trace:** M3 — Post-C6 Model B+ Developer Preview.
 
 **Outcome:** Add a separately selectable and testable Model B+ 64K profile
-without weakening the verified Model B profile or treating the two machines as
-interchangeable.
+without weakening the verified Model B profile or treating the profiles as
+interchangeable or exhaustive.
 
-**Depends on:** C1 ownership; C3 snapshot machine-profile identity; the C4 bus
-trace/sequencer foundation required by the selected processor and device cases.
+**Depends on:** C1 ownership; C3 snapshot profile/expansion identity; the C4
+bus-trace/sequencer foundation required by the selected processor and device
+cases.
 
 This profile workstream is not C7 and does not reopen completed Model B phases.
-It may overlap selected C5/C6 work after its machine identity and primary
-references are fixed.
+The delivery plan alone determines when its components enter work.
 
-### Candidate Spec Kit sequence
+### Technical decomposition
 
 1. `bplus-profile-selection`: extend the stable `machine-target-profile`
    identity through core/C/Swift selection, firmware compatibility and snapshot
@@ -460,10 +412,11 @@ references are fixed.
 
 ### Entry criteria
 
-- The target is Model B+ 64K; 128K expansion is an explicit non-goal.
+- The target for this workstream is Model B+ 64K; 128K expansion is a separate
+  future profile, not an implicit extension of this implementation.
 - Primary references identify the selected processor, memory/display paging,
   firmware and disc-controller behavior.
-- C3 snapshots encode and validate machine-profile identity.
+- C3 snapshots encode and validate extensible profile/expansion identity.
 - Every difference from Model B begins with a focused failing fixture or trace.
 
 ### Exit evidence
@@ -479,17 +432,17 @@ references are fixed.
   supported profile; unsupported B+ controller cases report a structured
   profile-specific limitation.
 
-### Non-goals
+### Non-goals for this workstream
 
-- Model B+ 128K, BBC Master, Tube, Econet or universal controller support.
+- Model B+ 128K, BBC Master-family profiles, Tube, Econet or universal
+  controller support. These remain named future options in the delivery plan
+  and require separate profile or expansion specifications.
 - Bundled MOS, BASIC, filing-system or commercial software ROMs.
 - Claiming compatibility beyond the maintained fixture set.
 
 ## Phase C5 — dependable media core
 
-**Status:** Later
-
-**Product trace:** Horizon 2 — Media.
+**Product capability:** Media.
 
 **Outcome:** Provide deterministic, recoverable disk and cassette primitives
 without silently modifying imported content.
@@ -497,7 +450,7 @@ without silently modifying imported content.
 **Depends on:** C1; each timing-sensitive slice must also state whether C4 is a
 prerequisite.
 
-### Candidate Spec Kit sequence
+### Technical decomposition
 
 1. `writable-disk-export`: explicit export of modified in-memory SSD/DSD data.
 2. `dfs-controller-compatibility`: only the profile-specific 8271 or 1770
@@ -509,7 +462,7 @@ prerequisite.
 
 ### Entry criteria
 
-- The corresponding Product Horizon 2 slice is selected.
+- The corresponding Media slice is selected in the delivery plan.
 - Fixture provenance and supported media boundaries are documented.
 - The selected machine/controller profile is explicit.
 - Import, in-memory mutation and explicit export ownership are specified.
@@ -529,16 +482,14 @@ prerequisite.
 
 ## Phase C6 — inspection and editor bridge
 
-**Status:** Later
-
-**Product trace:** Horizon 3 — Editor.
+**Product capability:** Editor.
 
 **Outcome:** Expose authentic bytes and atomic machine transactions without
 coupling the core to source models or UI.
 
 **Depends on:** C1 execution ownership and C3 session-state boundaries.
 
-### Candidate Spec Kit sequence
+### Technical decomposition
 
 1. `stable-inspection-snapshots`: CPU and device state for a read-only
    inspector.
@@ -548,7 +499,7 @@ coupling the core to source models or UI.
 
 ### Entry criteria
 
-- The corresponding Product Horizon 3 workflow is specified.
+- The corresponding Editor workflow is selected in the delivery plan.
 - The host/core contract states concurrency, validation and rollback behavior.
 
 ### Exit evidence
@@ -597,10 +548,10 @@ documentation debt.
 - Bundled proprietary ROMs, character generators, games or user media.
 - JIT execution or downloaded native code.
 - Flux-level preservation and copy-protection emulation in the current horizon.
-- BBC Master, Tube, Econet and other expansion platforms without a separate
-  product decision.
+- BBC Master-family machines, Tube, Econet and other expansion platforms unless
+  the delivery plan selects their separate profile or expansion contract.
 
-## Sequencing rules
+## Core invariants
 
 - Prefer APIs that unlock a complete product workflow over speculative device
   surface area.
@@ -608,58 +559,13 @@ documentation debt.
 - Preserve current semantic tests while replacing timing internals.
 - Require evidence before accuracy, performance or compatibility claims.
 - Avoid new dependencies unless they materially improve validation or safety.
-- Update this roadmap for technical priority changes and `STATUS.md` only when
-  implementation evidence changes.
+- Change delivery priority only in the Machine application delivery plan;
+  update this catalogue when a selected slice changes a technical dependency.
+- Update `STATUS.md` only when implementation evidence changes.
 
-## Post-phase C6 — working Model B+ application synthesis gate
+## Application synthesis
 
-**Status:** Later
-
-**Product trace:** M3 in the
+Core completion does not define an application release or preview. M1, M2 and
+M3—including the requirement that M3 offer both Model B and Model B+ 64K—are
+defined and closed only by the
 [Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md).
-
-**Outcome:** Demonstrate a limited but real native application running the
-separately evidenced Model B+ 64K profile while making progress toward the full
-Machine, Media and Editor vision visible and honest.
-
-This is a synthesis and evidence gate, not a new core phase or an umbrella
-implementation feature. The first working Model B application must already have
-passed M1, and C3-backed continuity must already have passed M2.
-
-### Required contributing specifications
-
-- the M1 firmware, runtime presentation, audio, input and validation slices;
-- all C3 snapshot slices and `machine-session-lifecycle`;
-- the Model B+ 64K profile sequence;
-- the C4 compatibility case named by the M3 feature;
-- a selected C5 Media workflow with safe mount, protection and explicit export;
-  and
-- all four C6 contracts: stable inspection snapshots, breakpoint/watchpoint
-  control, atomic memory transactions and BASIC program boundaries, plus their
-  bounded product demonstrations.
-
-### Exit evidence
-
-- The Model B M2 regression remains green.
-- The application selects Model B+ 64K, accepts compatible user-owned firmware,
-  boots to BASIC-ready state, types and runs the M1 program, and presents
-  continuous bounded video and audio.
-- Run, pause, reset, BREAK, background and restore retain their verified
-  semantics on the B+ profile.
-- One C4 timing case, one selected Media case, and demonstrations of all four
-  C6 contracts are reproducible through the application or its maintained
-  acceptance harness.
-- The application exposes its active profile, version, runtime health and a
-  route to current fidelity limitations. `STATUS.md` remains the authority for
-  those limitations.
-- The complete portable, C, Swift, app, sanitizer, documentation and supported
-  CI matrix passes without bundled proprietary content.
-
-### Explicit limitations at this gate
-
-- M3 is a Developer Preview, not a preservation-grade compatibility claim.
-- Model B+ 128K, complete controller variants, live tape capture and the full
-  label-aware Editor may remain later slices unless separately promoted into
-  the M3 acceptance specification.
-- Completion of C6 core contracts alone does not satisfy M3; the product and
-  cross-strand evidence above is mandatory.

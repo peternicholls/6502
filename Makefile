@@ -8,6 +8,7 @@ C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
 C1_TEST_SCRIPTS ?= $(filter-out Tests/C1/testlib.sh,$(wildcard Tests/C1/test-*.sh))
 C2_TEST_SCRIPTS ?= $(filter-out Tests/C2/testlib.sh,$(wildcard Tests/C2/test-*.sh))
 C2_PORTABLE_TEST_SCRIPTS ?= $(filter-out Tests/C2/test-xcode-project.sh,$(C2_TEST_SCRIPTS))
+TOOLING_TEST_SCRIPTS ?= $(wildcard Tests/Tooling/test-*.sh)
 BUILD_DIR = .build/cpp
 C0_PROFILE ?=
 DOCS_PROFILE ?= auto
@@ -21,6 +22,7 @@ endif
 .PHONY: all test sanitize thread-sanitize test-c1 test-c2 test-c2-portable \
 		test-c2-xcode verify-c2 measure-c2 \
 	format-check check-version demo-rom test-c0 verify-c0 \
+	test-tooling \
 	verify-c0-references update-c0-reference measure-c0 \
 	validate-c0-measurement docs docs-check clean
 
@@ -116,6 +118,14 @@ test-c0:
 	done; \
 	exit $$status
 
+test-tooling:
+	@status=0; \
+	for test_script in $(TOOLING_TEST_SCRIPTS); do \
+		echo "Tooling group: $$test_script"; \
+		"$$test_script" || status=$$?; \
+	done; \
+	exit $$status
+
 verify-c0:
 	scripts/verify-c0.sh $(if $(C0_PROFILE),--profile "$(C0_PROFILE)")
 
@@ -137,7 +147,7 @@ validate-c0-measurement:
 docs:
 	scripts/build-docs.sh --profile "$(DOCS_PROFILE)"
 
-docs-check:
+docs-check: test-tooling
 	scripts/build-docs.sh --profile "$(DOCS_PROFILE)" --check
 
 clean:

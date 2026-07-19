@@ -1,16 +1,19 @@
 # Product vision
 
-**Status:** Canonical  
-**Updated:** 2026-07-17
+**Status:** Supporting durable product intent; not a delivery authority
+**Updated:** 2026-07-19
 
 ## North star
 
-Beeb6502 is a native Apple retro-computing environment that makes the BBC Model
-B family approachable, useful and faithful on modern devices. It starts with
-the verified Model B profile and progresses to a planned Model B+ 64K profile
-without weakening the original regression baseline. It combines an authentic
-machine, preservation-oriented media tools and a modern programming workflow
-without hiding the character of the original computer.
+Beeb6502 is a native Apple retro-computing environment that makes the BBC Micro
+family approachable, useful and faithful on modern devices. It combines an
+authentic machine, preservation-oriented media tools and a modern programming
+workflow without hiding the character of the original computers.
+
+This vision describes why the product exists and the qualities it preserves.
+It does not select or order work. The
+[Machine application delivery plan](MACHINE_DELIVERY_PLAN.md) is the sole
+forward programme authority.
 
 The 6502 and hardware emulation are foundational capabilities, not the whole
 product. Product decisions should be evaluated by the experience they enable
@@ -130,23 +133,28 @@ Key qualities:
 
 ## Product boundary
 
-The product includes verified BBC Model B emulation, a planned BBC Model B+ 64K
-profile, user-owned media workflows, a BBC BASIC-oriented editor and educational
-inspection capabilities. It has no server dependency and does not download
-executable content.
+The intended product family includes explicit, independently evidenced BBC
+Micro machine profiles, user-owned media workflows, a BBC BASIC-oriented editor
+and educational inspection capabilities. Model and expansion identity must be
+extensible rather than hard-coded to two machines. It has no server dependency
+and does not download executable content.
 
 The following are not current product commitments:
 
 - bundled proprietary firmware or commercial software;
 - JIT or dynamically downloaded native code;
 - preservation-grade flux emulation and copy-protection support;
-- BBC Master, Tube, Econet or other expansion systems;
-- the Model B+ 128K expansion until a separate product and compatibility case
-  approves it;
 - a content marketplace or cloud community;
 - simulated CRT artefacts as a default visual treatment.
 
 These may be reconsidered only through an explicit product and legal decision.
+
+Model B and Model B+ 64K are the committed selectable profiles named by the
+delivery plan. Model B+ 128K, Master-family revisions, Acorn Tube second
+processors, Econet, additional storage systems and other expansions are
+deliberately preserved as later options. They require separate evidence and a
+delivery-plan amendment; they are neither current commitments nor architectural
+dead ends.
 
 ## Success outcomes
 
@@ -167,14 +175,11 @@ Exact acquisition, conversion and microphone-success targets remain hypotheses
 until representative users and fixtures exist. They should not drive technical
 claims before measurement is available.
 
-## Current strategic focus
+## Delivery relationship
 
-The next product objective is the M1 Running Model B Machine built on the
-existing emulator foundation: firmware onboarding, host frame presentation,
-real-time audio, keyboard mapping, machine controls and observable health. C3
-then adds continuity, while the post-C6 target extends the same proven workflow
-to Model B+ 64K and demonstrates measured Media and Editor progress. The
-[delivery plan](MACHINE_DELIVERY_PLAN.md) defines the cross-strand gates.
+Current direction, ordering and gates are defined only in the
+[Machine application delivery plan](MACHINE_DELIVERY_PLAN.md). This vision may
+not independently redefine them.
 
 ## Open product decisions
 

@@ -1,7 +1,7 @@
 # Legacy design decision register
 
-**Status:** Canonical interpretation of historical material  
-**Updated:** 2026-07-17
+**Status:** Supporting historical interpretation; not a delivery authority
+**Updated:** 2026-07-19
 
 The files under `../Archive/` came from an abandoned version
 of the project. They capture useful product discovery, but their implementation
@@ -9,12 +9,12 @@ details and apparent approvals are not binding on the current codebase.
 
 Disposition meanings:
 
-- **Retained:** still directs current product or architecture work.
+- **Retained:** still informs current product intent or architecture.
 - **Refined:** the intent remains, but the current project defines it more
   precisely.
 - **Superseded:** replaced by the current implementation or architecture.
 - **Open:** requires evidence or a product decision.
-- **Deferred:** valid possibility, but not on the committed roadmap.
+- **Deferred:** valid possibility, but not selected by the delivery plan.
 
 ## Product decisions
 
@@ -32,9 +32,10 @@ Disposition meanings:
 | A label-aware editor round-trips BBC BASIC through RAM. | Retained | Transactional memory APIs and deterministic tokenization are prerequisites. |
 | Clean-room firmware is available by default. | Open | The current product requires user-supplied firmware. Redistributable firmware needs feasibility, legal and value validation. |
 | Freemium conversion, download and retention targets. | Open | Treat as hypotheses until a beta, analytics policy and monetization decision exist. |
-| Specific 20–26 week milestone dates. | Superseded | `ROADMAP.md` uses evidence-based capability horizons without schedule promises. |
+| Specific 20–26 week milestone dates. | Superseded | The delivery plan uses evidence gates without schedule promises. |
 | BBC Model B wording is suitable as the final store name. | Open | Final naming requires trademark-safe product review. |
 | The archived product targets only BBC Model B. | Refined | Model B remains the first working and permanent regression profile; the new post-C6 planning target is a separately evidenced Model B+ 64K profile, not an implied rename. |
+| BBC Master, Tube and Econet are later possibilities. | Retained | They remain named future profile or expansion options, but require separate evidence and an explicit delivery-plan amendment before implementation. |
 
 ## Core and integration decisions
 
@@ -83,7 +84,7 @@ Disposition meanings:
 | Document | Use now |
 | --- | --- |
 | `product-brief-BBC Model B-2025-11-03.md` | Product discovery reference. User problems, experience pillars and legal concerns informed the current vision. Commercial numbers and implementation assumptions are unvalidated. |
-| `PRD.md` | Requirements reference. Superseded by the current product vision and roadmap for planning authority. |
+| `PRD.md` | Requirements reference. Superseded by `MACHINE_DELIVERY_PLAN.md` for all forward programme authority. |
 | `ux-design-specification.md` | Durable UX principles reference. Exact components and layouts remain proposals. |
 | `epics.md` | Historical backlog. Do not implement story numbers or milestone ordering directly. |
 | `architecture.md` | Historical architecture. Current technical authority is `../ARCHITECTURE.md`. |
@@ -95,5 +96,7 @@ Disposition meanings:
 
 When historical material suggests a useful feature or constraint that is not
 listed here, add it to this register with a disposition before updating the
-current roadmap or architecture. Historical “approved” labels describe the
-abandoned project and do not bypass current review.
+supporting vision, capability catalogue or architecture. If the idea should
+enter delivery, amend `MACHINE_DELIVERY_PLAN.md` explicitly. Historical
+“approved” labels describe the abandoned project and do not bypass current
+review.

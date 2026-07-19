@@ -10,12 +10,18 @@
 
 **Strand**: [product | core | cross-strand]
 
-**Authoritative Context**: [Link the current product vision/roadmap or core
-roadmap/architecture/status documents that govern this feature]
+**Delivery-Plan Trace**: [Link the named row or gate in
+docs/product/MACHINE_DELIVERY_PLAN.md that selects this feature]
+
+**Supporting Context**: [Link only the product intent, capability catalogue,
+core dependency catalogue, architecture, and verified status needed by this
+feature]
 
 ## Constitution Alignment *(mandatory)*
 
 - **Outcome**: [The independently demonstrable user outcome or core capability]
+- **Programme Authority**: [Confirm the feature is already named by the
+  delivery plan; otherwise stop and amend the plan before specifying]
 - **Boundaries and Non-Goals**: [What changes, what remains outside the slice,
   and where product/host/core responsibilities meet]
 - **Evidence**: [Tests, traces, measurements, or primary references required to

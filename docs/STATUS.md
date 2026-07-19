@@ -1,8 +1,11 @@
 # Implementation status
 
-This document records verified emulator implementation state. Technical
-priority belongs to the [core roadmap](CORE_ROADMAP.md); the wider application
-is governed separately by the [product strand](product/README.md).
+This document records verified emulator implementation state only. It does not
+set priority or select future work. The
+[Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md) is the
+sole forward programme authority; the
+[core phase catalogue](CORE_ROADMAP.md) supplies supporting dependencies and
+invariants.
 
 ## Verified
 
@@ -254,15 +257,10 @@ latency, release, or product-performance guarantee.
 | Keyboard | Matrix injection through System VIA | Complete host-to-BBC key map and all IC32 nuances |
 | Cassette | — | 6850, Serial ULA, UEF chunks, WAV edge decoder, motor timing |
 
-## Current core focus
+## Evidence boundary
 
 C0 baseline evidence, C1 runtime ownership, and C2 bounded output/Xcode
-delivery are complete. C3 session continuity is the default next core source.
-Bus-cycle implementation remains queued until C3 fixes
-the version-1 snapshot invariant, so it cannot accidentally invalidate public
-session state.
-
-The [core roadmap](CORE_ROADMAP.md) owns technical sequence; the tables above
-own verified hardware-fidelity status. The C0 evidence does not close any gap in
-the hardware-fidelity table. A phase is not Active until an approved Spec Kit
-feature enters implementation.
+delivery are verified complete. The tables above own hardware-fidelity claims;
+they do not promote a gap into planned work. The C0 evidence does not close any
+gap in the hardware-fidelity table. Future direction and gate state must be read
+from the Machine application delivery plan.

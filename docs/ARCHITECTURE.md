@@ -2,11 +2,12 @@
 
 ## Product relationship
 
-The core is a standalone technical strand with its own
-[roadmap](CORE_ROADMAP.md). It enables, but is not governed internally by, the
-wider [product vision](product/VISION.md). Product requirements may request a
-capability; this architecture determines how to provide it while keeping the
-machine deterministic and portable. Host presentation must not become the
+The core is a standalone technical strand. A slice selected by the
+[Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md) may
+request a core capability; this architecture determines how to provide it while
+keeping the machine deterministic and portable. The
+[core phase catalogue](CORE_ROADMAP.md) supplies supporting technical
+decomposition, not delivery priority. Host presentation must not become the
 source of emulated machine time.
 
 ## Boundary
@@ -51,21 +52,24 @@ flowchart TD
 
 ## Runtime ownership closure
 
-Phase C1 makes this owner path mandatory for supported BBC hosts. The owner
+The completed C1 work makes this owner path mandatory for supported BBC hosts.
+The owner
 arbitrates a capacity-64 FIFO with sustained execution, completes commands at
 the quiescent instruction/device boundary, drains accepted work before joining,
 and contains failures as structured C++/C/Swift values. Exact replay records
 accepted host interleaving and emulated slices without turning the ledger into
 a persistence format.
 
-This boundary is now stable input to C3. C2 adds bounded completed-frame and
-continuous-audio production behind the same owner, plus non-mutating output
-diagnostics. The capacity-three frame FIFO drops the oldest frame under
-pressure; the capacity-4,096 audio ring does the same for samples and reports
-exact underrun demand. Outputs are owned across C++/C/Swift and publication is
-driven only by committed emulated cycles. C3 may serialize architectural state
-only at the same quiescent safe point. Neither phase may reintroduce direct host
-access to `BBCMicro`, and C2 output is not a persisted format.
+The quiescent instruction/device boundary is also the only currently approved
+architectural-state snapshot point. Completed C2 work adds bounded
+completed-frame and continuous-audio production behind the same owner, plus
+non-mutating output diagnostics. The capacity-three frame FIFO drops the oldest
+frame under pressure; the capacity-4,096 audio ring does the same for samples
+and reports exact underrun demand. Outputs are owned across C++/C/Swift, and
+publication is driven only by committed emulated cycles. Any selected snapshot
+slice may serialize architectural state only at the same quiescent safe point.
+Future work may not reintroduce direct host access to `BBCMicro`, and bounded
+output is not a persisted format.
 
 The C frame adapter preallocates an opaque release context before requesting a
 destructive dequeue. Once the owner returns an owned frame, its pixel vector is
@@ -133,8 +137,8 @@ in deterministic minimum 2,048-cycle slices, with the command FIFO checked
 between slices. This ownership policy prevents host races; it does not claim
 bus-cycle fidelity or make host wall time part of emulated time.
 
-The next timing architecture should express every CPU operation as bus-cycle
-micro-steps:
+When the delivery plan selects the C4 bus-cycle work, its architecture must
+express every CPU operation as bus-cycle micro-steps:
 
 1. drive address/RW/data for the next CPU phase;
 2. perform the bus access, including slow-device stretch;

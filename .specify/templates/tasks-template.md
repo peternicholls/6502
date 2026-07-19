@@ -173,7 +173,9 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Additional regression and boundary tests in the affected test suites
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
-- [ ] TXXX Update docs/STATUS.md, roadmaps, architecture, and CHANGELOG.md as applicable
+- [ ] TXXX Update docs/STATUS.md, architecture, CHANGELOG.md, and supporting
+      catalogues as applicable; update MACHINE_DELIVERY_PLAN.md only if the
+      programme direction or gate state changed
 - [ ] TXXX Run applicable repository gates: make test, make sanitize, swift test, swift build
 - [ ] TXXX Generate browsable code documentation and fail on invalid markup,
       broken internal links, missing required public or private/internal
@@ -273,6 +275,8 @@ With multiple developers:
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
 - Preserve the declared product/core strand boundary
+- Trace every task back to the selected MACHINE_DELIVERY_PLAN.md row or gate;
+  supporting catalogues and completed features cannot add scope
 - Cite evidence for fidelity, compatibility, and performance claims
 - Cover ownership, errors, threading, versioning, user content, recovery, and accessibility where applicable
 - Document affected public contracts and complex invariants at the useful level;

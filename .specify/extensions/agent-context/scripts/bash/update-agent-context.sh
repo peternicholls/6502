@@ -10,9 +10,8 @@
 #
 # Usage: update-agent-context.sh [plan_path]
 #
-# When `plan_path` is omitted, the script picks the most recently modified
-# `specs/*/plan.md` if any exist, otherwise emits the section without a
-# concrete plan path.
+# The active feature is resolved only from `.specify/feature.json`. An explicit
+# `plan_path` must belong to that feature. Historical plans are never inferred.
 
 set -euo pipefail
 
@@ -121,24 +120,55 @@ unset _cf_parts _seg
 [[ -z "$MARKER_END"   ]] && MARKER_END="$DEFAULT_END"
 
 PLAN_PATH="${1:-}"
-if [[ -z "$PLAN_PATH" ]]; then
-  # Pick the most recently modified plan.md one level deep (specs/<feature>/plan.md).
-  # Use find + sort by modification time to avoid ls/head fragility with
-  # spaces in paths or SIGPIPE from pipefail.
-  _plan_abs="$("$_python" - "$PROJECT_ROOT" <<'PY'
-import sys, os
-from pathlib import Path
-specs = Path(sys.argv[1]) / "specs"
-plans = sorted(
-    specs.glob("*/plan.md"),
-    key=lambda p: p.stat().st_mtime,
-    reverse=True,
-)
-print(plans[0] if plans else "")
+FEATURE_POINTER="$PROJECT_ROOT/.specify/feature.json"
+if ! FEATURE_DIR="$("$_python" - "$FEATURE_POINTER" <<'PY'
+import json
+import sys
+from pathlib import PurePosixPath
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+except FileNotFoundError:
+    print("")
+    raise SystemExit(0)
+except (OSError, json.JSONDecodeError) as exc:
+    print(f"agent-context: unable to read {path}: {exc}", file=sys.stderr)
+    raise SystemExit(2)
+
+value = data.get("feature_directory", "") if isinstance(data, dict) else ""
+if not value:
+    print("")
+    raise SystemExit(0)
+if not isinstance(value, str):
+    print("agent-context: feature_directory must be a string", file=sys.stderr)
+    raise SystemExit(2)
+
+feature = PurePosixPath(value)
+if feature.is_absolute() or len(feature.parts) != 2 or feature.parts[0] != "specs" or ".." in feature.parts:
+    print(f"agent-context: invalid feature_directory '{value}'", file=sys.stderr)
+    raise SystemExit(2)
+print(feature.as_posix())
 PY
-)"
-  if [[ -n "$_plan_abs" ]]; then
-    PLAN_PATH="${_plan_abs#"$PROJECT_ROOT/"}"
+)"; then
+  echo "agent-context: invalid active-feature pointer; refusing to update context." >&2
+  exit 1
+fi
+
+if [[ -z "$FEATURE_DIR" ]]; then
+  if [[ -n "$PLAN_PATH" ]]; then
+    echo "agent-context: no active feature; refusing explicit plan '$PLAN_PATH'." >&2
+    exit 1
+  fi
+else
+  EXPECTED_PLAN="$FEATURE_DIR/plan.md"
+  if [[ -n "$PLAN_PATH" && "$PLAN_PATH" != "$EXPECTED_PLAN" ]]; then
+    echo "agent-context: plan '$PLAN_PATH' does not belong to active feature '$FEATURE_DIR'." >&2
+    exit 1
+  fi
+  if [[ -z "$PLAN_PATH" && -f "$PROJECT_ROOT/$EXPECTED_PLAN" ]]; then
+    PLAN_PATH="$EXPECTED_PLAN"
   fi
 fi
 
@@ -150,10 +180,22 @@ TMP_SECTION="$(mktemp)"
 trap 'rm -f "$TMP_SECTION"' EXIT
 {
   echo "$MARKER_START"
-  echo "For additional context about technologies to be used, project structure,"
-  echo "shell commands, and other important information, read the current plan"
-  if [[ -n "$PLAN_PATH" ]]; then
-    echo "at $PLAN_PATH"
+  if [[ -z "$FEATURE_DIR" ]]; then
+    echo "No Spec Kit feature is currently active."
+    echo "docs/product/MACHINE_DELIVERY_PLAN.md is the sole forward programme authority."
+    echo "Select a named bounded slice from it, then create its feature branch and verify"
+    echo ".specify/feature.json before running plan, tasks or implementation workflows."
+    echo "Do not select work independently from supporting catalogues, archived documents,"
+    echo "or completed feature artifacts."
+  else
+    echo "Active Spec Kit feature: $FEATURE_DIR"
+    echo "Its scope must trace to a named row or gate in"
+    echo "docs/product/MACHINE_DELIVERY_PLAN.md, the sole forward programme authority."
+    if [[ -n "$PLAN_PATH" ]]; then
+      echo "Read the current implementation plan at $PLAN_PATH"
+    else
+      echo "No implementation plan exists yet; complete specification before planning."
+    fi
   fi
   echo "$MARKER_END"
 } > "$TMP_SECTION"

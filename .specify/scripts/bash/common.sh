@@ -260,31 +260,39 @@ get_feature_paths() {
         has_git_repo="true"
     fi
 
-    # Resolve feature directory.  Priority:
-    #   1. SPECIFY_FEATURE_DIRECTORY env var (explicit override)
-    #   2. .specify/feature.json "feature_directory" key (persisted by /speckit-specify)
-    #   3. Branch-name-based prefix lookup (legacy fallback)
-    local feature_dir
+    # The persisted active-feature pointer is the only feature-path authority.
+    # Never infer a completed feature from branch names, directory numbers, or
+    # modification time when the pointer is empty or invalid.
+    local _fd
+    _fd=$(read_feature_json_feature_directory "$repo_root")
+    if [[ -z "$_fd" ]]; then
+        echo "ERROR: No active Spec Kit feature. Select a named slice from docs/product/MACHINE_DELIVERY_PLAN.md and populate .specify/feature.json first." >&2
+        return 1
+    fi
+    if [[ "$_fd" == /* ]] || [[ "$_fd" == *\\* ]] || [[ "$_fd" == *".."* ]] || [[ ! "$_fd" =~ ^specs/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+        echo "ERROR: Invalid feature_directory in .specify/feature.json: $_fd" >&2
+        return 1
+    fi
+
+    local feature_dir="$repo_root/$_fd"
+    if [[ ! -d "$feature_dir" ]]; then
+        echo "ERROR: Active feature directory does not exist: $_fd" >&2
+        return 1
+    fi
+
     if [[ -n "${SPECIFY_FEATURE_DIRECTORY:-}" ]]; then
-        feature_dir="$SPECIFY_FEATURE_DIRECTORY"
-        # Normalize relative paths to absolute under repo root
-        [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
-    elif [[ -f "$repo_root/.specify/feature.json" ]]; then
-        # Shared, set -e-safe parser: jq -> python3 -> grep/sed. Returns empty on
-        # missing/unparseable/unset so we fall through to the branch-prefix lookup.
-        local _fd
-        _fd=$(read_feature_json_feature_directory "$repo_root")
-        if [[ -n "$_fd" ]]; then
-            feature_dir="$_fd"
-            # Normalize relative paths to absolute under repo root
-            [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
-        elif ! feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$current_branch"); then
-            echo "ERROR: Failed to resolve feature directory" >&2
+        local override_dir="$SPECIFY_FEATURE_DIRECTORY"
+        [[ "$override_dir" != /* ]] && override_dir="$repo_root/$override_dir"
+        local norm_override norm_feature
+        norm_override="$(cd -- "$override_dir" 2>/dev/null && pwd -P)" || {
+            echo "ERROR: SPECIFY_FEATURE_DIRECTORY does not exist: $SPECIFY_FEATURE_DIRECTORY" >&2
+            return 1
+        }
+        norm_feature="$(cd -- "$feature_dir" 2>/dev/null && pwd -P)" || return 1
+        if [[ "$norm_override" != "$norm_feature" ]]; then
+            echo "ERROR: SPECIFY_FEATURE_DIRECTORY does not match .specify/feature.json" >&2
             return 1
         fi
-    elif ! feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$current_branch"); then
-        echo "ERROR: Failed to resolve feature directory" >&2
-        return 1
     fi
 
     # Use printf '%q' to safely quote values, preventing shell injection

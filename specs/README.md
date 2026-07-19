@@ -13,16 +13,21 @@ Classify the work as one of:
 - `cross-strand`: a product slice that requires a named core capability and an
   explicit host/core boundary.
 
-Use the current documents as sources of truth:
+Every product, core and cross-strand feature starts with the sole forward
+programme authority: the
+[Machine delivery plan](../docs/product/MACHINE_DELIVERY_PLAN.md). The selected
+feature must trace to a named row or gate there. If it does not, amend and review
+the delivery plan before creating the feature.
 
-- Cross-strand Machine-application work starts with the canonical
-  [Machine delivery plan](../docs/product/MACHINE_DELIVERY_PLAN.md), then traces
-  its named core and product dependencies to the authorities below.
-- Product work starts with [the product vision](../docs/product/VISION.md) and
-  [product roadmap](../docs/product/ROADMAP.md).
-- Core work starts with [the core roadmap](../docs/CORE_ROADMAP.md),
-  [architecture](../docs/ARCHITECTURE.md), and
-  [implementation status](../docs/STATUS.md).
+Then use only the supporting context required by that selected slice:
+
+- [product vision](../docs/product/VISION.md) for durable intent;
+- [product capability catalogue](../docs/product/ROADMAP.md) for user-facing
+  scope without priority;
+- [core phase catalogue](../docs/CORE_ROADMAP.md) for technical dependencies and
+  invariants;
+- [architecture](../docs/ARCHITECTURE.md) for current boundaries; and
+- [implementation status](../docs/STATUS.md) for verified behavior and gaps.
 - Historical files under `docs/Archive/` are research input, not current
   specifications.
 
@@ -42,8 +47,10 @@ For a new slice, run the Spec Kit workflow in order:
 
 Each feature directory may contain `spec.md`, `plan.md`, `research.md`,
 `data-model.md`, `contracts/`, `quickstart.md`, `tasks.md`, and focused
-checklists. Keep decisions in the feature artifacts; update the project-level
-status, architecture, roadmaps, and changelog when delivery changes them.
+checklists. Keep slice-local decisions in the feature artifacts. Update the
+delivery plan only when programme direction or a gate changes; update status,
+architecture, capability catalogues and changelog only when their narrower
+concerns change.
 
 ### Feature lifecycle
 
@@ -52,12 +59,13 @@ status, architecture, roadmaps, and changelog when delivery changes them.
 - `Ready` means the complete spec/plan/tasks stack has passed analysis and its
   dependencies are satisfied.
 - `Active` means implementation has begun on the selected feature branch.
-- `Complete` means acceptance evidence passes and the relevant roadmap/status
-  authorities record closure.
+- `Complete` means acceptance evidence passes, `STATUS.md` records verified
+  behavior where applicable, and the delivery plan records gate/slice closure.
 
 `.specify/feature.json` names only the currently selected feature. It is empty
 when no feature is active; completed feature directories remain as decision and
-evidence history. Before running `/speckit-plan`, `/speckit-tasks` or
+evidence history and never become forward authority. Before running
+`/speckit-plan`, `/speckit-tasks` or
 `/speckit-implement`, create or select a fresh bounded feature and verify that
 the pointer names it. Never leave the pointer on a completed feature merely to
 make prerequisite scripts pass.

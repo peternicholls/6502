@@ -1,8 +1,10 @@
 <!-- SPECKIT START -->
-No Spec Kit feature is currently active. Use
-docs/product/MACHINE_DELIVERY_PLAN.md to select the next bounded slice, then
-create its feature branch and verify .specify/feature.json before running plan,
-tasks or implementation workflows.
+No Spec Kit feature is currently active.
+docs/product/MACHINE_DELIVERY_PLAN.md is the sole forward programme authority.
+Select a named bounded slice from it, then create its feature branch and verify
+.specify/feature.json before running plan, tasks or implementation workflows.
+Do not select work independently from supporting catalogues, archived documents,
+or completed feature artifacts.
 <!-- SPECKIT END -->
 
 ## Git Checkpoints

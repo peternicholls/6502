@@ -22,7 +22,11 @@
 
 **Documentation Strand**: [product | core | cross-strand]
 
-**Authoritative Context**: [links to current product/core documents and status]
+**Delivery-Plan Trace**: [link to the selecting row or gate in
+docs/product/MACHINE_DELIVERY_PLAN.md]
+
+**Supporting Context**: [links to the required intent, capability, core,
+architecture and status documents]
 
 **Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
@@ -52,8 +56,12 @@ phase boundary]
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [ ] The feature is classified as product, core, or cross-strand, and links to
-      the current authoritative documents for that strand.
+- [ ] The feature is named by a row or gate in the sole forward programme
+      authority, `docs/product/MACHINE_DELIVERY_PLAN.md`; any unlisted proposal
+      has stopped for a reviewed delivery-plan amendment.
+- [ ] The feature is classified as product, core, or cross-strand and links only
+      the supporting intent, capability, dependency, architecture and status
+      documents required by that slice.
 - [ ] The outcome is a bounded vertical slice that can be demonstrated and
       tested independently; non-goals are explicit.
 - [ ] Core determinism and portability are preserved; host wall-clock timing or

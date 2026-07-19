@@ -1,32 +1,41 @@
 # Documentation index
 
-This directory has two connected but independently governed strands: the wider
-product and the portable emulator core.
+This directory has one forward programme direction with supporting product,
+core, evidence, architecture and historical documents.
+
+## Sole delivery authority
+
+The [Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md) is the
+explicit and only authority for next work, ordering, priority, delivery gates,
+machine-profile commitments and promotion of future options. Every new Spec Kit
+feature starts there. No other document may create a parallel roadmap.
 
 ## Product strand
 
 The [product documentation](product/README.md) defines who the application
 serves and the Machine, Media and Editor experiences:
 
-- [Product vision](product/VISION.md)
-- [Product roadmap](product/ROADMAP.md)
-- [Machine application delivery plan](product/MACHINE_DELIVERY_PLAN.md)
-- [Legacy decision register](product/LEGACY_DECISIONS.md)
+- [Product vision](product/VISION.md) — durable intent and principles only.
+- [Product capability catalogue](product/ROADMAP.md) — possible user-facing
+  scope without delivery order.
+- [Legacy decision register](product/LEGACY_DECISIONS.md) — interpretation of
+  historical material.
 
 ## Emulator core strand
 
 The core strand defines the reusable machine foundation independently of the
 wider application's UX and commercial aspirations:
 
-- [Core roadmap](CORE_ROADMAP.md) — technical capability sequencing.
+- [Core phase catalogue](CORE_ROADMAP.md) — technical dependencies,
+  invariants and bounded decompositions for selected delivery-plan slices.
 - [Implementation status](STATUS.md) — verified current behavior and fidelity
   gaps.
 - [Architecture](ARCHITECTURE.md) — current boundaries and timing direction.
 - [References](REFERENCES.md) — primary technical sources and legal boundaries.
 
-The product strand may request an outcome from the core. The core strand owns
-how that outcome is safely implemented. Neither roadmap can claim completion;
-`STATUS.md` requires implementation evidence.
+The delivery plan may select an outcome that needs product and core work. The
+supporting documents explain intent, boundaries and evidence but cannot change
+programme direction. `STATUS.md` alone records verified implementation.
 
 ## Project operations
 
@@ -46,14 +55,18 @@ register before carrying any of its technical decisions forward.
 
 ## Change rules
 
-- Product intent changes belong in `product/VISION.md`.
-- User-facing priority changes belong in `product/ROADMAP.md`.
-- Emulator technical priority changes belong in `CORE_ROADMAP.md`.
+- Delivery order, priority, gates and committed profiles change only in
+  `product/MACHINE_DELIVERY_PLAN.md`.
+- Durable product intent changes belong in `product/VISION.md` but do not enter
+  delivery until the plan is amended.
+- Product capability descriptions belong in `product/ROADMAP.md`; technical
+  dependencies and invariants belong in `CORE_ROADMAP.md`. Neither selects
+  work.
 - Completed or verified capability changes belong in `STATUS.md` and the
   changelog.
 - Technical boundary changes belong in `ARCHITECTURE.md` and should identify
   the product capability they enable.
 - A legacy idea adopted by the current project must first receive an explicit
   disposition in `product/LEGACY_DECISIONS.md`.
-- Avoid duplicating detailed requirements across documents; link to the
-  authoritative source instead.
+- Avoid duplicating delivery requirements or sequencing; link to the Machine
+  application delivery plan instead.

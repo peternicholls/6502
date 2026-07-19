@@ -1,7 +1,10 @@
 # Beeb6502
 
-Beeb6502 is a clean, portable BBC Micro Model B emulator core with a Swift
-front end for macOS and iOS. It continues the earlier `Swift6502-Package`
+Beeb6502 is a clean, portable BBC Micro emulator core with a Swift front end for
+macOS and iOS. Model B is the verified profile; the delivery plan commits Model
+B+ 64K as a separately selectable profile and reserves an extensible path for
+later BBC Micro-family machines and expansions. It continues the earlier
+`Swift6502-Package`
 prototype, but moves the hardware engine into dependency-free C++20 behind a
 small C API. That keeps the core testable on non-Apple hosts while remaining
 straightforward to call from Swift, Metal and AVAudioEngine.
@@ -139,11 +142,12 @@ This is a booting development core, not yet a preservation-grade emulator.
 - Audio register behaviour is present; the Swift demo still needs an
   AVAudioEngine ring-buffer output path.
 
-Start with the [documentation index](docs/README.md). The
-[product strand](docs/product/README.md) describes the complete Machine, Media
-and Editor experience. The separate [core roadmap](docs/CORE_ROADMAP.md),
-[STATUS](docs/STATUS.md) and [ARCHITECTURE](docs/ARCHITECTURE.md) govern the
-portable emulator foundation.
+Start with the
+[Machine application delivery plan](docs/product/MACHINE_DELIVERY_PLAN.md), the
+sole authority for programme direction, feature order and delivery gates. The
+[documentation index](docs/README.md) links supporting product intent, core
+dependencies, verified [status](docs/STATUS.md) and
+[architecture](docs/ARCHITECTURE.md).
 
 ## Releases and compatibility
 

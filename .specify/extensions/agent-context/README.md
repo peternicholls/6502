@@ -16,7 +16,13 @@ Not every Spec Kit user wants Spec Kit to write into the coding agent's context 
 
 | Command | Description |
 |---------|-------------|
-| `speckit.agent-context.update` | Refresh the managed section in the agent context file with the current plan path. |
+| `speckit.agent-context.update` | Refresh the managed section from the explicit active-feature pointer and sole delivery authority. |
+
+The extension never infers an active plan from modification time. With an empty
+`.specify/feature.json`, it writes the repository's no-active-feature guidance
+and points to `docs/product/MACHINE_DELIVERY_PLAN.md`. With an active feature,
+it accepts only that feature's `plan.md`; completed historical plans cannot
+replace current context.
 
 ## Configuration
 

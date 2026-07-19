@@ -2,10 +2,11 @@
 
 Beeb6502 keeps the emulation core deterministic, dependency-free and separate
 from host UI and file access. Changes should preserve the boundaries described
-in `docs/ARCHITECTURE.md` and advance a capability in either the core or product
-roadmap. The two documentation strands and their authority are defined in
-`docs/README.md`; legacy product documents are reference material, not active
-specifications.
+in `docs/ARCHITECTURE.md`. Every new feature must trace to a named slice or gate
+in `docs/product/MACHINE_DELIVERY_PLAN.md`, the sole forward programme
+authority. `docs/product/ROADMAP.md` and `docs/CORE_ROADMAP.md` are supporting
+catalogues, not alternative sources of next work. Legacy product documents and
+completed feature artifacts are reference material, not active specifications.
 
 ## Development checks
 

@@ -32,6 +32,14 @@ replacing `Unreleased` with a date.
 
 ### Changed
 
+- Established `docs/product/MACHINE_DELIVERY_PLAN.md` as the sole forward
+  programme authority. Product and core roadmaps are now supporting catalogues,
+  every future Spec Kit feature must trace to a named delivery-plan row or gate,
+  and the profile model reserves later B+ 128K, Master-family, Tube, network and
+  peripheral options without treating them as current M3 commitments. Spec Kit
+  context and path resolution now use only the explicit active-feature pointer
+  and cannot resurrect completed plans by branch, directory or modification
+  time.
 - **Breaking:** Expanded the pre-1.0 C and Swift status vocabularies for bounded
   output pressure and added a recoverable Swift audio error that carries valid
   partial samples and exact shortfall accounting.

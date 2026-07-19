@@ -1,15 +1,17 @@
 <!--
 Sync Impact Report
-- Version: 1.2.0 -> 1.3.0
-- Added principles: none
-- Modified principles: VIII. Code Documentation Is Maintained Knowledge
-- Modified sections: Specification and Delivery Workflow; Governance
-- Updated templates: plan-template.md, tasks-template.md, checklist-template.md
-- Updated guidance: docs/CODE_DOCUMENTATION.md, specs/README.md, active C1
-  specification and tasks
-- Migration: active and future coding work documents private/internal named
-  types and interfaces as developer-facing architecture; trivial members and
-  self-evident helpers remain exempt from prose-for-coverage
+- Version: 1.3.0 -> 1.4.0
+- Added principle: IX. One Forward Programme Direction
+- Modified principles: none
+- Modified sections: Technical and Product Constraints; Specification and
+  Delivery Workflow; Governance
+- Updated templates: spec-template.md, plan-template.md, tasks-template.md,
+  checklist-template.md
+- Updated guidance: AGENTS.md, CONTRIBUTING.md, docs/README.md,
+  docs/product/README.md, specs/README.md
+- Migration: all active and future features must trace first to a named row or
+  gate in docs/product/MACHINE_DELIVERY_PLAN.md; supporting catalogues,
+  completed features and archived material cannot select work
 - Deferred items: none
 -->
 
@@ -112,6 +114,19 @@ generation and MUST NOT increase recorded documentation debt. Documentation is
 part of the contract: when behavior changes, its explanation changes in the
 same slice.
 
+### IX. One Forward Programme Direction
+
+`docs/product/MACHINE_DELIVERY_PLAN.md` MUST be the sole authority for delivery
+order, current direction, programme gates, committed machine profiles and
+promotion of later work. Every new product, core or cross-strand specification
+MUST trace to a named row or gate in that plan before planning begins. Work not
+named there MUST first amend the plan through review. Product vision, product
+and core catalogues, architecture, status, completed feature artifacts and
+historical material MUST NOT independently choose next work or create a
+delivery commitment. `docs/STATUS.md` remains the authority for verified
+implementation claims. This single direction prevents plausible supporting
+documents from becoming competing backlogs.
+
 ## Technical and Product Constraints
 
 - The supported foundation is a dependency-light C++20 core, a stable C ABI,
@@ -126,13 +141,15 @@ same slice.
   cross-referenced browsable output. Generated output is a build artifact, not
   an authoritative tracked source. Documentation tooling MUST remain build-time
   only and MUST NOT enter the emulator runtime dependency graph.
-- Current documentation is split into two authorities: `docs/product/` for the
-  wider Machine, Media, and Editor vision, and the core roadmap, architecture,
-  references, and status documents under `docs/` for emulator delivery. Files
-  under `docs/Archive/` are historical input, not current specifications.
-- Product specifications MUST trace to `docs/product/VISION.md` and the active
-  product roadmap horizon. Core specifications MUST trace to
-  `docs/CORE_ROADMAP.md`, `docs/ARCHITECTURE.md`, and `docs/STATUS.md`.
+- The sole forward programme authority is
+  `docs/product/MACHINE_DELIVERY_PLAN.md`. `docs/product/VISION.md` supplies
+  durable intent; `docs/product/ROADMAP.md` and `docs/CORE_ROADMAP.md` are
+  supporting capability/dependency catalogues; `docs/ARCHITECTURE.md` records
+  current boundaries; and `docs/STATUS.md` records verified state. Files under
+  `docs/Archive/` are historical input, not current specifications.
+- Every specification MUST trace first to a named delivery-plan row or gate,
+  then cite the supporting intent, architecture, status and technical context
+  required by its strand.
 - Compatibility, frame-rate, latency, or throughput targets MUST state how they
   will be measured. Visual presentation policy belongs in the host; machine
   timing remains a core concern.
@@ -144,15 +161,19 @@ same slice.
 
 1. Start a bounded vertical slice with `/speckit-specify`; use
    `/speckit-clarify` when requirements contain material ambiguity.
-2. Classify the slice as product, core, or cross-strand and link its current
-   source documents. Record non-goals so the abandoned implementation details
-   in historical documents cannot enter scope implicitly.
+2. Confirm the slice is named by a row or gate in
+   `docs/product/MACHINE_DELIVERY_PLAN.md`, then classify it as product, core,
+   or cross-strand and link its required supporting documents. If it is not
+   named, amend the delivery plan before creating the feature. Record non-goals
+   so supporting catalogues and historical documents cannot enter scope
+   implicitly.
 3. A specification MUST include an independently testable outcome, measurable
    success criteria, edge and failure cases, recovery behavior, evidence needed
    for fidelity claims, content/legal implications, and accessibility coverage
    for user-facing work (or a concrete `N/A` rationale).
    Every coding specification MUST also state which public contracts,
-   non-obvious behavior, and conceptual guides change, or give a concrete
+   private/internal named types and interfaces, non-obvious behavior, and
+   conceptual guides change, or give a concrete
    documentation `N/A` rationale.
 4. `/speckit-plan` MUST pass every Constitution Check before Phase 0 research
    and MUST repeat that check after design. Any exception belongs in Complexity
@@ -173,9 +194,10 @@ same slice.
    `swift build` as applicable. Coding changes MUST also run the documentation
    generation and link/markup quality gates. All changes MUST pass
    `git diff --check`.
-8. Completion MUST update affected status, architecture, roadmap, release, or
-   user documentation. A feature is complete only when its acceptance evidence
-   passes and no known limitation is presented as delivered behavior.
+8. Completion MUST update affected status, architecture, delivery-plan,
+   capability-catalogue, release, or user documentation according to each
+   document's narrow authority. A feature is complete only when its acceptance
+   evidence passes and no known limitation is presented as delivered behavior.
 
 Repository work also follows the active `AGENTS.md` operating contract,
 including its cleanup, verification, and commit-history requirements.
@@ -199,4 +221,4 @@ The per-task and per-phase commit requirement applies prospectively to active
 and future work. Amendments do not require rewriting compliant historical
 commits or creating empty commits solely to mark a phase.
 
-**Version**: 1.3.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15
+**Version**: 1.4.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-19

@@ -165,23 +165,41 @@ if ($cm) {
     }
 }
 
-if (-not $PlanPath) {
-    # Discover plan.md exactly one level deep (specs/<feature>/plan.md),
-    # matching the bash glob specs/*/plan.md. Wrap in try/catch so access errors under
-    # $ErrorActionPreference = 'Stop' don't abort the script.
+$FeatureDir = ''
+$featurePointer = Join-Path $ProjectRoot '.specify/feature.json'
+if (Test-Path -LiteralPath $featurePointer) {
     try {
-        $specsDir = Join-Path $ProjectRoot 'specs'
-        $candidate = Get-ChildItem -Path $specsDir -Directory -ErrorAction SilentlyContinue |
-            ForEach-Object { Get-Item -LiteralPath (Join-Path $_.FullName 'plan.md') -ErrorAction SilentlyContinue } |
-            Where-Object { $_ } |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-        if ($candidate) {
-            $PlanPath = [System.IO.Path]::GetRelativePath($ProjectRoot, $candidate.FullName).Replace('\','/')
+        $featureData = Get-Content -LiteralPath $featurePointer -Raw | ConvertFrom-Json -ErrorAction Stop
+        if ($featureData.feature_directory) {
+            $FeatureDir = [string]$featureData.feature_directory
         }
     } catch {
-        # Non-fatal: continue without a plan path.
+        Write-Warning "agent-context: unable to read $featurePointer; refusing to update context."
+        exit 1
     }
+}
+
+if ($FeatureDir) {
+    $featureSegments = $FeatureDir -split '/'
+    if ([System.IO.Path]::IsPathRooted($FeatureDir) -or
+        $featureSegments.Count -ne 2 -or
+        $featureSegments[0] -ne 'specs' -or
+        $featureSegments[1] -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$' -or
+        $featureSegments -contains '..') {
+        Write-Warning "agent-context: invalid feature_directory '$FeatureDir'."
+        exit 1
+    }
+    $expectedPlan = "$FeatureDir/plan.md"
+    if ($PlanPath -and $PlanPath.Replace('\','/') -ne $expectedPlan) {
+        Write-Warning "agent-context: plan '$PlanPath' does not belong to active feature '$FeatureDir'."
+        exit 1
+    }
+    if (-not $PlanPath -and (Test-Path -LiteralPath (Join-Path $ProjectRoot $expectedPlan))) {
+        $PlanPath = $expectedPlan
+    }
+} elseif ($PlanPath) {
+    Write-Warning "agent-context: no active feature; refusing explicit plan '$PlanPath'."
+    exit 1
 }
 
 $CtxPath = Join-Path $ProjectRoot $ContextFile
@@ -190,11 +208,23 @@ if ($CtxDir -and -not (Test-Path -LiteralPath $CtxDir)) {
     New-Item -ItemType Directory -Path $CtxDir -Force | Out-Null
 }
 
-$lines = @($MarkerStart,
-           'For additional context about technologies to be used, project structure,',
-           'shell commands, and other important information, read the current plan')
-if ($PlanPath) {
-    $lines += "at $PlanPath"
+$lines = @($MarkerStart)
+if (-not $FeatureDir) {
+    $lines += 'No Spec Kit feature is currently active.'
+    $lines += 'docs/product/MACHINE_DELIVERY_PLAN.md is the sole forward programme authority.'
+    $lines += 'Select a named bounded slice from it, then create its feature branch and verify'
+    $lines += '.specify/feature.json before running plan, tasks or implementation workflows.'
+    $lines += 'Do not select work independently from supporting catalogues, archived documents,'
+    $lines += 'or completed feature artifacts.'
+} else {
+    $lines += "Active Spec Kit feature: $FeatureDir"
+    $lines += 'Its scope must trace to a named row or gate in'
+    $lines += 'docs/product/MACHINE_DELIVERY_PLAN.md, the sole forward programme authority.'
+    if ($PlanPath) {
+        $lines += "Read the current implementation plan at $PlanPath"
+    } else {
+        $lines += 'No implementation plan exists yet; complete specification before planning.'
+    }
 }
 $lines += $MarkerEnd
 $Section = ($lines -join "`n") + "`n"

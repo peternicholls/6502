@@ -35,6 +35,13 @@ validates, or explain why a principle is not applicable]
 - [ ] CHK005 Item with specific criteria
 - [ ] CHK006 Final item in this category
 
+## Programme Direction
+
+- [ ] CHKXXX The feature links the named row or gate in
+      `docs/product/MACHINE_DELIVERY_PLAN.md` that selected it
+- [ ] CHKXXX No supporting catalogue, completed feature, or archived document
+      independently adds scope, priority, or a delivery commitment
+
 ## Code Documentation *(for coding features)*
 
 - [ ] CHKXXX Public-contract, private/internal named-abstraction, and non-obvious-
