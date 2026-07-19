@@ -40,6 +40,45 @@ a user types and runs a program. Its milestone ordering, implementation
 assumptions and unvalidated numeric targets are not current requirements; the
 [legacy decision register](LEGACY_DECISIONS.md) records their disposition.
 
+## Delivery status — 2026-07-19
+
+Status terms are deliberately strict:
+
+- **DONE:** implemented and backed by the evidence linked from `STATUS.md` and
+  its completed feature artifacts.
+- **ACTIVE:** an approved feature is in implementation and is named by
+  `.specify/feature.json`.
+- **NEXT:** committed first work, but no feature has started yet.
+- **TODO:** committed by this plan but not delivered.
+- **RESERVED:** an acknowledged future option, not a delivery commitment.
+
+### Work done
+
+| Delivered foundation | State | Evidence boundary |
+| --- | --- | --- |
+| C0 — baseline evidence | **DONE** | Completed specification plus C0 aggregate evidence in `STATUS.md` |
+| C1 — runtime ownership | **DONE** | Completed specification plus runtime, replay and recovery evidence in `STATUS.md` |
+| C2 — bounded output and Xcode contracts | **DONE** | Completed specification plus frame, audio, diagnostics, lifetime and project evidence in `STATUS.md` |
+| Single programme-authority governance | **DONE** | Constitution v1.4.0, fail-closed Spec Kit pointer resolution and this canonical plan |
+
+These completed foundations are not a completed application. In particular,
+firmware onboarding, host presentation, host audio, complete keyboard controls,
+M1, snapshots, Model B+ 64K and M2/M3 remain undelivered.
+
+### Work active now
+
+**NONE.** `.specify/feature.json` is empty. No implementation feature is active.
+
+### Work yet to do
+
+- **NEXT:** create and complete `machine-target-profile`.
+- **TODO:** complete specification rows 2–22 below subject to their explicit
+  dependencies.
+- **TODO:** achieve M1, then M2, then M3. None of these gates is currently
+  achieved.
+- **RESERVED:** B+ 128K, Master-family, Tube, Econet, additional storage and
+  other expansion options require later plan amendments before implementation.
+
 ## Target profiles
 
 Delivery uses an extensible profile identity so compatibility and persisted
@@ -49,18 +88,20 @@ it is not a closed two-value enum.
 
 Committed selectable profiles are:
 
-- **Model B:** the implemented and verified first profile. It is the shortest
-  path to the first working Machine application and remains a permanent
-  regression profile.
-- **Model B+ 64K:** the planned post-C6 application profile. Its exact processor,
-  memory, display, firmware and disc-controller behavior must be fixed from
-  primary references and compatibility fixtures before implementation claims.
+- **Model B — CORE PROFILE DONE; APPLICATION TODO:** the implemented and
+  verified first core profile. It is the shortest path to the first working
+  Machine application and remains a permanent regression profile. M1 has not
+  yet been achieved.
+- **Model B+ 64K — TODO:** the planned post-C6 application profile. Its exact
+  processor, memory, display, firmware and disc-controller behavior must be
+  fixed from primary references and compatibility fixtures before
+  implementation claims.
 
 M1 may expose only the verified Model B profile. M3 must expose both Model B and
 Model B+ 64K as explicit options and keep their firmware, snapshot, media and
 compatibility evidence separate.
 
-Named later profile and expansion options are:
+Named **RESERVED** later profile and expansion options are:
 
 - Model B+ 128K;
 - BBC Master 128 and other separately researched Master-family revisions;
@@ -96,6 +137,8 @@ beta and App Store device coverage require the later
 
 ### M1 — Running Model B Machine
 
+**Gate state:** **NOT ACHIEVED — TODO**
+
 **Depends on:** Integrated C1 and C2; the M1 host slices below.
 
 M1 is the first working application and must not wait for C5 or C6. It passes
@@ -115,7 +158,10 @@ an actionable state, and no proprietary ROM bytes enter the repository.
 
 ### M2 — Continuity-complete Machine
 
-**Depends on:** M1 and completed C3 snapshot contracts.
+**Gate state:** **NOT ACHIEVED — TODO**
+
+**Depends on:** M1, completed C3 snapshot contracts and
+`machine-ios-ipados-adaptation`.
 
 M2 passes when backgrounding and restoration preserve the selected profile,
 CPU, RAM, ROM selection, devices and mounted-media state; stale frame/audio
@@ -124,9 +170,11 @@ is rejected without partially mutating the active session.
 
 ### M3 — Post-C6 Model B+ Developer Preview
 
-**Depends on:** M2, the Model B+ 64K profile workstream, completed C6 bridge
-contracts, and the selected compatibility/media evidence named by its feature
-specifications.
+**Gate state:** **NOT ACHIEVED — TODO**
+
+**Depends on:** M2, the ratified Model B+ reference/fixture set, the Model B+
+64K profile workstream, completed C6 bridge contracts, and the selected
+compatibility/media evidence named by its feature specifications.
 
 M3 is the requested post-C6 outcome. It passes only when:
 
@@ -152,39 +200,51 @@ runtime health and a route to the current `STATUS.md` fidelity catalogue.
 
 Feature numbers are assigned only when a slice is selected. Names below are
 stable planning identities, not permission to combine them into one sprint.
+The numeric order is a readable topological sequence, not a demand for total
+serialization: after row 1 completes, independent M1 and C3 slices may proceed
+in parallel when their own dependencies are satisfied. A sequence row is a
+planning container, not an umbrella specification. Each child must receive a
+stable named identity in its own feature directory and satisfy the container's
+entry dependencies before implementation.
 
-| Order | Specification | Strand | Depends on | Independently demonstrable outcome |
-| --- | --- | --- | --- | --- |
-| 1 | `machine-target-profile` | Cross-strand | C2 | An extensible profile/expansion identity is explicit across core, C, Swift and host configuration; Model B and Model B+ 64K are ratified while later identifiers reject safely. |
-| 2 | `machine-firmware-onboarding` | Product/cross-strand | Target profile | The app imports, validates, assigns and locally remembers user-owned OS and sideways ROM access without bundling content. |
-| 3 | `machine-runtime-presentation` | Cross-strand | C1, C2 | The host uses sustained runtime ownership and C2 frame dequeue without main-actor emulation or host-driven machine time. |
-| 4 | `machine-audio-output` | Cross-strand | C2 | AVAudioEngine consumes bounded audio with measured latency/pressure and recoverable device lifecycle behavior. |
-| 5 | `machine-keyboard-controls` | Product/cross-strand | Runtime presentation | Physical input, BBC mapping, key help, capture, full screen, run, pause, reset and BREAK are distinct and accessible. |
-| 6 | `machine-mvp-validation` | Cross-strand | Slices 2–5 | The automated/manual evidence bundle proves M1 from firmware import through BASIC execution and sustained output. |
-| 7 | `machine-ios-ipados-adaptation` | Product | M1 | iPhone and iPad gain maintained layouts, input and accessibility evidence before claiming the M1 journey. |
-| 8 | `snapshot-format-v1` | Core C3 | C1 safe point, target profile | A bounded, versioned envelope records machine-profile and expansion identity plus architectural state rules. |
-| 9 | `snapshot-round-trip` | Core C3 | Snapshot format | CPU, RAM, ROM selection and devices continue deterministically after restore. |
-| 10 | `snapshot-mounted-media` | Core C3 | Snapshot format | Mounted-media identity and modified private state restore or reject explicitly. |
-| 11 | `snapshot-host-boundary` | Core C3 | C3 state slices | C and Swift callers save/load with owned data and recoverable failures. |
-| 12 | `machine-session-lifecycle` | Cross-strand | M1, C3, `machine-ios-ipados-adaptation` | Background, termination and restoration satisfy M2 without stale host output. |
-| 13 | C4 bus-cycle sequence | Core | C3 invariant | Reference-backed traces and compatibility fixtures improve timing without breaking M2. |
-| 14 | Model B+ 64K profile sequence | Core/cross-strand | Target profile, C3, relevant C4 foundation | Profile selection, processor, memory/display, firmware boot and selected storage behavior satisfy the B+ portions of M3. |
-| 15 | `machine-disk-workflow` / `machine-tape-file-workflow` | Product/cross-strand | Selected C5 slices | User-owned media can be mounted, diagnosed and exported without silent source mutation. |
-| 16 | C6 inspection/editor bridge sequence | Core | C1, C3 | Stable inspection, breakpoint/watchpoint control, atomic transactions and BASIC boundaries supply all M3 bridge contracts. |
-| 17 | `machine-inspector` and C6 product demonstrations | Product/cross-strand | C6 contracts | The inspector, control, transaction and BASIC-boundary demonstrations close the C6 portion of M3. |
-| 18 | BASIC transformation and editing slices | Product | C6 transaction/program boundaries | Tokenization, labels, inject/retrieve and conflict handling progress toward the full Editor vision. |
-| 19 | `product-release-readiness` | Product/cross-strand | Selected maintained gates | Device-matrix, accessibility, onboarding, privacy, legal and beta evidence support an explicit external-release decision. |
+| Order | Delivery state | Specification | Strand | Depends on | Independently demonstrable outcome |
+| --- | --- | --- | --- | --- | --- |
+| 1 | **NEXT — not started** | `machine-target-profile` | Cross-strand | C2 | An extensible profile/expansion identity is explicit across core, C, Swift and host configuration; Model B and Model B+ 64K are ratified while later identifiers reject safely. |
+| 2 | **TODO — not started** | `machine-firmware-onboarding` | Product/cross-strand | Target profile | The app imports, validates, assigns and locally remembers user-owned OS and sideways ROMs without bundling content, and gives actionable compatibility/import guidance. |
+| 3 | **TODO — not started** | `machine-runtime-presentation` | Cross-strand | C1, C2 | The host uses sustained runtime ownership and C2 frame dequeue without main-actor emulation or host-driven machine time. |
+| 4 | **TODO — not started** | `machine-audio-output` | Cross-strand | C2 | AVAudioEngine consumes bounded audio with measured latency/pressure and recoverable device lifecycle behavior. |
+| 5 | **TODO — not started** | `machine-keyboard-controls` | Product/cross-strand | Runtime presentation | Physical input, BBC mapping, key help, capture, full screen, run, pause, reset and BREAK are distinct and accessible. |
+| 6 | **TODO — not started** | `machine-mvp-validation` | Cross-strand | Slices 2–5 | The automated/manual evidence bundle proves M1 from firmware import through BASIC execution and sustained output. |
+| 7 | **TODO — not started** | `machine-ios-ipados-adaptation` | Product | M1 | iPhone and iPad gain maintained layouts, input and accessibility evidence before claiming the M1 journey. |
+| 8 | **TODO — not started** | `snapshot-format-v1` | Core C3 | C1 safe point, target profile | A bounded, versioned envelope records machine-profile and expansion identity plus architectural state rules. |
+| 9 | **TODO — not started** | `snapshot-round-trip` | Core C3 | Snapshot format | CPU, RAM, ROM selection and devices continue deterministically after restore. |
+| 10 | **TODO — not started** | `snapshot-mounted-media` | Core C3 | Snapshot format | Mounted-media identity and modified private state restore or reject explicitly. |
+| 11 | **TODO — not started** | `snapshot-host-boundary` | Core C3 | C3 state slices | C and Swift callers save/load with owned data and recoverable failures. |
+| 12 | **TODO — not started** | `machine-session-lifecycle` | Cross-strand | M1, C3, `machine-ios-ipados-adaptation` | Background, termination and restoration satisfy M2 without stale host output. |
+| 13 | **TODO — not started** | C4 bus-cycle sequence | Core | C3 invariant | Reference-backed traces and compatibility fixtures improve timing without breaking M2. |
+| 14 | **TODO — not started** | `bplus-reference-fixture-set` | Core/cross-strand | Target profile | Primary references, lawful fixtures and explicit processor, memory, display, firmware and controller claims bound the first B+ implementation. |
+| 15 | **TODO — not started** | Model B+ 64K profile sequence | Core/cross-strand | Ratified B+ reference/fixture set, C3, relevant C4 foundation | Profile selection, processor, memory/display, firmware boot and selected storage behavior satisfy the B+ portions of M3. |
+| 16 | **TODO — not started** | `machine-disk-workflow` | Product/cross-strand | Selected C5 disc slices | User-owned disc media can be mounted, diagnosed and explicitly exported without silent source mutation. |
+| 17 | **TODO — not started** | `machine-tape-file-workflow` | Product/cross-strand | Selected C5 cassette/file slices | User-owned tape/file media can be opened, diagnosed and explicitly exported without silent source mutation. |
+| 18 | **TODO — not started** | C6 inspection/editor bridge sequence | Core | C1, C3 | Stable inspection, breakpoint/watchpoint control, atomic transactions and BASIC boundaries supply all M3 bridge contracts. |
+| 19 | **TODO — not started** | `machine-inspector` | Product/cross-strand | C6 inspection and control contracts | A read-only inspector and bounded breakpoint/watchpoint controls expose machine state without racing execution. |
+| 20 | **TODO — not started** | `machine-c6-bridge-validation` | Product/cross-strand | C6 transaction and BASIC-boundary contracts, machine inspector | Product demonstrations prove validated atomic memory transactions and BASIC program-boundary round trips. |
+| 21 | **TODO — not started** | BASIC transformation and editing sequence | Product | C6 transaction/program boundaries | Tokenization, labels, inject/retrieve and conflict handling progress toward the full Editor vision through separately named child specifications. |
+| 22 | **TODO — not started** | `product-release-readiness` | Product/cross-strand | Selected maintained gates | Device-matrix, accessibility, onboarding, privacy, legal and beta evidence support an explicit external-release decision. |
 
 ## Dependency view
 
 ```mermaid
 flowchart LR
-    C2["C2 bounded output"] --> H1["Firmware, runtime, audio and input slices"]
+    C2["C2 bounded output"] --> TP["Machine target profile"]
+    TP --> H1["Firmware, runtime, audio and input slices"]
     H1 --> M1["M1 Running Model B Machine"]
-    TP["Machine target profile"] --> C3["C3 versioned snapshots"]
+    TP --> C3["C3 versioned snapshots"]
     C3["C3 versioned snapshots"] --> S["Machine session lifecycle"]
     M1 --> S
     S --> M2["M2 Continuity-complete Machine"]
+    TP --> BR["B+ references and fixtures"]
+    BR --> BP["Model B+ 64K profile"]
     C4["C4 timing foundation"] --> BP["Model B+ 64K profile"]
     C3 --> BP
     C5["Selected C5 media evidence"] --> M3["M3 Post-C6 Model B+ Preview"]

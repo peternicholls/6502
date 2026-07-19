@@ -10,6 +10,10 @@ explicit and only authority for next work, ordering, priority, delivery gates,
 machine-profile commitments and promotion of future options. Every new Spec Kit
 feature starts there. No other document may create a parallel roadmap.
 
+Its [dated delivery status ledger](product/MACHINE_DELIVERY_PLAN.md#delivery-status--2026-07-19)
+is the required starting point for distinguishing work **DONE** from work
+**ACTIVE**, **NEXT**, **TODO** or merely **RESERVED**.
+
 ## Product strand
 
 The [product documentation](product/README.md) defines who the application

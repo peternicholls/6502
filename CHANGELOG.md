@@ -39,7 +39,8 @@ replacing `Unreleased` with a date.
   peripheral options without treating them as current M3 commitments. Spec Kit
   context and path resolution now use only the explicit active-feature pointer
   and cannot resurrect completed plans by branch, directory or modification
-  time.
+  time. A dated delivery ledger and per-gate/per-specification states now
+  distinguish verified work from active, next, undelivered and reserved work.
 - **Breaking:** Expanded the pre-1.0 C and Swift status vocabularies for bounded
   output pressure and added a recoverable Swift audio error that carries valid
   partial samples and exact shortfall accounting.
@@ -64,9 +65,9 @@ replacing `Unreleased` with a date.
 
 ## [0.2.0] - Unreleased
 
-This is the current development candidate. It has not been published as an
-annotated `v0.2.0` tag or GitHub release; complete the release checklist before
-replacing `Unreleased` with a date.
+This section records the unreleased C1 candidate accumulated under 0.2.0. It
+was not published as an annotated `v0.2.0` tag or GitHub release; the current
+development candidate is 0.3.0.
 
 ### Added
 
@@ -119,7 +120,9 @@ replacing `Unreleased` with a date.
   concurrency, timing, and borrowed-buffer guidance plus focused architecture,
   timing, host-boundary, and evidence guides.
 
-## [0.1.0] - 2026-07-15
+## [0.1.0] - Unpublished baseline (2026-07-15)
+
+This baseline was not published as an annotated tag or GitHub release.
 
 ### Added
 

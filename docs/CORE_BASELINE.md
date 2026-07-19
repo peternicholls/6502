@@ -1,13 +1,16 @@
 # Core baseline evidence
 
-**Status:** Pre-C0 observation
+**Status:** C0 verified evidence ledger; opening section preserves pre-C0
+observation
 
-**Recorded:** 2026-07-15
-**Source revision:** `819ee387393437e21a389265d8d9b98f720783d3`
+**Initial observation recorded:** 2026-07-15
+**Initial source revision:** `819ee387393437e21a389265d8d9b98f720783d3`
+**Status updated:** 2026-07-19
 
-This document begins as the observation record taken immediately before C0
-implementation. Values in this section are not approved C0 references until
-the provenance, determinism, and immutable-reference acceptance tests pass.
+This document begins with the historical observation record taken immediately
+before C0 implementation. Values in that opening section were not approved C0
+references until the provenance, determinism, and immutable-reference
+acceptance tests passed. The later C0 exit section records that completed gate.
 Verified implementation coverage and known hardware limitations remain
 authoritative in [STATUS.md](STATUS.md).
 
@@ -33,9 +36,10 @@ The repository version is `0.1.0`. It is reported by `VERSION`,
 - **Apple package:** GitHub Actions `macos-latest` runs the Swift package tests
   and builds the SwiftUI demo. The local C0 observation used Apple Swift 6.2.4.
 
-C0 will preserve the direct jobs while adding an aggregate portable profile and
-a complete macOS profile. Swift- and DocC-specific evidence is not applicable
-to the portable-only profile, but must pass in the complete profile.
+The then-planned C0 work was required to preserve the direct jobs while adding
+an aggregate portable profile and a complete macOS profile. Swift- and
+DocC-specific evidence is not applicable to the portable-only profile, but must
+pass in the complete profile.
 
 ## Research-only clean-room signature
 
@@ -50,9 +54,9 @@ following observation for a request of 100,000 emulated cycles:
 - PPM SHA-256:
   `c4c9884af9187ab1178f63480962b6921b98a87e1e674371c40904d505fcc994`
 
-These values are deliberately labelled research-only. C0 may approve them only
-after named workloads, complete lawful provenance, ten identical runs, and the
-separate reference-review path exist.
+These values were deliberately labelled research-only. C0 could approve them
+only after named workloads, complete lawful provenance, ten identical runs, and
+the separate reference-review path existed.
 
 ## Known limitations at entry
 
@@ -248,7 +252,7 @@ commands, approved references, and this concise result are authoritative.
 
 ## Interpretation
 
-This record distinguishes the known starting behavior from C0 exit evidence.
-It is not a compatibility claim, a performance promise, or permission to bundle
-proprietary firmware or media. Later sections will be added only when their
-commands and failure cases are implemented and verified.
+This record distinguishes the known starting behavior from completed C0 exit
+evidence. It is not a compatibility claim, a performance promise, or permission
+to bundle proprietary firmware or media. Any later evidence section may be
+added only when its commands and failure cases are implemented and verified.

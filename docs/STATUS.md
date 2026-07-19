@@ -7,6 +7,19 @@ sole forward programme authority; the
 [core phase catalogue](CORE_ROADMAP.md) supplies supporting dependencies and
 invariants.
 
+## Delivered versus undelivered boundary
+
+- **Verified delivered foundation:** C0 baseline evidence, C1 runtime ownership
+  and C2 bounded output/Xcode contracts.
+- **Not verified as delivered:** every specification after C2, the complete M1
+  application journey, M2 continuity, M3 Model B+ 64K preview, and all reserved
+  future profiles or expansions.
+
+The dated [delivery status ledger](product/MACHINE_DELIVERY_PLAN.md#delivery-status--2026-07-19)
+shows **DONE**, **ACTIVE**, **NEXT**, **TODO** and **RESERVED** work. A planned
+row cannot move into this document's verified boundary until its acceptance
+evidence passes.
+
 ## Verified
 
 | Area | Evidence | Status |
