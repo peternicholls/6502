@@ -42,9 +42,9 @@ selector plus explicit active-profile state in the maintained macOS app.
 
 **Performance Goals**: Profile validation, construction and query are bounded control-plane operations, never advance emulated time and add no work to instruction/device hot paths. No new emulation-throughput claim is made. The complete documented application observation remains reproducible in at most 10 minutes as required by SC-004.
 
-**Constraints**: Stable raw 32-bit component identifiers with explicit 16-bit component versions; schema version 1; at most 16 expansion identities; deterministic canonical expansion ordering; no duplicates; unknown, malformed, incompatible and recognised-unavailable values reject without mutation; Model B+ identity never selects Model B behavior; legacy no-argument construction is documented as an explicit Model B convenience, not fallback; runtime-owner ordering, C output preservation and owned Swift values remain intact.
+**Constraints**: Stable raw 32-bit base identifiers are `0x00000001` for BBC Microcomputer Model B and `0x00000002` for BBC Model B+ 64K, each at component version 1; assigned codes are never reused or reinterpreted. No expansion identifier is assigned. Schema version 1 admits exactly 0...16 expansion identities for structural classification and any count above 16 rejects before storage access; deterministic canonical expansion ordering; no duplicates; classification precedence is malformed, unknown, incompatible, then recognised-unavailable; Model B+ 64K is the only recognised-unavailable identity; unassigned future-option fixtures remain unknown and non-canonical; Model B+ identity never selects Model B behavior; legacy no-argument construction is documented as an explicit Model B convenience, not fallback; runtime-owner ordering, byte-for-byte C failure-output preservation and owned Swift values remain intact. The in-memory aggregate is not a persisted byte format. The additive public profile API advances the synchronized development candidate from 0.3.0 to 0.4.0 at feature completion.
 
-**Scale/Scope**: Two named base identities, zero implemented expansions, up to 16 representable expansions, four language/product boundaries, three user stories and one macOS acceptance journey. B+ machine behavior, B+ 128K/Master constants, firmware onboarding, snapshots, media, timing and polished multi-platform selection remain later slices.
+**Scale/Scope**: Two named base identities, zero implemented expansions, up to 16 representable expansions, four language/product boundaries, three user stories and one macOS acceptance journey containing two unique selections: Model B and Model B+ 64K recognised-unavailable. B+ machine behavior, B+ 128K/Master/expansion constants, firmware onboarding, snapshots, serialization, media, timing and polished multi-platform selection remain later slices.
 
 ## Constitution Check
 
@@ -69,9 +69,11 @@ selector plus explicit active-profile state in the maintained macOS app.
 
 **Post-design re-check**: Passed. Research separates historically accurate
 base labels from optional expansions; the data model represents unknown future
-values without accepting them; contracts preserve runtime ownership and
-failure-atomic C outputs; Swift receives value semantics; and the quickstart
-requires direct application and accessibility observation. No constitution
+values without accepting or canonically naming them; the 16-entry bound and
+multi-defect classification precedence are explicit; contracts preserve runtime
+ownership and failure-atomic C outputs; Swift receives value semantics; and the
+quickstart requires direct application and accessibility observation. Model B+
+64K is explicitly the single unsupported application selection. No constitution
 exception remains.
 
 ## Project Structure

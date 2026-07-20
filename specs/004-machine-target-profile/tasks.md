@@ -35,9 +35,9 @@ without yet making any machine profile constructible.
 
 **⚠️ CRITICAL**: No user-story implementation begins until this phase passes.
 
-- [ ] T002 [P] Add a compile-time red contract for schema version 1, raw 32-bit identifiers, 16-bit component versions, sixteen expansion slots, canonical Model B and Model B+ 64K constructors and value equality in `Tests/TargetProfile/test-contract.sh`; observe the expected missing-header/symbol failure and commit the red test (FR-001, FR-002, FR-007, FR-011).
+- [ ] T002 [P] Add a compile-time red contract for schema version 1, exact permanent base codes `0x00000001`/`0x00000002`, raw 32-bit identifiers, 16-bit component versions, sixteen expansion slots, no assigned expansion codes, canonical Model B and Model B+ 64K constructors and value equality in `Tests/TargetProfile/test-contract.sh`; observe the expected missing-header/symbol failure and commit the red test (FR-001, FR-002, FR-007, FR-011).
 - [ ] T003 Implement and document the immutable component/profile values and canonical constructors in `Sources/BeebCore/include/beeb/profile.hpp` and `Sources/BeebCore/src/profile.cpp`; pass `Tests/TargetProfile/test-contract.sh`, `make format-check` and `git diff --check`, then commit the C++ value checkpoint (FR-001, FR-002, FR-007, FR-011).
-- [ ] T004 [P] Add a C11-compatible red structural probe for fixed-width profile components, fixed expansion capacity, canonical constructors and caller-owned equality in `Tests/TargetProfile/test-boundaries.sh`; observe the expected missing-C-contract failure and commit the red test (FR-001, FR-002, FR-003).
+- [ ] T004 [P] Add a C11-compatible red structural probe for exact permanent base codes `0x00000001`/`0x00000002`, fixed-width profile components, fixed expansion capacity, no assigned expansion codes, canonical constructors and caller-owned equality in `Tests/TargetProfile/test-boundaries.sh`; observe the expected missing-C-contract failure and commit the red test (FR-001, FR-002, FR-003).
 - [ ] T005 Add and document the fixed C profile aggregates, constants and canonical value functions in `Sources/BeebCore/include/beeb_c.h` and `Sources/BeebCore/src/beeb_c.cpp`; pass the C structural probe and unchanged C1 boundary tests, then commit the C value checkpoint (FR-001, FR-002, FR-003, FR-012).
 - [ ] T006 [P] Add red Swift value tests for owned `Sendable`/`Equatable` raw components, canonical Model B/Model B+ 64K values and unambiguous display names in `Tests/BeebKitTests/BeebMachineTests.swift`; observe the expected missing-type failure and commit the red test (FR-001, FR-003, FR-012).
 - [ ] T007 Implement and DocC-document the immutable Swift profile/component values and C aggregate mapping in `Sources/BeebKit/BeebMachine.swift`; pass the focused Swift tests, `swift build` and `git diff --check`, then commit with a Lore message that explicitly closes the foundational phase (FR-001, FR-003, FR-012).
@@ -118,15 +118,15 @@ unchanged.
 
 ### Red tests for User Story 3
 
-- [ ] T024 [US3] Add the red C++/C invalid-profile matrix—zero/unknown identifiers, future schema/component versions, count overflow, non-zero reserved/unused slots, unsorted/duplicate expansions, recognised reserved values and incompatible combinations—with output-preservation and active Model B digest assertions in `Tests/test_main.cpp`; observe expected failures and commit the red test (FR-007, FR-008, FR-009, FR-010, SC-002).
-- [ ] T025 [P] [US3] Add red Swift tests for owned raw unknown values, malformed/incompatible/unsupported error mapping and unchanged active Model B query after each failed candidate in `Tests/BeebKitTests/BeebMachineTests.swift`; observe expected failures and commit the red test (FR-007, FR-008, FR-009, FR-010, SC-002).
+- [ ] T024 [US3] Add the red C++/C invalid-profile matrix—zero fields, future schema/component versions, exact count 16, count 17 without out-of-bounds access, non-zero reserved/unused slots, unsorted/duplicate expansions, unassigned future-option raw fixtures, known base identifiers misused as expansions and multi-defect precedence—with output-canary and active Model B digest assertions in `Tests/test_main.cpp`; observe expected failures and commit the red test (FR-007, FR-008, FR-009, FR-010, FR-015, SC-002, SC-007).
+- [ ] T025 [P] [US3] Add red Swift tests for owned raw unknown values, exact 16/17 bounds, multi-defect category precedence, malformed/incompatible/unsupported error mapping and unchanged active Model B query after each failed candidate in `Tests/BeebKitTests/BeebMachineTests.swift`; observe expected failures and commit the red test (FR-007, FR-008, FR-009, FR-010, FR-015, SC-002, SC-007).
 - [ ] T026 [US3] Extend `Tests/TargetProfile/test-boundaries.sh` with red concurrent query/destroy, C output-canary and C++/C/Swift representation-loss probes; observe expected failures and commit the red boundary test (FR-003, FR-008, FR-010, SC-001, SC-002).
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Implement canonical ordering/slot validation, duplicate, unknown, future-version, recognised-reserved and incompatible classification in `Sources/BeebCore/src/profile.cpp`; contain construction before mutation in `Sources/BeebCore/src/machine.cpp` and `Sources/BeebCore/src/runtime.cpp`, pass T024 and C1 replay/race gates, then commit the core rejection checkpoint (FR-007, FR-008, FR-009, FR-010, SC-002).
-- [ ] T028 [US3] Implement C validation/status translation and success-only output writes in `Sources/BeebCore/src/beeb_c.cpp`, then implement owned Swift translation/localised errors in `Sources/BeebKit/BeebMachine.swift`; pass T025, T026, Swift tests and sanitizers, then commit the cross-language rejection checkpoint (FR-003, FR-007, FR-008, FR-009, FR-010, SC-001, SC-002).
-- [ ] T029 [US3] Add the complete identity/support/rejection rationale and future-option non-claims to `docs/code/target-profile.md`, synchronize affected guidance in `docs/code/host-boundary.md`, and extend `Tests/TargetProfile/test-documentation.sh`; pass the focused documentation test and `DOCS_BASE=develop make docs-check`, then commit with a Lore message that closes User Story 3 (FR-007, FR-013, SC-005).
+- [ ] T027 [US3] Implement bounded count-before-access validation, canonical ordering/slot checks and deterministic malformed → unknown → incompatible → recognised-unavailable precedence in `Sources/BeebCore/src/profile.cpp`; treat unassigned future-option fixtures as unknown, contain construction before mutation in `Sources/BeebCore/src/machine.cpp` and `Sources/BeebCore/src/runtime.cpp`, pass T024 and C1 replay/race gates, then commit the core rejection checkpoint (FR-007, FR-008, FR-009, FR-010, FR-015, SC-002, SC-007).
+- [ ] T028 [US3] Implement C validation/status translation and success-only output writes in `Sources/BeebCore/src/beeb_c.cpp`, then implement owned Swift translation/localised errors in `Sources/BeebKit/BeebMachine.swift`; pass T025, T026, Swift tests and sanitizers, then commit the cross-language rejection checkpoint (FR-003, FR-007, FR-008, FR-009, FR-010, FR-015, SC-001, SC-002, SC-007).
+- [ ] T029 [US3] Add the complete identity/support/rejection rationale, bounded-envelope/non-persistence limit and future-option non-claims to `docs/code/target-profile.md`, synchronize affected guidance in `docs/code/host-boundary.md`, and extend `Tests/TargetProfile/test-documentation.sh`; pass the focused documentation test and `DOCS_BASE=develop make docs-check`, then commit with a Lore message that closes User Story 3 (FR-007, FR-013, FR-016, SC-005).
 
 **Checkpoint**: Supported, recognised-unavailable, unknown, incompatible and
 malformed inputs are distinguishable and failure-atomic across every boundary.
@@ -138,9 +138,9 @@ malformed inputs are distinguishable and failure-atomic across every boundary.
 **Purpose**: Prove all three stories together, record the limited result
 honestly and retire the active planning run only after acceptance passes.
 
-- [ ] T030 Run `make test-machine-target-profile`, `make test`, `make sanitize`, `swift test`, `swift build`, `make test-c1`, `make test-c2-portable`, `make test-c2-xcode`, `make format-check`, `DOCS_BASE=develop make docs-check` and `git diff --check`; record exact results and supported ThreadSanitizer status in `specs/004-machine-target-profile/evidence/verification.md`, then commit the aggregate evidence checkpoint (FR-014, SC-001, SC-002, SC-005, SC-006).
+- [ ] T030 Run `make test-machine-target-profile`, `make test`, `make sanitize`, `swift test`, `swift build`, `make test-c1`, `make test-c2-portable`, `make test-c2-xcode`, `make format-check`, `DOCS_BASE=develop make docs-check` and `git diff --check`; record exact results, 16/17 boundary and classification-precedence evidence, and supported ThreadSanitizer status in `specs/004-machine-target-profile/evidence/verification.md`, then commit the aggregate evidence checkpoint (FR-014, FR-015, FR-016, SC-001, SC-002, SC-005, SC-006, SC-007).
 - [ ] T031 Rebuild and launch `BeebDemo-macOS` from the acceptance commit, repeat the complete timed Model B → Model B+ 64K rejection → Model B recovery journey with keyboard, VoiceOver and Accessibility Inspector, finalize `specs/004-machine-target-profile/evidence/macos-application-observation.md`, and commit the final observed-application acceptance checkpoint (FR-005, FR-006, FR-009, FR-010, FR-014, SC-003, SC-004).
-- [ ] T032 Update only verified claims and ownership in `docs/STATUS.md`, `docs/product/MACHINE_DELIVERY_PLAN.md`, `docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_CONSTRAINTS.md` and `CHANGELOG.md`; verify live documents distinguish delivered identity transport from unimplemented B+ behavior, run targeted documentation/tooling gates and commit the completion-documentation checkpoint (FR-006, FR-013, SC-005, SC-006).
+- [ ] T032 Advance the synchronized development candidate to 0.4.0 in `VERSION`, `Sources/BeebCore/include/beeb/version.h`, `Tests/BeebKitTests/BeebMachineTests.swift` and `CHANGELOG.md`; update only verified claims and ownership in `docs/STATUS.md`, `docs/product/MACHINE_DELIVERY_PLAN.md`, `docs/ARCHITECTURE.md` and `docs/IMPLEMENTATION_CONSTRAINTS.md`; verify the CLI and Swift report 0.4.0, live documents distinguish identity transport from unimplemented B+ behavior, run `make check-version`, focused Swift version tests and documentation/tooling gates, then commit the completion/version checkpoint (FR-006, FR-013, FR-017, SC-005, SC-006, SC-008).
 - [ ] T033 Clear `.specify/feature.json`, move `specs/004-machine-target-profile/` intact to `specs/completed/004-machine-target-profile/`, refresh the managed Spec Kit block in `AGENTS.md`, verify completed numbering, documentation links and `git diff --check`, and commit with a Lore message that explicitly closes the feature phase without an empty duplicate commit.
 
 ---
@@ -222,15 +222,19 @@ Task: "Add Swift typed B+ rejection tests in Tests/BeebKitTests/BeebMachineTests
 | FR-005 accessible application identity | T011, T015-T016, T019, T022-T023, T031 |
 | FR-006 B+ identity is not B+ emulation | T017-T023, T032 |
 | FR-007 future identities remain representable/reserved | T002-T003, T024-T029 |
-| FR-008-FR-010 typed failure/no fallback/no mutation | T009, T017-T29, T031 |
+| FR-008-FR-010 typed failure/no fallback/no mutation | T009, T017-T029, T031 |
 | FR-011 deterministic repeated identity | T002-T003, T008-T014 |
 | FR-012 unambiguous human labels | T005-T007, T011, T015, T019, T022 |
 | FR-013 maintained documentation | T013-T014, T021, T029, T032 |
 | FR-014 automated and observed acceptance | T011, T016, T019, T023, T030-T031 |
-| SC-001-SC-002 complete boundary/rejection fixtures | T008-T14, T017-T18, T020-T21, T024-T30 |
-| SC-003-SC-004 observable/timed macOS journey | T011, T015-T16, T019, T022-T23, T031 |
-| SC-005 documentation completeness | T003, T005, T007, T013-T14, T021, T029-T30, T032 |
+| FR-015-FR-016 bounded envelope/non-persistence limit | T024-T025, T027-T030 |
+| FR-017 synchronized 0.4.0 development candidate | T032 |
+| SC-001-SC-002 complete boundary/rejection fixtures | T008-T014, T017-T018, T020-T021, T024-T030 |
+| SC-003-SC-004 observable/timed macOS journey | T011, T015-T016, T019, T022-T023, T031 |
+| SC-005 documentation completeness | T003, T005, T007, T013-T014, T021, T029-T030, T032 |
 | SC-006 Model B regression and honest B+ limit | T008, T012, T017, T020, T030, T032 |
+| SC-007 limit/precedence consistency | T024, T027-T028, T030 |
+| SC-008 synchronized version/change record | T032 |
 
 ## Notes
 

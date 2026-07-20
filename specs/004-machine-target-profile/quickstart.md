@@ -29,8 +29,11 @@ make test-machine-target-profile
 ```
 
 It must cover canonical values, malformed/unknown/incompatible values, B+
-recognised-unavailable behavior, no fallback, output preservation, C++/C/Swift
-round trips, runtime query ordering and unchanged Model B replay.
+recognised-unavailable behavior, the exact 16-valid/17-malformed expansion
+boundary, multi-defect classification precedence, no fallback, output-canary
+preservation, C++/C/Swift round trips, runtime query ordering and unchanged
+Model B replay. Unassigned future-option fixture codes remain local test data
+and must not become public constants or user-facing names.
 
 ## 3. Run the wider automated gates
 
@@ -72,6 +75,10 @@ and time in `specs/004-machine-target-profile/evidence/macos-application-observa
    does not start or label a fallback machine as B+.
 9. Return to Model B and confirm recovery is possible entirely through the UI.
 
+This Model B+ 64K selection is the feature's one unsupported application
+selection. Do not add unknown or reserved future options to the picker merely
+to satisfy automated fixture coverage.
+
 Capture observed text and interaction results. Do not record a generic “looks
 good”; discrepancies and known limits remain explicit. Unit tests, screenshots
 or build success alone do not close this journey.
@@ -81,10 +88,13 @@ or build success alone do not close this journey.
 After every task and phase is committed and all evidence passes:
 
 1. Update `docs/STATUS.md` only with verified target-profile behavior.
-2. Change the selected row state in
+2. Advance `VERSION`, `Sources/BeebCore/include/beeb/version.h` and
+   `CHANGELOG.md` together to development candidate 0.4.0; run
+   `make check-version` and the Swift version test.
+3. Change the selected row state in
    `docs/product/MACHINE_DELIVERY_PLAN.md` and expose the next row only if the
    delivery-plan gate is genuinely satisfied.
-3. Clear `.specify/feature.json`.
-4. Move `specs/004-machine-target-profile/` intact to `specs/completed/`.
-5. Run the tooling, documentation and diff gates again and commit the non-empty
+4. Clear `.specify/feature.json`.
+5. Move `specs/004-machine-target-profile/` intact to `specs/completed/`.
+6. Run the tooling, documentation and diff gates again and commit the non-empty
    phase-completion change.

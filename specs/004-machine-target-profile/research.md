@@ -28,6 +28,16 @@ now (rejected because it would prematurely freeze unresearched taxonomy);
 encode all options in one closed enum (rejected because later additions would
 change a supposedly closed boundary).
 
+Unassigned raw fixture values may be labelled in tests to demonstrate safe
+future capacity, but those labels and codes are non-canonical. Validation
+returns `unknown`; documentation and the application must not present them as
+recognised machine or expansion identities.
+
+The version-1 base codes are fixed as `0x00000001` for BBC Microcomputer Model
+B and `0x00000002` for BBC Model B+ 64K. Both use component version 1. Assigned
+code/version pairs are permanent and never reused; no expansion code is
+allocated by this feature.
+
 ## Decision: Use a bounded value of raw component identifiers and versions
 
 **Rationale**: A schema-versioned base component plus at most 16 explicitly
@@ -42,6 +52,11 @@ and is sufficient for the reserved expansion directions without claiming any.
 round trips); strings (rejected because encoding, normalization and fixed C
 storage complicate equality); an unbounded vector (rejected because future
 snapshot/input validation must remain bounded).
+
+The maximum count is inclusive: sixteen ordered entries are structurally valid
+for classification, while a declared count above sixteen is malformed before
+any out-of-range slot can be inspected. The aggregate is not a serialized byte
+format; padding, byte order and trailing-byte rules belong to snapshot work.
 
 ## Decision: Keep profile data value-semantic across C and Swift
 
@@ -126,3 +141,16 @@ create rollback and device-reset semantics not selected by row 1.
 **Alternatives considered**: Add an in-place `setProfile` command (rejected
 because failure-atomic whole-machine replacement is a separate product flow);
 write preferences or snapshots now (rejected as later delivery-plan rows).
+
+## Decision: Advance the development candidate to 0.4.0 on completion
+
+**Rationale**: The feature adds public C and Swift profile construction,
+validation and query contracts after the 0.3.0 C2 candidate. The repository's
+pre-1.0 cadence uses a synchronized minor version for a new public boundary.
+`VERSION`, the C version header, public CLI result, Swift observation and
+changelog must agree before completion.
+
+**Alternatives considered**: Leave the new API under 0.3.0 (rejected because
+that candidate already records the C2 boundary and the changelog explicitly
+has no later assigned changes); use 0.3.1 (rejected because this is an additive
+public capability rather than a backward-compatible correction to C2).

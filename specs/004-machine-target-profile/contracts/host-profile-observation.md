@@ -10,6 +10,10 @@ same profile queried from that runtime. Selecting Model B+ 64K visibly reports
 that the identity is recognised but machine support is not yet available,
 retains any active Model B runtime and never labels Model B execution as B+.
 Reserved future options are not user-selectable in this slice.
+Model B+ 64K therefore supplies the single unsupported application selection
+required by acceptance. Unknown, malformed and unassigned future-option raw
+values are automated boundary fixtures only; the application never invents
+names for them.
 
 The selector is a native labelled picker. The picker, active-profile label and
 rejection text carry stable accessibility identifiers and meaningful

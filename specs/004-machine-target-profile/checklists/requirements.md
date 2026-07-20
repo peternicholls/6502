@@ -32,6 +32,7 @@
 ## Notes
 
 - Validation iteration 1 passed all items on 2026-07-19.
+- Validation iteration 2 passed all items on 2026-07-20 after clarifying that Model B+ 64K is the single unsupported application observation, future-option fixture codes are non-canonical, and envelope limits/classification precedence are explicit.
 - Cross-strand boundary names are programme scope required by the delivery-plan row, not an implementation prescription.
 - Model B+ 64K identity transport is explicitly separated from later Model B+ emulation support.
 - Application build, launch and direct observation are mandatory acceptance evidence; unit tests alone cannot close the feature.
