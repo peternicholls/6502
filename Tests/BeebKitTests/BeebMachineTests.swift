@@ -144,6 +144,24 @@ final class BeebMachineTests: XCTestCase {
         XCTAssertNotEqual(BeebMachineProfile.modelB, BeebMachineProfile.modelBPlus64K)
     }
 
+    func testModelBConstructionAndProfileQueryRemainObservational() throws {
+        let explicit = try BeebMachine(profile: .modelB)
+        let convenience = try BeebMachine()
+
+        XCTAssertEqual(try convenience.profile, .modelB)
+        let before = try explicit.safePoint()
+        let first = try explicit.profile
+        let second = try explicit.profile
+        let after = try explicit.safePoint()
+
+        XCTAssertEqual(first, .modelB)
+        XCTAssertEqual(second, .modelB)
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(before.cpuCycles, after.cpuCycles)
+        XCTAssertEqual(before.frameNumber, after.frameNumber)
+        XCTAssertEqual(before.state, after.state)
+    }
+
     func testLifecycleStateStartPauseAndIdempotence() throws {
         let machine = try BeebMachine()
         try machine.loadOSROM(loopingOSROM())
