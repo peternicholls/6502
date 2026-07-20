@@ -1015,7 +1015,12 @@ MachineRuntime::MachineRuntime(MachineRuntimeOptions options)
     : MachineRuntime(MachineTargetProfile::modelB(), options) {}
 
 MachineRuntime::MachineRuntime(MachineTargetProfile profile, MachineRuntimeOptions options)
-    : impl_(std::make_unique<Impl>(std::move(profile), options)) {}
+    : impl_([&] {
+          const auto validation = validateMachineTargetProfile(profile);
+          if (validation.support != ProfileSupport::supported)
+              throw std::invalid_argument(validation.message);
+          return std::make_unique<Impl>(std::move(profile), options);
+      }()) {}
 
 MachineRuntime::~MachineRuntime() {
     if (impl_) (void)impl_->shutdown();
