@@ -5,7 +5,8 @@ root="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 home_root="$(cd -P "${HOME}" && pwd -P)"
 profile=""
 groups_file=""
-output_dir="${root}/.build/c0/run"
+default_output_dir="${root}/.build/c0/run"
+output_dir="${default_output_dir}"
 
 usage() {
     printf 'usage: verify-c0.sh [--profile portable|macos|all] [--groups FILE] [--output-dir DIR]\n'
@@ -50,6 +51,9 @@ esac
 case "${output_dir}" in
     ""|/) printf 'unsafe output directory: %s\n' "${output_dir}" >&2; exit 2 ;;
 esac
+if [[ "${output_dir}" == "${default_output_dir}" ]]; then
+    mkdir -p "$(dirname "${default_output_dir}")"
+fi
 output_parent="$(cd -P "$(dirname "${output_dir}")" && pwd -P)"
 output_target="${output_parent}/$(basename "${output_dir}")"
 ownership_marker=".beeb-c0-verify-owned"

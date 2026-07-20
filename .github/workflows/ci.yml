@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: sudo apt-get update && sudo apt-get install -y doxygen
+      - name: Install verification tools
+        run: sudo apt-get update && sudo apt-get install -y doxygen ripgrep
       - name: Test C0 verifier orchestration
         run: Tests/C0/test-baseline-verifier.sh
       - name: Build and test the C++ core
@@ -41,8 +41,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: brew install doxygen
+      - name: Install verification tools
+        run: brew install doxygen ripgrep
       - name: Test C0 verifier orchestration
         run: Tests/C0/test-baseline-verifier.sh
       - name: Test the Swift package
@@ -58,8 +58,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: sudo apt-get update && sudo apt-get install -y doxygen
+      - name: Install verification tools
+        run: sudo apt-get update && sudo apt-get install -y doxygen ripgrep
       - name: Run complete portable C0 evidence
         run: make verify-c0 C0_PROFILE=portable
 
@@ -67,7 +67,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: brew install doxygen
+      - name: Install verification tools
+        run: brew install doxygen ripgrep
       - name: Run complete macOS C0 evidence
         run: make verify-c0 C0_PROFILE=macos
