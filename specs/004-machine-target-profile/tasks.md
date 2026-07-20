@@ -60,7 +60,7 @@ labels through keyboard and VoiceOver.
 ### Red tests for User Story 1
 
 - [X] T008 [US1] Add red C++ tests for Model B validation, `BBCMicro` profile retention, `MachineRuntime` profile-aware construction, owner-serialized repeated query and unchanged safe-point/digest state in `Tests/test_main.cpp`; observe the expected missing behavior and commit the red test (FR-003, FR-004, FR-011, SC-001, SC-006).
-- [ ] T009 [US1] Add red C ABI tests for explicit Model B creation/query, null inputs, success-only output writes, unchanged legacy Model B creation and repeated owned round trips in `Tests/test_main.cpp`; observe the expected failure and commit the red test (FR-003, FR-004, FR-008, FR-011, SC-001).
+- [X] T009 [US1] Add red C ABI tests for explicit Model B creation/query, null inputs, success-only output writes, unchanged legacy Model B creation and repeated owned round trips in `Tests/test_main.cpp`; observe the expected failure and commit the red test (FR-003, FR-004, FR-008, FR-011, SC-001).
 - [ ] T010 [US1] Add red Swift tests for `BeebMachine(profile: .modelB)`, the explicit no-argument Model B convenience, repeated owned profile queries and unchanged runtime state in `Tests/BeebKitTests/BeebMachineTests.swift`; observe the expected failure and commit the red test (FR-003, FR-004, FR-011, SC-001).
 - [ ] T011 [US1] Extend `Tests/TargetProfile/test-application-build.sh` with red source/build checks for a native labelled profile picker, stable accessibility identifiers and distinct requested/active profile state in `Sources/BeebDemo/main.swift`; observe the expected failure and commit the red host test (FR-005, FR-012, FR-014, SC-003).
 

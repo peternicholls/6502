@@ -2481,6 +2481,49 @@ void testTargetProfileModelBCoreRetentionAndQuery() {
     }
 }
 
+void testTargetProfileModelBCBoundaryCreationAndQuery() {
+    const auto modelB = beeb_machine_profile_model_b();
+    auto* const handleCanary = reinterpret_cast<beeb_machine*>(static_cast<std::uintptr_t>(1));
+
+    beeb_machine* untouchedHandle = handleCanary;
+    auto status = beeb_create_with_profile(nullptr, &untouchedHandle);
+    CHECK(status.code == BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(untouchedHandle == handleCanary);
+    status = beeb_create_with_profile(&modelB, nullptr);
+    CHECK(status.code == BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_machine* explicitMachine = nullptr;
+    status = beeb_create_with_profile(&modelB, &explicitMachine);
+    CHECK(status.code == BEEB_STATUS_OK);
+    CHECK(explicitMachine != nullptr);
+
+    beeb_machine_profile canary{};
+    canary.schema_version = 77;
+    canary.base.identifier = UINT32_C(0xf0000001);
+    const auto originalCanary = canary;
+    status = beeb_get_machine_profile(nullptr, &canary);
+    CHECK(status.code == BEEB_STATUS_INVALID_ARGUMENT);
+    CHECK(beeb_machine_profile_equal(&canary, &originalCanary));
+    status = beeb_get_machine_profile(explicitMachine, nullptr);
+    CHECK(status.code == BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_machine_profile first{};
+    beeb_machine_profile second{};
+    CHECK(beeb_get_machine_profile(explicitMachine, &first).code == BEEB_STATUS_OK);
+    first.base.identifier = UINT32_C(0xf0000001);
+    CHECK(beeb_get_machine_profile(explicitMachine, &second).code == BEEB_STATUS_OK);
+    CHECK(beeb_machine_profile_equal(&second, &modelB));
+    CHECK(!beeb_machine_profile_equal(&first, &second));
+    CHECK(beeb_destroy(explicitMachine).code == BEEB_STATUS_OK);
+
+    beeb_machine* legacyMachine = nullptr;
+    CHECK(beeb_create(&legacyMachine).code == BEEB_STATUS_OK);
+    beeb_machine_profile legacyProfile{};
+    CHECK(beeb_get_machine_profile(legacyMachine, &legacyProfile).code == BEEB_STATUS_OK);
+    CHECK(beeb_machine_profile_equal(&legacyProfile, &modelB));
+    CHECK(beeb_destroy(legacyMachine).code == BEEB_STATUS_OK);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2574,6 +2617,8 @@ int main(int argc, char** argv) {
          testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting},
         {"Target profile: Model B core retention and query",
          testTargetProfileModelBCoreRetentionAndQuery},
+        {"Target profile: Model B C creation and owned query",
+         testTargetProfileModelBCBoundaryCreationAndQuery},
     };
 
     unsigned failed = 0;
