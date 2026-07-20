@@ -2595,6 +2595,208 @@ void testTargetProfileModelBPlusRecognitionAndRejection() {
     CHECK(beeb_destroy(activeModelB).code == BEEB_STATUS_OK);
 }
 
+void testTargetProfileInvalidMatrixAndPrecedence() {
+    using Component = beeb::ProfileComponentIdentity;
+    using Profile = beeb::MachineTargetProfile;
+    using Storage = Profile::ExpansionStorage;
+    using Support = beeb::ProfileSupport;
+
+    const auto rawProfile = [](std::uint16_t schema, Component base, std::uint16_t count,
+                               Storage expansions = {}) {
+        return Profile{schema, base, count, expansions};
+    };
+    const auto modelBBase =
+        Component{beeb::modelBBaseIdentifier, beeb::machineProfileComponentVersion};
+    const auto modelBPlusBase =
+        Component{beeb::modelBPlus64KBaseIdentifier, beeb::machineProfileComponentVersion};
+    const auto future = [](std::uint32_t identifier, std::uint16_t reserved = 0) {
+        return Component{identifier, beeb::machineProfileComponentVersion, reserved};
+    };
+
+    Storage countSixteen{};
+    for (std::size_t index = 0; index < countSixteen.size(); ++index)
+        countSixteen[index] = future(UINT32_C(0xf0000100) + static_cast<std::uint32_t>(index));
+
+    Storage countSeventeen = countSixteen;
+    Storage nonzeroUnused{};
+    nonzeroUnused[0] = future(UINT32_C(0xf0000200));
+    Storage usedReserved{};
+    usedReserved[0] = future(UINT32_C(0xf0000201), 1);
+    Storage unsorted{};
+    unsorted[0] = future(UINT32_C(0xf0000302));
+    unsorted[1] = future(UINT32_C(0xf0000301));
+    Storage duplicate{};
+    duplicate[0] = future(UINT32_C(0xf0000303));
+    duplicate[1] = duplicate[0];
+    Storage knownBasesAsExpansions{};
+    knownBasesAsExpansions[0] = modelBBase;
+    knownBasesAsExpansions[1] = modelBPlusBase;
+    Storage unknownThenKnownBase{};
+    unknownThenKnownBase[0] = modelBBase;
+
+    struct Fixture {
+        const char* name;
+        Profile profile;
+        Support expected;
+    };
+    const std::vector<Fixture> fixtures{
+        {"all-zero profile", Profile{}, Support::malformed},
+        {"zero schema", rawProfile(0, modelBBase, 0), Support::malformed},
+        {"zero base identifier",
+         rawProfile(beeb::machineProfileSchemaVersion,
+                    Component{0, beeb::machineProfileComponentVersion}, 0),
+         Support::malformed},
+        {"zero base version",
+         rawProfile(beeb::machineProfileSchemaVersion, Component{beeb::modelBBaseIdentifier, 0}, 0),
+         Support::malformed},
+        {"nonzero base reserved",
+         rawProfile(beeb::machineProfileSchemaVersion,
+                    Component{beeb::modelBBaseIdentifier, beeb::machineProfileComponentVersion, 1},
+                    0),
+         Support::malformed},
+        {"future schema", rawProfile(2, modelBBase, 0), Support::unknown},
+        {"future base component version",
+         rawProfile(beeb::machineProfileSchemaVersion, Component{beeb::modelBBaseIdentifier, 2}, 0),
+         Support::unknown},
+        {"exact count sixteen",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBBase, 16, countSixteen),
+         Support::unknown},
+        {"count seventeen",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBBase, 17, countSeventeen),
+         Support::malformed},
+        {"nonzero unused slot",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBBase, 0, nonzeroUnused),
+         Support::malformed},
+        {"nonzero used reserved",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBBase, 1, usedReserved),
+         Support::malformed},
+        {"unsorted expansions",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBBase, 2, unsorted),
+         Support::malformed},
+        {"duplicate expansions",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBBase, 2, duplicate),
+         Support::malformed},
+        {"unassigned future base",
+         rawProfile(beeb::machineProfileSchemaVersion, future(UINT32_C(0xf0000001)), 0),
+         Support::unknown},
+        {"known bases misused as expansions",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBBase, 2, knownBasesAsExpansions),
+         Support::incompatible},
+        {"malformed precedes unknown", rawProfile(0, future(UINT32_C(0xf0000002)), 2, duplicate),
+         Support::malformed},
+        {"unknown precedes incompatible",
+         rawProfile(beeb::machineProfileSchemaVersion, future(UINT32_C(0xf0000003)), 1,
+                    unknownThenKnownBase),
+         Support::unknown},
+        {"incompatible precedes recognised unavailable",
+         rawProfile(beeb::machineProfileSchemaVersion, modelBPlusBase, 1, unknownThenKnownBase),
+         Support::incompatible},
+    };
+
+    const auto require = [](bool condition, const Fixture& fixture, const char* claim) {
+        if (condition) return;
+        throw TestFailure(std::string{fixture.name} + ": " + claim);
+    };
+    const auto cProfile = [](const Profile& profile) {
+        beeb_machine_profile result{};
+        result.schema_version = profile.schemaVersion();
+        result.base = {profile.base().identifier(), profile.base().version(),
+                       profile.base().reserved()};
+        result.expansion_count = profile.expansionCount();
+        for (std::size_t index = 0; index < profile.expansions().size(); ++index) {
+            const auto& expansion = profile.expansions()[index];
+            result.expansions[index] = {expansion.identifier(), expansion.version(),
+                                        expansion.reserved()};
+        }
+        return result;
+    };
+    const auto cSupport = [](Support support) {
+        switch (support) {
+        case Support::supported:
+            return BEEB_MACHINE_PROFILE_SUPPORTED;
+        case Support::recognisedUnavailable:
+            return BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE;
+        case Support::unknown:
+            return BEEB_MACHINE_PROFILE_UNKNOWN;
+        case Support::incompatible:
+            return BEEB_MACHINE_PROFILE_INCOMPATIBLE;
+        case Support::malformed:
+            return BEEB_MACHINE_PROFILE_MALFORMED;
+        }
+        return BEEB_MACHINE_PROFILE_MALFORMED;
+    };
+
+    beeb::BBCMicro activeModelB;
+    const auto activeDigest = beeb::BBCMicroTestAccess::digest(activeModelB);
+
+    beeb_machine* cActiveModelB = nullptr;
+    CHECK(beeb_create(&cActiveModelB).code == BEEB_STATUS_OK);
+    beeb_machine_profile cActiveProfileBefore{};
+    beeb_cpu_state cActiveCPUBefore{};
+    beeb_safe_point cActivePointBefore{};
+    CHECK(beeb_get_machine_profile(cActiveModelB, &cActiveProfileBefore).code == BEEB_STATUS_OK);
+    CHECK(beeb_get_cpu_state(cActiveModelB, &cActiveCPUBefore).code == BEEB_STATUS_OK);
+    CHECK(beeb_get_safe_point(cActiveModelB, &cActivePointBefore).code == BEEB_STATUS_OK);
+
+    auto* const handleCanary = reinterpret_cast<beeb_machine*>(static_cast<std::uintptr_t>(1));
+    for (const auto& fixture : fixtures) {
+        const auto validation = beeb::validateMachineTargetProfile(fixture.profile);
+        require(validation.support == fixture.expected, fixture,
+                "C++ classification did not match precedence");
+        require(!validation.message.empty(), fixture, "C++ rejection diagnostic was empty");
+
+        bool machineRejected = false;
+        try {
+            const beeb::BBCMicro candidate(fixture.profile);
+        } catch (const std::invalid_argument&) {
+            machineRejected = true;
+        }
+        require(machineRejected, fixture, "BBCMicro construction did not reject");
+
+        bool runtimeRejected = false;
+        try {
+            const beeb::MachineRuntime candidate(fixture.profile);
+        } catch (const std::invalid_argument&) {
+            runtimeRejected = true;
+        }
+        require(runtimeRejected, fixture, "MachineRuntime construction did not reject");
+        require(beeb::BBCMicroTestAccess::digest(activeModelB) == activeDigest, fixture,
+                "active Model B digest changed");
+
+        const auto portable = cProfile(fixture.profile);
+        beeb_machine_profile_validation cValidation{};
+        const auto validationStatus = beeb_validate_machine_profile(&portable, &cValidation);
+        require(validationStatus.code == BEEB_STATUS_OK, fixture, "C validation call failed");
+        require(cValidation.support == cSupport(fixture.expected), fixture,
+                "C classification did not match C++");
+        require(cValidation.message[0] != '\0', fixture, "C rejection diagnostic was empty");
+
+        beeb_machine* rejectedOutput = handleCanary;
+        const auto createStatus = beeb_create_with_profile(&portable, &rejectedOutput);
+        require(createStatus.code != BEEB_STATUS_OK, fixture, "C construction did not reject");
+        require(rejectedOutput == handleCanary, fixture, "C handle output canary changed");
+    }
+
+    beeb_machine_profile cActiveProfileAfter{};
+    beeb_cpu_state cActiveCPUAfter{};
+    beeb_safe_point cActivePointAfter{};
+    CHECK(beeb_get_machine_profile(cActiveModelB, &cActiveProfileAfter).code == BEEB_STATUS_OK);
+    CHECK(beeb_get_cpu_state(cActiveModelB, &cActiveCPUAfter).code == BEEB_STATUS_OK);
+    CHECK(beeb_get_safe_point(cActiveModelB, &cActivePointAfter).code == BEEB_STATUS_OK);
+    CHECK(beeb_machine_profile_equal(&cActiveProfileBefore, &cActiveProfileAfter));
+    CHECK_EQ(cActiveCPUAfter.a, cActiveCPUBefore.a);
+    CHECK_EQ(cActiveCPUAfter.x, cActiveCPUBefore.x);
+    CHECK_EQ(cActiveCPUAfter.y, cActiveCPUBefore.y);
+    CHECK_EQ(cActiveCPUAfter.sp, cActiveCPUBefore.sp);
+    CHECK_EQ(cActiveCPUAfter.p, cActiveCPUBefore.p);
+    CHECK_EQ(cActiveCPUAfter.pc, cActiveCPUBefore.pc);
+    CHECK_EQ(cActiveCPUAfter.cycles, cActiveCPUBefore.cycles);
+    CHECK_EQ(cActivePointAfter.cpu_cycles, cActivePointBefore.cpu_cycles);
+    CHECK_EQ(cActivePointAfter.frame_number, cActivePointBefore.frame_number);
+    CHECK_EQ(cActivePointAfter.state, cActivePointBefore.state);
+    CHECK(beeb_destroy(cActiveModelB).code == BEEB_STATUS_OK);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2692,6 +2894,8 @@ int main(int argc, char** argv) {
          testTargetProfileModelBCBoundaryCreationAndQuery},
         {"Target profile: Model B+ recognition and rejection",
          testTargetProfileModelBPlusRecognitionAndRejection},
+        {"Target profile: invalid matrix and precedence",
+         testTargetProfileInvalidMatrixAndPrecedence},
     };
 
     unsigned failed = 0;
