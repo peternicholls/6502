@@ -11,6 +11,14 @@ runtime FIFO is safe across Swift concurrency domains; `BeebMachine` adds no
 second lock or mirrored lifecycle state. A machine needs a lawful 16 KiB
 operating-system ROM before it can execute useful BBC software.
 
+Create an explicit Model B runtime with
+``BeebMachine/init(profile:)`` and ``BeebMachineProfile/modelB``. The existing
+``BeebMachine/init()`` initializer is the same canonical Model B request as a
+convenience, not a fallback for invalid input. ``BeebMachine/profile`` copies
+the immutable identity from the runtime owner; the wrapper does not retain a
+second profile cache. ``BeebMachineProfile/modelBPlus64K`` is a distinct
+identity value, but its presence does not claim Model B+ machine support.
+
 Use ``BeebMachine/loadOSROM(_:)`` to install that ROM, then advance emulated time
 with ``BeebMachine/run(cycles:)`` or ``BeebMachine/runToNextFrame(maximumCycles:)``.
 For sustained execution, use ``BeebMachine/start()`` and
@@ -39,6 +47,8 @@ project's architecture, timing, host-boundary, and evidence guides.
 
 ### Values
 
+- ``BeebMachineProfile``
+- ``BeebMachineProfileComponent``
 - ``BeebCPUState``
 - ``BeebVideoFrame``
 - ``BeebSafePoint``

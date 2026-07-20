@@ -35,6 +35,15 @@ public struct BeebMachineProfileComponent: Sendable, Equatable {
             reserved: value.reserved
         )
     }
+
+    /// Copies the raw Swift fields into one imported C component value.
+    fileprivate var cValue: beeb_profile_component {
+        var value = beeb_profile_component()
+        value.identifier = identifier
+        value.version = version
+        value.reserved = reserved
+        return value
+    }
 }
 
 /// Immutable, owned identity requested for one machine runtime.
@@ -87,7 +96,7 @@ public struct BeebMachineProfile: Sendable, Equatable {
     }
 
     /// Copies a canonical fixed C aggregate into Swift-owned fields.
-    private init(_ value: beeb_machine_profile) {
+    fileprivate init(_ value: beeb_machine_profile) {
         var storage = value.expansions
         let usedCount = min(Int(value.expansion_count), Self.expansionCapacity)
         let copiedExpansions = withUnsafeBytes(of: &storage) { bytes in
@@ -99,6 +108,22 @@ public struct BeebMachineProfile: Sendable, Equatable {
             base: BeebMachineProfileComponent(value.base),
             expansions: copiedExpansions
         )
+    }
+
+    /// Copies the complete Swift value into fixed C storage without truncating
+    /// the declared count used by later validation.
+    fileprivate var cValue: beeb_machine_profile {
+        var value = beeb_machine_profile()
+        value.schema_version = schemaVersion
+        value.base = base.cValue
+        value.expansion_count = UInt16(clamping: expansions.count)
+        withUnsafeMutableBytes(of: &value.expansions) { bytes in
+            let slots = bytes.bindMemory(to: beeb_profile_component.self)
+            for (index, expansion) in expansions.prefix(Self.expansionCapacity).enumerated() {
+                slots[index] = expansion.cValue
+            }
+        }
+        return value
     }
 }
 
@@ -306,11 +331,22 @@ public final class BeebMachine: @unchecked Sendable {
     /// Opaque C token whose registry admission keeps concurrent calls alive through return.
     private let handle: OpaquePointer
 
-    /// Creates a paused machine with no ROM or disc loaded.
+    /// Creates a paused canonical Model B machine with no ROM or disc loaded.
+    ///
+    /// This convenience delegates to ``init(profile:)`` and is never used as a
+    /// fallback for an invalid explicit profile.
     /// - Throws: ``BeebError/coreStatus(_:_:)`` if runtime creation fails.
-    public init() throws {
+    public convenience init() throws {
+        try self.init(profile: .modelB)
+    }
+
+    /// Creates a paused machine for one explicit profile.
+    /// - Parameter profile: Complete immutable identity copied into the C boundary.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if validation or construction fails.
+    public init(profile: BeebMachineProfile) throws {
+        var profile = profile.cValue
         var created: OpaquePointer?
-        try Self.check(beeb_create(&created))
+        try Self.check(beeb_create_with_profile(&profile, &created))
         guard let created else {
             throw BeebError.coreStatus(
                 .internalFailure, "C runtime succeeded without returning a handle")
@@ -319,6 +355,19 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     deinit { _ = beeb_destroy(handle) }
+
+    /// Immutable active identity copied through the runtime owner.
+    ///
+    /// The returned value owns every component and query storage. Reading it
+    /// neither caches host truth nor advances emulated time.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.
+    public var profile: BeebMachineProfile {
+        get throws {
+            var profile = beeb_machine_profile()
+            try Self.check(beeb_get_machine_profile(handle, &profile))
+            return BeebMachineProfile(profile)
+        }
+    }
 
     /// Lifecycle state from one FIFO safe point.
     /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.
