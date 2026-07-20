@@ -22,6 +22,12 @@ require_source "native labelled machine-profile picker" \
 require_source "separate requested profile state" '@Published .*requestedProfile'
 require_source "separate active profile state" '@Published .*activeProfile'
 require_source "profile-aware candidate construction" 'BeebMachine\(profile:'
+require_source "Model B+ 64K picker choice" 'case modelBPlus64K'
+require_source "Model B+ 64K profile mapping" 'case \.modelBPlus64K: return \.modelBPlus64K'
+require_source "recognised-but-unavailable recovery copy" \
+    'is recognised, but machine support is not yet available'
+require_source "unchanged active-profile rejection presentation" \
+    'Active profile remains: \\(activeProfile\?\.displayName \?\? "None"\)'
 require_source "stable picker accessibility identifier" \
     'accessibilityIdentifier\("machine-profile-picker"\)'
 require_source "stable requested-profile accessibility identifier" \

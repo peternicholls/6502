@@ -91,7 +91,7 @@ running application while its active Model B session remains intact.
 
 - [X] T017 [US2] Add red C++ and C tests for Model B+ 64K recognition, typed unavailable construction, null/output preservation, no handle registration and explicit no-fallback behavior in `Tests/test_main.cpp`; observe the expected failure and commit the red test (FR-006, FR-008, FR-009, FR-010, SC-002, SC-006).
 - [X] T018 [P] [US2] Add red Swift tests for Model B+ 64K support classification, typed localised rejection and absence of a fallback `BeebMachine` in `Tests/BeebKitTests/BeebMachineTests.swift`; observe the expected failure and commit the red test (FR-006, FR-008, FR-009, SC-002, SC-006).
-- [ ] T019 [US2] Extend `Tests/TargetProfile/test-application-build.sh` with red checks for a Model B+ 64K picker choice, explicit recognised-but-unavailable copy and separate unchanged active-profile presentation in `Sources/BeebDemo/main.swift`; observe the expected failure and commit the red host test (FR-005, FR-006, FR-009, FR-010, SC-003).
+- [X] T019 [US2] Extend `Tests/TargetProfile/test-application-build.sh` with red checks for a Model B+ 64K picker choice, explicit recognised-but-unavailable copy and separate unchanged active-profile presentation in `Sources/BeebDemo/main.swift`; observe the expected failure and commit the red host test (FR-005, FR-006, FR-009, FR-010, SC-003).
 
 ### Implementation for User Story 2
 
