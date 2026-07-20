@@ -1,10 +1,9 @@
 <!-- SPECKIT START -->
-No Spec Kit feature is currently active.
-docs/product/MACHINE_DELIVERY_PLAN.md is the sole forward programme authority.
-Select a named bounded slice from it, then create its feature branch and verify
-.specify/feature.json before running plan, tasks or implementation workflows.
-Use only current vision, architecture, status and implementation constraints as
-support. Completed and archived material cannot add scope.
+Active Spec Kit feature: specs/004-machine-target-profile
+Its scope must trace to a named row or gate in
+docs/product/MACHINE_DELIVERY_PLAN.md, the sole forward programme authority.
+Completed and archived material cannot add scope.
+Read the current implementation plan at specs/004-machine-target-profile/plan.md
 <!-- SPECKIT END -->
 
 ## Git Checkpoints
