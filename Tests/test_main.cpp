@@ -2543,6 +2543,58 @@ void testTargetProfileModelBCBoundaryCreationAndQuery() {
     CHECK(beeb_destroy(legacyMachine).code == BEEB_STATUS_OK);
 }
 
+void testTargetProfileModelBPlusRecognitionAndRejection() {
+    const auto modelBPlus = beeb::MachineTargetProfile::modelBPlus64K();
+    const auto validation = beeb::validateMachineTargetProfile(modelBPlus);
+    CHECK(validation.support == beeb::ProfileSupport::recognisedUnavailable);
+    CHECK(validation.message.find("Model B+ 64K") != std::string::npos);
+    CHECK(validation.message.find("unavailable") != std::string::npos);
+
+    bool machineRejected = false;
+    try {
+        const beeb::BBCMicro machine(modelBPlus);
+    } catch (const std::invalid_argument&) {
+        machineRejected = true;
+    }
+    CHECK(machineRejected);
+
+    bool runtimeRejected = false;
+    try {
+        const beeb::MachineRuntime runtime(modelBPlus);
+    } catch (const std::invalid_argument&) {
+        runtimeRejected = true;
+    }
+    CHECK(runtimeRejected);
+
+    const auto cModelB = beeb_machine_profile_model_b();
+    const auto cModelBPlus = beeb_machine_profile_model_b_plus_64k();
+    CHECK(!beeb_machine_profile_equal(&cModelBPlus, &cModelB));
+
+    auto status = beeb_create_with_profile(&cModelBPlus, nullptr);
+    CHECK(status.code == BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_machine* activeModelB = nullptr;
+    CHECK(beeb_create_with_profile(&cModelB, &activeModelB).code == BEEB_STATUS_OK);
+    CHECK(activeModelB != nullptr);
+    beeb_machine_profile beforeProfile{};
+    CHECK(beeb_get_machine_profile(activeModelB, &beforeProfile).code == BEEB_STATUS_OK);
+
+    auto* const handleCanary = reinterpret_cast<beeb_machine*>(static_cast<std::uintptr_t>(1));
+    beeb_machine* rejectedOutput = handleCanary;
+    status = beeb_create_with_profile(&cModelBPlus, &rejectedOutput);
+    CHECK(status.code == BEEB_STATUS_UNAVAILABLE);
+    CHECK(std::string{status.message}.find("Model B+ 64K") != std::string::npos);
+    CHECK(std::string{status.message}.find("unavailable") != std::string::npos);
+    CHECK(rejectedOutput == handleCanary);
+    CHECK(beeb_destroy(rejectedOutput).code == BEEB_STATUS_INVALID_ARGUMENT);
+
+    beeb_machine_profile afterProfile{};
+    CHECK(beeb_get_machine_profile(activeModelB, &afterProfile).code == BEEB_STATUS_OK);
+    CHECK(beeb_machine_profile_equal(&beforeProfile, &afterProfile));
+    CHECK(beeb_machine_profile_equal(&afterProfile, &cModelB));
+    CHECK(beeb_destroy(activeModelB).code == BEEB_STATUS_OK);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2638,6 +2690,8 @@ int main(int argc, char** argv) {
          testTargetProfileModelBCoreRetentionAndQuery},
         {"Target profile: Model B C creation and owned query",
          testTargetProfileModelBCBoundaryCreationAndQuery},
+        {"Target profile: Model B+ recognition and rejection",
+         testTargetProfileModelBPlusRecognitionAndRejection},
     };
 
     unsigned failed = 0;
