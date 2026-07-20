@@ -17,7 +17,11 @@ Create an explicit Model B runtime with
 convenience, not a fallback for invalid input. ``BeebMachine/profile`` copies
 the immutable identity from the runtime owner; the wrapper does not retain a
 second profile cache. ``BeebMachineProfile/modelBPlus64K`` is a distinct
-identity value, but its presence does not claim Model B+ machine support.
+identity value whose ``BeebMachineProfile/support`` is
+``BeebMachineProfileSupport/recognisedUnavailable``. Attempting to construct it
+throws ``BeebError/machineProfileUnavailable(_:)`` with an actionable localized
+description and never substitutes Model B. Unknown imported support-enum values
+are contained as unsupported rather than being interpreted as success.
 
 Use ``BeebMachine/loadOSROM(_:)`` to install that ROM, then advance emulated time
 with ``BeebMachine/run(cycles:)`` or ``BeebMachine/runToNextFrame(maximumCycles:)``.
@@ -49,6 +53,7 @@ project's architecture, timing, host-boundary, and evidence guides.
 
 - ``BeebMachineProfile``
 - ``BeebMachineProfileComponent``
+- ``BeebMachineProfileSupport``
 - ``BeebCPUState``
 - ``BeebVideoFrame``
 - ``BeebSafePoint``

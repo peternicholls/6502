@@ -46,6 +46,23 @@ public struct BeebMachineProfileComponent: Sendable, Equatable {
     }
 }
 
+/// Stable support classification for one complete machine-profile value.
+///
+/// Identity and implementation availability remain separate: a recognised
+/// profile may cross the boundary even when its machine behavior is absent.
+public enum BeebMachineProfileSupport: Sendable, Equatable {
+    /// The profile can construct a machine in this release.
+    case supported
+    /// The identity is known, but its machine behavior is not implemented.
+    case recognisedUnavailable
+    /// An identifier or component version has no assigned contract.
+    case unknown
+    /// Known components cannot be combined in the supplied roles.
+    case incompatible
+    /// The bounded profile envelope violates its schema invariants.
+    case malformed
+}
+
 /// Immutable, owned identity requested for one machine runtime.
 ///
 /// The Swift value preserves raw component identifiers and owns its expansion
@@ -93,6 +110,25 @@ public struct BeebMachineProfile: Sendable, Equatable {
         if self == Self.modelB { return "BBC Microcomputer Model B" }
         if self == Self.modelBPlus64K { return "BBC Model B+ 64K" }
         return String(format: "Unknown machine profile 0x%08X", base.identifier)
+    }
+
+    /// Pure support classification copied from the C/core validator.
+    ///
+    /// A later imported C enum value is contained as ``unknown`` and can never
+    /// be interpreted as support by an older Swift wrapper.
+    public var support: BeebMachineProfileSupport {
+        var profile = cValue
+        var validation = beeb_machine_profile_validation()
+        let status = beeb_validate_machine_profile(&profile, &validation)
+        guard status.code == BEEB_STATUS_OK else { return .unknown }
+        switch validation.support {
+        case .BEEB_MACHINE_PROFILE_SUPPORTED: return .supported
+        case .BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE: return .recognisedUnavailable
+        case .BEEB_MACHINE_PROFILE_UNKNOWN: return .unknown
+        case .BEEB_MACHINE_PROFILE_INCOMPATIBLE: return .incompatible
+        case .BEEB_MACHINE_PROFILE_MALFORMED: return .malformed
+        @unknown default: return .unknown
+        }
     }
 
     /// Copies a canonical fixed C aggregate into Swift-owned fields.
@@ -291,6 +327,8 @@ public enum BeebError: LocalizedError {
     case invalidAudioRequest
     /// The keyboard matrix coordinates were outside 0...15.
     case invalidKey
+    /// A recognised machine identity has no implementation in this release.
+    case machineProfileUnavailable(BeebMachineProfile)
     /// Recoverable audio pressure carrying every valid partial sample and counter.
     case audioPressure(BeebStatusCategory, BeebAudioDrain)
     /// A C status category and its operation-scoped diagnostic.
@@ -311,6 +349,8 @@ public enum BeebError: LocalizedError {
             return "Audio needs a positive frame count and finite positive sample rate."
         case .invalidKey:
             return "Keyboard row and column must both be in 0...15."
+        case let .machineProfileUnavailable(profile):
+            return "\(profile.displayName) is recognised, but machine support is not yet available."
         case let .audioPressure(category, drain):
             return "Audio reported \(category) after copying \(drain.samples.count) samples " +
                 "with a shortfall of \(drain.shortfall)."
@@ -342,11 +382,17 @@ public final class BeebMachine: @unchecked Sendable {
 
     /// Creates a paused machine for one explicit profile.
     /// - Parameter profile: Complete immutable identity copied into the C boundary.
-    /// - Throws: ``BeebError/coreStatus(_:_:)`` if validation or construction fails.
+    /// - Throws: ``BeebError/machineProfileUnavailable(_:)`` for recognised
+    ///   Model B+ 64K, or ``BeebError/coreStatus(_:_:)`` for another failure.
     public init(profile: BeebMachineProfile) throws {
-        var profile = profile.cValue
+        var cProfile = profile.cValue
         var created: OpaquePointer?
-        try Self.check(beeb_create_with_profile(&profile, &created))
+        let status = beeb_create_with_profile(&cProfile, &created)
+        if status.code == BEEB_STATUS_UNAVAILABLE,
+           profile.support == .recognisedUnavailable {
+            throw BeebError.machineProfileUnavailable(profile)
+        }
+        try Self.check(status)
         guard let created else {
             throw BeebError.coreStatus(
                 .internalFailure, "C runtime succeeded without returning a handle")

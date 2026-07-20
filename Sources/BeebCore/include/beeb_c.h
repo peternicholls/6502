@@ -90,13 +90,19 @@ typedef struct beeb_machine_profile {
 } beeb_machine_profile;
 
 /// Stable support classification returned by pure machine-profile validation.
-typedef enum beeb_machine_profile_support {
+#if defined(__clang__)
+#define BEEB_ENUM_EXTENSIBILITY_OPEN __attribute__((enum_extensibility(open)))
+#else
+#define BEEB_ENUM_EXTENSIBILITY_OPEN
+#endif
+typedef enum BEEB_ENUM_EXTENSIBILITY_OPEN beeb_machine_profile_support {
     BEEB_MACHINE_PROFILE_SUPPORTED = 0,              ///< Canonical Model B can construct a runtime.
     BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE = 1, ///< Known identity lacks behavior.
     BEEB_MACHINE_PROFILE_UNKNOWN = 2,                ///< Identifier or version is unassigned.
     BEEB_MACHINE_PROFILE_INCOMPATIBLE = 3,           ///< Known components are miscombined.
     BEEB_MACHINE_PROFILE_MALFORMED = 4               ///< The bounded envelope is invalid.
 } beeb_machine_profile_support;
+#undef BEEB_ENUM_EXTENSIBILITY_OPEN
 
 /// Owned result of classifying one caller-supplied machine profile.
 typedef struct beeb_machine_profile_validation {
