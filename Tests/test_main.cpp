@@ -3,6 +3,7 @@
 #include "beeb/disc_image.hpp"
 #include "beeb/intel8271.hpp"
 #include "beeb/machine.hpp"
+#include "beeb/profile.hpp"
 #include "beeb/runtime.hpp"
 #include "beeb/sn76489.hpp"
 #include "beeb/via6522.hpp"
@@ -2440,6 +2441,46 @@ void testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting() {
     CHECK(resumedAudio.chunk.samples == freshAudio.chunk.samples);
 }
 
+void testTargetProfileModelBCoreRetentionAndQuery() {
+    const auto canonical = beeb::MachineTargetProfile::modelB();
+    const auto validation = beeb::validateMachineTargetProfile(canonical);
+    CHECK(validation.support == beeb::ProfileSupport::supported);
+    CHECK(validation.message.empty());
+
+    beeb::BBCMicro machine(canonical);
+    const auto machineDigest = beeb::BBCMicroTestAccess::digest(machine);
+    CHECK(machine.profile() == canonical);
+    CHECK_EQ(beeb::BBCMicroTestAccess::digest(machine), machineDigest);
+
+    beeb::MachineRuntime runtime(canonical, {.enableLedger = true});
+    const auto beforePoint = runtimeValue(runtime.safePoint());
+    const auto beforeCPU = runtimeValue(runtime.cpuState());
+    const auto first = runtimeValue(runtime.profile());
+    const auto second = runtimeValue(runtime.profile());
+    const auto afterCPU = runtimeValue(runtime.cpuState());
+    const auto afterPoint = runtimeValue(runtime.safePoint());
+
+    CHECK(first == canonical);
+    CHECK(second == canonical);
+    CHECK(beforeCPU == afterCPU);
+    CHECK_EQ(beforePoint.cpuCycles, afterPoint.cpuCycles);
+    CHECK_EQ(beforePoint.frameNumber, afterPoint.frameNumber);
+    CHECK(beforePoint.state == afterPoint.state);
+
+    const auto ledger = runtime.ledger();
+    const auto profileQueries =
+        std::count_if(ledger.begin(), ledger.end(), [](const beeb::LedgerEntry& entry) {
+            return entry.command == beeb::RuntimeCommandKind::profile;
+        });
+    CHECK_EQ(profileQueries, 2U);
+    for (const auto& entry : ledger) {
+        if (entry.command != beeb::RuntimeCommandKind::profile) continue;
+        CHECK_EQ(entry.safePoint.cpuCycles, beforePoint.cpuCycles);
+        CHECK_EQ(entry.safePoint.frameNumber, beforePoint.frameNumber);
+        CHECK(entry.safePoint.state == beforePoint.state);
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -2531,6 +2572,8 @@ int main(int argc, char** argv) {
          testC2DiagnosticsAreConsistentAndObservational},
         {"C2 reset: retained output is discarded with exact accounting",
          testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting},
+        {"Target profile: Model B core retention and query",
+         testTargetProfileModelBCoreRetentionAndQuery},
     };
 
     unsigned failed = 0;
