@@ -3,6 +3,105 @@ import Foundation
 
 // C0-DOC-RATIONALE: docs/code/host-boundary.md owns Swift/C lifetime and recovery.
 
+/// Owned raw identity for one base-machine or expansion component.
+///
+/// Identifiers remain raw so a later code can cross Swift without being
+/// truncated to a closed enum. Assigned identifier/version pairs are stable;
+/// the reserved field must be zero for a canonical schema-version-1 value.
+public struct BeebMachineProfileComponent: Sendable, Equatable {
+    /// Stable raw 32-bit identity code.
+    public let identifier: UInt32
+    /// Version of the identified component contract.
+    public let version: UInt16
+    /// Reserved for a later profile schema; valid version-1 values use zero.
+    public let reserved: UInt16
+
+    /// Creates an independently owned raw component value.
+    /// - Parameters:
+    ///   - identifier: Stable identity code, or a raw fixture value.
+    ///   - version: Version of the identified component contract.
+    ///   - reserved: Reserved schema field; defaults to zero.
+    public init(identifier: UInt32, version: UInt16, reserved: UInt16 = 0) {
+        self.identifier = identifier
+        self.version = version
+        self.reserved = reserved
+    }
+
+    /// Copies all semantic fields out of the imported C aggregate.
+    fileprivate init(_ value: beeb_profile_component) {
+        self.init(
+            identifier: value.identifier,
+            version: value.version,
+            reserved: value.reserved
+        )
+    }
+}
+
+/// Immutable, owned identity requested for one machine runtime.
+///
+/// The Swift value preserves raw component identifiers and owns its expansion
+/// array. It is not a persisted byte format and does not imply that a named
+/// machine is constructible. Schema version 1 can classify at most sixteen
+/// expansion entries; no expansion identity is assigned by this feature.
+public struct BeebMachineProfile: Sendable, Equatable {
+    /// Current bounded in-memory profile schema.
+    public static let schemaVersion = UInt16(BEEB_MACHINE_PROFILE_SCHEMA_VERSION)
+    /// Maximum expansion entries admitted by schema version 1.
+    public static let expansionCapacity = Int(BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY)
+
+    /// Canonical BBC Microcomputer Model B identity.
+    public static let modelB = BeebMachineProfile(beeb_machine_profile_model_b())
+    /// Canonical BBC Model B+ 64K identity, without a machine-support claim.
+    public static let modelBPlus64K =
+        BeebMachineProfile(beeb_machine_profile_model_b_plus_64k())
+
+    /// Raw profile-envelope version.
+    public let schemaVersion: UInt16
+    /// Owned base-machine component.
+    public let base: BeebMachineProfileComponent
+    /// Owned raw expansion entries in caller-supplied order.
+    public let expansions: [BeebMachineProfileComponent]
+
+    /// Creates a raw profile value without classifying or canonicalizing it.
+    /// - Parameters:
+    ///   - schemaVersion: Profile-envelope version.
+    ///   - base: Raw base-machine identity.
+    ///   - expansions: Raw expansion entries; validation enforces the versioned bound.
+    public init(
+        schemaVersion: UInt16,
+        base: BeebMachineProfileComponent,
+        expansions: [BeebMachineProfileComponent]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.base = base
+        self.expansions = expansions
+    }
+
+    /// Unambiguous name for a known profile or a raw unknown base identifier.
+    ///
+    /// Unknown values deliberately receive no reserved future-option name.
+    public var displayName: String {
+        if self == Self.modelB { return "BBC Microcomputer Model B" }
+        if self == Self.modelBPlus64K { return "BBC Model B+ 64K" }
+        return String(format: "Unknown machine profile 0x%08X", base.identifier)
+    }
+
+    /// Copies a canonical fixed C aggregate into Swift-owned fields.
+    private init(_ value: beeb_machine_profile) {
+        var storage = value.expansions
+        let usedCount = min(Int(value.expansion_count), Self.expansionCapacity)
+        let copiedExpansions = withUnsafeBytes(of: &storage) { bytes in
+            Array(bytes.bindMemory(to: beeb_profile_component.self).prefix(usedCount))
+                .map(BeebMachineProfileComponent.init)
+        }
+        self.init(
+            schemaVersion: value.schema_version,
+            base: BeebMachineProfileComponent(value.base),
+            expansions: copiedExpansions
+        )
+    }
+}
+
 /// Stable Swift mapping of the C runtime status categories.
 public enum BeebStatusCategory: Sendable, Equatable {
     /// Operation completed successfully.
