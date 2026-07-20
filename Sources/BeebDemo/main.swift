@@ -21,9 +21,15 @@ final class EmulatorModel: ObservableObject {
     /// Native-picker choice kept separate from the active runtime profile.
     enum MachineProfileChoice: String, CaseIterable, Identifiable {
         case modelB
+        case modelBPlus64K
 
         var id: Self { self }
-        var profile: BeebMachineProfile { .modelB }
+        var profile: BeebMachineProfile {
+            switch self {
+            case .modelB: return .modelB
+            case .modelBPlus64K: return .modelBPlus64K
+            }
+        }
         var displayName: String { profile.displayName }
     }
 
@@ -52,6 +58,15 @@ final class EmulatorModel: ObservableObject {
             machine = candidate
             activeProfile = candidateProfile
             profileStatus = "Active profile: \(candidateProfile.displayName)"
+        } catch let error as BeebError {
+            if case let .machineProfileUnavailable(profile) = error {
+                let activeName = activeProfile?.displayName ?? "None"
+                profileStatus = "\(profile.displayName) is recognised, but machine support is " +
+                    "not yet available. Active profile remains: \(activeName)"
+            } else {
+                profileStatus = error.localizedDescription
+                if machine == nil { status = "The emulator core could not start" }
+            }
         } catch {
             profileStatus = error.localizedDescription
             if machine == nil { status = "The emulator core could not start" }
