@@ -2,6 +2,7 @@
 
 // C0-DOC-RATIONALE: docs/code/host-boundary.md owns C token and status invariants.
 
+#include "beeb/profile.hpp"
 #include "beeb/runtime.hpp"
 
 #include <algorithm>
@@ -27,6 +28,36 @@ struct beeb_machine final {};
 /// @endcond
 
 namespace {
+
+static_assert(BEEB_MACHINE_PROFILE_SCHEMA_VERSION == beeb::machineProfileSchemaVersion);
+static_assert(BEEB_MODEL_B_BASE_IDENTIFIER == beeb::modelBBaseIdentifier);
+static_assert(BEEB_MODEL_B_PLUS_64K_BASE_IDENTIFIER == beeb::modelBPlus64KBaseIdentifier);
+static_assert(BEEB_MACHINE_PROFILE_COMPONENT_VERSION == beeb::machineProfileComponentVersion);
+static_assert(BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY == beeb::machineProfileExpansionCapacity);
+static_assert(BEEB_MACHINE_PROFILE_KNOWN_EXPANSION_COUNT ==
+              beeb::knownMachineProfileExpansionCount);
+
+/// Copies the private C++ value representation into caller-owned C fields.
+beeb_machine_profile translateProfile(const beeb::MachineTargetProfile& profile) noexcept {
+    beeb_machine_profile output{};
+    output.schema_version = profile.schemaVersion();
+    output.base = {profile.base().identifier(), profile.base().version(),
+                   profile.base().reserved()};
+    output.expansion_count = profile.expansionCount();
+    for (std::size_t index = 0; index < beeb::machineProfileExpansionCapacity; ++index) {
+        const auto& expansion = profile.expansions()[index];
+        output.expansions[index] = {expansion.identifier(), expansion.version(),
+                                    expansion.reserved()};
+    }
+    return output;
+}
+
+/// Compares fixed profile components field by field so padding is irrelevant.
+bool equalProfileComponent(const beeb_profile_component& lhs,
+                           const beeb_profile_component& rhs) noexcept {
+    return lhs.identifier == rhs.identifier && lhs.version == rhs.version &&
+           lhs.reserved == rhs.reserved;
+}
 
 /// Adapter-owned frame allocation whose vector buffer transfers from the
 /// runtime without a second pixel allocation after destructive dequeue.
@@ -370,6 +401,25 @@ void beeb_test_fail_next_frame_storage_allocation(void) {
 
 const char* beeb_version_string(void) {
     return BEEB_VERSION_STRING;
+}
+
+beeb_machine_profile beeb_machine_profile_model_b(void) {
+    return translateProfile(beeb::MachineTargetProfile::modelB());
+}
+
+beeb_machine_profile beeb_machine_profile_model_b_plus_64k(void) {
+    return translateProfile(beeb::MachineTargetProfile::modelBPlus64K());
+}
+
+int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machine_profile* rhs) {
+    if (!lhs || !rhs || lhs->schema_version != rhs->schema_version ||
+        !equalProfileComponent(lhs->base, rhs->base) ||
+        lhs->expansion_count != rhs->expansion_count)
+        return 0;
+    for (std::size_t index = 0; index < BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY; ++index) {
+        if (!equalProfileComponent(lhs->expansions[index], rhs->expansions[index])) return 0;
+    }
+    return 1;
 }
 
 // Keep creation on the same transactional helper used by allocation-failure tests.

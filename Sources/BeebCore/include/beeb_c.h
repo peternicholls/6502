@@ -24,6 +24,19 @@ extern "C" {
 /// Fixed storage available for each operation-scoped UTF-8 diagnostic.
 #define BEEB_STATUS_MESSAGE_CAPACITY 256
 
+/// Version of the bounded in-memory machine-profile contract.
+#define BEEB_MACHINE_PROFILE_SCHEMA_VERSION 1
+/// Permanent base identifier for the BBC Microcomputer Model B.
+#define BEEB_MODEL_B_BASE_IDENTIFIER UINT32_C(0x00000001)
+/// Permanent base identifier for the BBC Model B+ 64K.
+#define BEEB_MODEL_B_PLUS_64K_BASE_IDENTIFIER UINT32_C(0x00000002)
+/// Version shared by the two assigned base identities.
+#define BEEB_MACHINE_PROFILE_COMPONENT_VERSION 1
+/// Fixed expansion slots carried by the version-1 aggregate.
+#define BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY 16
+/// Expansion identities assigned by this feature; deliberately zero.
+#define BEEB_MACHINE_PROFILE_KNOWN_EXPANSION_COUNT 0
+
 /// Stable status categories shared with the C++ runtime and output contracts.
 /// Documentation rationale: docs/code/host-boundary.md owns the cross-language
 /// category and recovery contract represented by this closed vocabulary.
@@ -52,6 +65,29 @@ typedef struct beeb_status {
     beeb_status_code code;                      ///< Stable machine-readable category.
     char message[BEEB_STATUS_MESSAGE_CAPACITY]; ///< Operation-owned UTF-8 diagnostic.
 } beeb_status;
+
+/// Owned raw identity for one base-machine or expansion component.
+///
+/// Identifier/version pairs are permanent once assigned. Raw unknown values
+/// remain representable for later validation, and `reserved` must be zero in a
+/// canonical schema-version-1 value.
+typedef struct beeb_profile_component {
+    uint32_t identifier; ///< Stable raw identity code.
+    uint16_t version;    ///< Version of the identified component contract.
+    uint16_t reserved;   ///< Reserved for a later schema; zero in version 1.
+} beeb_profile_component;
+
+/// Fixed, caller-owned in-memory machine identity.
+///
+/// The aggregate is a semantic carrier, not a persisted byte layout. It owns
+/// one base component and exactly sixteen expansion slots. Canonical values
+/// zero every unused slot; no expansion identifier is assigned in this slice.
+typedef struct beeb_machine_profile {
+    uint16_t schema_version;     ///< Profile-envelope version.
+    beeb_profile_component base; ///< Raw base-machine identity.
+    uint16_t expansion_count;    ///< Used slots; zero for both canonical values.
+    beeb_profile_component expansions[BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY];
+} beeb_machine_profile;
 
 /// Opaque token for one independent runtime and its machine owner.
 ///
@@ -158,6 +194,23 @@ typedef struct beeb_output_diagnostics {
 /// Returns the immutable library version string.
 /// @return Borrowed process-owned semantic-version string; never null.
 const char* beeb_version_string(void);
+
+/// Returns the canonical BBC Microcomputer Model B identity by value.
+/// @return Independently owned schema-version-1 value with no expansions.
+beeb_machine_profile beeb_machine_profile_model_b(void);
+
+/// Returns the canonical BBC Model B+ 64K identity by value.
+///
+/// Identity availability does not claim that Model B+ machine behavior is
+/// implemented; construction support is classified separately.
+/// @return Independently owned schema-version-1 value with no expansions.
+beeb_machine_profile beeb_machine_profile_model_b_plus_64k(void);
+
+/// Compares every semantic profile field without relying on object padding.
+/// @param lhs First required caller-owned value.
+/// @param rhs Second required caller-owned value.
+/// @return Non-zero only when both pointers are non-null and all fields match.
+int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machine_profile* rhs);
 
 /// Creates a paused runtime with no ROM or disc loaded.
 /// @param out_machine Required output, written only on success.
