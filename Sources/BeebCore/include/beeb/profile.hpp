@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace beeb {
 
@@ -104,5 +105,31 @@ class MachineTargetProfile final {
     std::uint16_t expansionCount_ = 0;
     ExpansionStorage expansions_{};
 };
+
+/// Stable support classification, separate from the transported identity.
+enum class ProfileSupport {
+    supported,             ///< The canonical profile can construct a machine.
+    recognisedUnavailable, ///< Identity is known but machine behavior is not implemented.
+    unknown,               ///< A structurally usable code or version is unassigned.
+    incompatible,          ///< Known components cannot be combined in their supplied roles.
+    malformed,             ///< The bounded envelope violates schema invariants.
+};
+
+/// Owned result of pure machine-profile classification.
+struct ProfileValidation {
+    ProfileSupport support = ProfileSupport::malformed; ///< Stable result category.
+    std::string message; ///< Owned diagnostic; empty only for a supported value.
+
+    /// Compares the complete operation-owned classification.
+    friend bool operator==(const ProfileValidation&, const ProfileValidation&) = default;
+};
+
+/// Classifies a profile without constructing or mutating a machine.
+///
+/// At the Model B checkpoint only the canonical Model B value is supported;
+/// later tasks refine the non-supported categories without changing success.
+/// @param profile Complete independently owned profile value.
+/// @return Supported with no message for canonical Model B, or an owned rejection.
+[[nodiscard]] ProfileValidation validateMachineTargetProfile(const MachineTargetProfile& profile);
 
 } // namespace beeb

@@ -33,6 +33,22 @@ beeb_status beeb_test_create_with_allocation_failure(beeb_machine**,
                                                      beeb::RuntimeAllocationFailurePoint);
 beeb_status beeb_test_hold_admitted_call(beeb_machine*, std::latch&, std::latch&);
 
+// The C profile tests are committed red before their public implementation.
+// Weak failing definitions let independently ordered core tasks link; the real
+// strong C boundary replaces them when its later task is implemented.
+extern "C" __attribute__((weak)) beeb_status beeb_create_with_profile(const beeb_machine_profile*,
+                                                                      beeb_machine**) {
+    beeb_status result{};
+    result.code = BEEB_STATUS_INTERNAL_FAILURE;
+    return result;
+}
+extern "C" __attribute__((weak)) beeb_status beeb_get_machine_profile(beeb_machine*,
+                                                                      beeb_machine_profile*) {
+    beeb_status result{};
+    result.code = BEEB_STATUS_INTERNAL_FAILURE;
+    return result;
+}
+
 namespace {
 
 // C0-DOC-RATIONALE: docs/code/evidence-and-testing.md owns why these fixtures
@@ -1086,6 +1102,8 @@ C1MatrixObservation invokeC1MatrixCommand(beeb::MachineRuntime& runtime,
         return {runtime.setBreak(false), false};
     case beeb::RuntimeCommandKind::runtimeState:
         return result(runtime.state());
+    case beeb::RuntimeCommandKind::profile:
+        return result(runtime.profile());
     case beeb::RuntimeCommandKind::safePoint:
         return result(runtime.safePoint());
     case beeb::RuntimeCommandKind::fault:
@@ -1119,15 +1137,15 @@ void testC1RuntimeCompleteCommandMatrix() {
     constexpr std::array commands{Kind::start,           Kind::pause,         Kind::reset,
                                   Kind::runCycles,       Kind::runUntilFrame, Kind::loadOSROM,
                                   Kind::loadSidewaysROM, Kind::mountDisc,     Kind::setKey,
-                                  Kind::setBreak,        Kind::runtimeState,  Kind::safePoint,
-                                  Kind::fault,           Kind::cpuState,      Kind::frame,
-                                  Kind::renderAudio,     Kind::shutdown};
+                                  Kind::setBreak,        Kind::runtimeState,  Kind::profile,
+                                  Kind::safePoint,       Kind::fault,         Kind::cpuState,
+                                  Kind::frame,           Kind::renderAudio,   Kind::shutdown};
     constexpr std::array states{State::paused, State::running, State::faulted, State::shuttingDown};
     const auto isQuery = [](Kind command) {
         return command == Kind::runCycles || command == Kind::runUntilFrame ||
-               command == Kind::runtimeState || command == Kind::safePoint ||
-               command == Kind::fault || command == Kind::cpuState || command == Kind::frame ||
-               command == Kind::renderAudio;
+               command == Kind::runtimeState || command == Kind::profile ||
+               command == Kind::safePoint || command == Kind::fault || command == Kind::cpuState ||
+               command == Kind::frame || command == Kind::renderAudio;
     };
     const auto expectedCode = [](State state, Kind command) {
         if (state == State::shuttingDown)
@@ -1136,6 +1154,7 @@ void testC1RuntimeCompleteCommandMatrix() {
             switch (command) {
             case Kind::reset:
             case Kind::runtimeState:
+            case Kind::profile:
             case Kind::safePoint:
             case Kind::fault:
             case Kind::cpuState:
@@ -2574,7 +2593,7 @@ int main(int argc, char** argv) {
         {"teletext control cells use active background",
          testTeletextControlCellsUseActiveBackground},
         {"C1 contract: lifecycle command matrix", testC1RuntimeContractLifecycleMatrix},
-        {"C1 contract: complete 17-command lifecycle matrix", testC1RuntimeCompleteCommandMatrix},
+        {"C1 contract: complete 18-command lifecycle matrix", testC1RuntimeCompleteCommandMatrix},
         {"C1 contract: fault and recovery matrix", testC1RuntimeContractFaultAndRecoveryMatrix},
         {"C1 contract: structured status isolation",
          testC1RuntimeContractStructuredStatusIsolation},

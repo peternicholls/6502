@@ -80,9 +80,10 @@ using CommandPayload = std::variant<std::monostate, std::uint64_t, std::vector<s
                                     SidewaysPayload, DiscPayload, KeyPayload, bool, AudioPayload>;
 
 /// Closed owned-result vocabulary returned through one caller-specific promise.
-using CompletionValue = std::variant<std::monostate, RuntimeState, std::uint64_t, bool, CPUState,
-                                     OwnedFrame, std::vector<float>, FrameDequeueResult,
-                                     AudioDrainResult, OutputDiagnostics, SafePoint, RuntimeFault>;
+using CompletionValue =
+    std::variant<std::monostate, RuntimeState, std::uint64_t, bool, CPUState, MachineTargetProfile,
+                 OwnedFrame, std::vector<float>, FrameDequeueResult, AudioDrainResult,
+                 OutputDiagnostics, SafePoint, RuntimeFault>;
 
 std::uint64_t hashString(const std::string& value) noexcept {
     return hashBytes(std::span(reinterpret_cast<const std::uint8_t*>(value.data()), value.size()));
@@ -107,6 +108,17 @@ std::uint64_t completionDigest(const CompletionValue& value) noexcept {
                 digest = mix(digest, result.p);
                 digest = mix(digest, result.pc);
                 return mix(digest, result.cycles);
+            } else if constexpr (std::is_same_v<Result, MachineTargetProfile>) {
+                auto digest = mix(result.schemaVersion(), result.base().identifier());
+                digest = mix(digest, result.base().version());
+                digest = mix(digest, result.base().reserved());
+                digest = mix(digest, result.expansionCount());
+                for (const auto& expansion : result.expansions()) {
+                    digest = mix(digest, expansion.identifier());
+                    digest = mix(digest, expansion.version());
+                    digest = mix(digest, expansion.reserved());
+                }
+                return digest;
             } else if constexpr (std::is_same_v<Result, OwnedFrame>) {
                 auto digest = mix(result.available ? 1 : 0, result.width);
                 digest = mix(digest, result.height);
@@ -250,10 +262,11 @@ class MachineRuntime::Impl final {
   public:
     /// Starts the owner and blocks until BBCMicro construction succeeds or fails.
     /// @param options Controls opt-in in-memory ledger retention.
-    explicit Impl(MachineRuntimeOptions options)
+    Impl(MachineTargetProfile profile, MachineRuntimeOptions options)
         : allocationFailurePoint_(options.failAllocationAt),
           testReentrantSubmission_(options.testReentrantSubmission),
-          ledgerEnabled_(options.enableLedger), owner_([this] { ownerLoop(); }) {
+          startupProfile_(std::move(profile)), ledgerEnabled_(options.enableLedger),
+          owner_([this] { ownerLoop(); }) {
         std::unique_lock lock(mutex_);
         stateChanged_.wait(lock, [this] { return ready_; });
         if (startupError_) std::rethrow_exception(startupError_);
@@ -412,6 +425,7 @@ class MachineRuntime::Impl final {
 
     RuntimeState runtimeState_ = RuntimeState::paused;
     std::string faultMessage_;
+    std::optional<MachineTargetProfile> startupProfile_;
     std::unique_ptr<BBCMicro> machine_;
     CompletedFrameQueue frameOutput_;
     AudioSampleQueue audioOutput_;
@@ -439,7 +453,8 @@ class MachineRuntime::Impl final {
             ownerId_ = std::this_thread::get_id();
         }
         try {
-            machine_ = std::make_unique<BBCMicro>();
+            machine_ = std::make_unique<BBCMicro>(std::move(*startupProfile_));
+            startupProfile_.reset();
         } catch (...) {
             std::lock_guard lock(mutex_);
             startupError_ = std::current_exception();
@@ -679,6 +694,8 @@ class MachineRuntime::Impl final {
             return ok();
         case RuntimeCommandKind::runtimeState:
             return ok(runtimeState_);
+        case RuntimeCommandKind::profile:
+            return ok(machine_->profile());
         case RuntimeCommandKind::safePoint:
             return ok();
         case RuntimeCommandKind::fault:
@@ -995,7 +1012,10 @@ class MachineRuntime::Impl final {
 };
 
 MachineRuntime::MachineRuntime(MachineRuntimeOptions options)
-    : impl_(std::make_unique<Impl>(options)) {}
+    : MachineRuntime(MachineTargetProfile::modelB(), options) {}
+
+MachineRuntime::MachineRuntime(MachineTargetProfile profile, MachineRuntimeOptions options)
+    : impl_(std::make_unique<Impl>(std::move(profile), options)) {}
 
 MachineRuntime::~MachineRuntime() {
     if (impl_) (void)impl_->shutdown();
@@ -1003,6 +1023,10 @@ MachineRuntime::~MachineRuntime() {
 
 RuntimeResult<RuntimeState> MachineRuntime::state() {
     return resultFromCompletion<RuntimeState>(impl_->submit(RuntimeCommandKind::runtimeState));
+}
+
+RuntimeResult<MachineTargetProfile> MachineRuntime::profile() {
+    return resultFromCompletion<MachineTargetProfile>(impl_->submit(RuntimeCommandKind::profile));
 }
 
 RuntimeStatus MachineRuntime::start() {

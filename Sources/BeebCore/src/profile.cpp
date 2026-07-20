@@ -14,4 +14,9 @@ MachineTargetProfile MachineTargetProfile::modelBPlus64K() noexcept {
         ProfileComponentIdentity{modelBPlus64KBaseIdentifier, machineProfileComponentVersion}};
 }
 
+ProfileValidation validateMachineTargetProfile(const MachineTargetProfile& profile) {
+    if (profile == MachineTargetProfile::modelB()) return {ProfileSupport::supported, {}};
+    return {ProfileSupport::unknown, "machine profile is not recognised"};
+}
+
 } // namespace beeb
