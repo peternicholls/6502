@@ -162,6 +162,29 @@ final class BeebMachineTests: XCTestCase {
         XCTAssertEqual(before.state, after.state)
     }
 
+    func testModelBPlusClassificationAndTypedRejectionDoNotFallback() throws {
+        XCTAssertEqual(
+            BeebMachineProfile.modelBPlus64K.support,
+            .recognisedUnavailable
+        )
+
+        var rejectedMachine: BeebMachine?
+        XCTAssertThrowsError(
+            try { rejectedMachine = try BeebMachine(profile: .modelBPlus64K) }()
+        ) { error in
+            guard case let BeebError.machineProfileUnavailable(profile) = error else {
+                return XCTFail("Expected machineProfileUnavailable, got \(error)")
+            }
+            XCTAssertEqual(profile, .modelBPlus64K)
+            XCTAssertTrue(error.localizedDescription.contains("BBC Model B+ 64K"))
+            XCTAssertTrue(error.localizedDescription.contains("not yet available"))
+        }
+        XCTAssertNil(rejectedMachine)
+
+        let explicitModelB = try BeebMachine(profile: .modelB)
+        XCTAssertEqual(try explicitModelB.profile, .modelB)
+    }
+
     func testLifecycleStateStartPauseAndIdempotence() throws {
         let machine = try BeebMachine()
         try machine.loadOSROM(loopingOSROM())
