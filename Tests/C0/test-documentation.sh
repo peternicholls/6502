@@ -137,6 +137,27 @@ c0_assert_contains "${C0_TEST_TMP}/missing-swift-throws.stderr" \
     "missing Swift throwing contract"
 c0_pass "public Swift throwing declarations require a Throws contract"
 
+nonthrowing_swift_property="${C0_TEST_TMP}/nonthrowing-swift-property"
+cp -R "${fixture}" "${nonthrowing_swift_property}"
+mkdir -p "${nonthrowing_swift_property}/Sources"
+printf '%s\n' \
+    'public struct SwiftFixture {' \
+    '    /// A non-throwing computed value.' \
+    '    public var value: Int {' \
+    '        1' \
+    '    }' \
+    '    /// Creates a fixture.' \
+    '    /// - Throws: A fixture error.' \
+    '    public init() throws {}' \
+    '}' >"${nonthrowing_swift_property}/Sources/Fixture.swift"
+c0_capture nonthrowing-swift-property "${builder}" --profile portable --check \
+    --source-root "${nonthrowing_swift_property}" \
+    --output-dir "${C0_TEST_TMP}/docs-nonthrowing-swift-property" \
+    --debt-baseline "${nonthrowing_swift_property}/documentation-debt.txt" \
+    --changed-files "${nonthrowing_swift_property}/changed-files.txt"
+c0_expect_status 0 nonthrowing-swift-property
+c0_pass "non-throwing Swift properties do not inherit later Throws contracts"
+
 invalid_markup="${C0_TEST_TMP}/invalid-markup"
 cp -R "${fixture}" "${invalid_markup}"
 printf '%s\n' \

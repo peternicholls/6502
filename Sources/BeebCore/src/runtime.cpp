@@ -261,6 +261,7 @@ AudioDrainResult audioResultFromCompletion(Completion completion) {
 class MachineRuntime::Impl final {
   public:
     /// Starts the owner and blocks until BBCMicro construction succeeds or fails.
+    /// @param profile Already validated supported identity moved to the owner.
     /// @param options Controls opt-in in-memory ledger retention.
     Impl(MachineTargetProfile profile, MachineRuntimeOptions options)
         : allocationFailurePoint_(options.failAllocationAt),

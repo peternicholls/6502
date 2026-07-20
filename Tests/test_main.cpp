@@ -2634,6 +2634,7 @@ void testTargetProfileInvalidMatrixAndPrecedence() {
     Storage unknownThenKnownBase{};
     unknownThenKnownBase[0] = modelBBase;
 
+    /// One raw rejection candidate paired with its precedence-selected category.
     struct Fixture {
         const char* name;
         Profile profile;

@@ -22,6 +22,14 @@ routed through that same path; invalid explicit input never reaches it as a
 fallback. `beeb_get_machine_profile()` copies runtime-owner truth into a complete
 caller value only after the serialized query succeeds.
 
+Profile validation is a successful observational operation even when its owned
+result classifies the value as malformed, unknown, incompatible or recognised
+but unavailable. Construction maps the first three classifications to
+`INVALID_ARGUMENT` and Model B+ 64K to `UNAVAILABLE`; every rejection preserves
+the caller's handle output byte for byte. The identity assignments, bounded
+envelope, precedence and future-option non-claims are owned by
+[Machine Target Profiles](target-profile.md).
+
 The token is published only after both the runtime and outer handle state exist.
 It is a registry key, not an object that entry points dereference. `ActiveCall`
 looks it up under the registry mutex, retains the shared `HandleState`, and
@@ -82,10 +90,12 @@ synchronous C operation and immediately copies its successful output.
 
 `BeebStatusCategory` preserves the C category. `BeebError.coreStatus` retains
 that category and the operation-owned diagnostic, while Swift-only validation
-uses input-specific cases before crossing C. Lifecycle and fault values are
-queried from the runtime rather than cached in Swift. Frame bytes are copied
-into `Data` before the C frame is released; CPU, safe-point, fault, and audio
-results are likewise independently owned Swift values.
+uses input-specific malformed, unknown, incompatible and recognised-unavailable
+cases before construction. Each profile error owns the original raw candidate
+and copied diagnostic. Lifecycle and fault values are queried from the runtime
+rather than cached in Swift. Frame bytes are copied into `Data` before the C
+frame is released; CPU, safe-point, fault, and audio results are likewise
+independently owned Swift values.
 
 The continuous-output mappings preserve recoverable pressure instead of
 flattening it into generic failure. Empty frame dequeue returns no value; an

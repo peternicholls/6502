@@ -358,6 +358,9 @@ validate_swift_throwing_contracts() {
             /^[[:space:]]*$/ { next }
             /^[[:space:]]*@/ { next }
             {
+                if (pending && pending_var && $0 ~ /^[[:space:]]*}/) {
+                    pending = 0
+                }
                 if ($0 ~ /^[[:space:]]*public (init|func|var)[[:space:](]/) {
                     pending = 1
                     declaration_line = FNR

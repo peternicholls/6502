@@ -86,15 +86,17 @@ typedef struct beeb_machine_profile {
     uint16_t schema_version;     ///< Profile-envelope version.
     beeb_profile_component base; ///< Raw base-machine identity.
     uint16_t expansion_count;    ///< Used slots; zero for both canonical values.
-    beeb_profile_component expansions[BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY];
+    beeb_profile_component expansions[BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY]; ///< Fixed slots.
 } beeb_machine_profile;
 
-/// Stable support classification returned by pure machine-profile validation.
 #if defined(__clang__)
+/// Allows later support categories to import safely through Swift's `@unknown default`.
 #define BEEB_ENUM_EXTENSIBILITY_OPEN __attribute__((enum_extensibility(open)))
 #else
+/// Empty portability form of the Clang enum-extensibility annotation.
 #define BEEB_ENUM_EXTENSIBILITY_OPEN
 #endif
+/// Stable support classification returned by pure machine-profile validation.
 typedef enum BEEB_ENUM_EXTENSIBILITY_OPEN beeb_machine_profile_support {
     BEEB_MACHINE_PROFILE_SUPPORTED = 0,              ///< Canonical Model B can construct a runtime.
     BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE = 1, ///< Known identity lacks behavior.

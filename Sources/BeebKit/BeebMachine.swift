@@ -114,7 +114,7 @@ public struct BeebMachineProfile: Sendable, Equatable {
 
     /// Pure support classification copied from the C/core validator.
     ///
-    /// A later imported C enum value is contained as ``unknown`` and can never
+    /// A later imported C enum value is contained as `unknown` and can never
     /// be interpreted as support by an older Swift wrapper.
     public var support: BeebMachineProfileSupport {
         classification.support

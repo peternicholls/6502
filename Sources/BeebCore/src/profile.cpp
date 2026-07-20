@@ -1,5 +1,8 @@
 #include "beeb/profile.hpp"
 
+// C0-DOC-RATIONALE: docs/code/target-profile.md owns why validation preserves
+// raw values and classifies them in failure-severity order before support.
+
 #include <string>
 
 namespace beeb {

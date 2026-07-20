@@ -1,5 +1,8 @@
 #pragma once
 
+// C0-DOC-RATIONALE: docs/code/target-profile.md owns identity permanence,
+// bounded-envelope validation, classification precedence, and non-persistence.
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -37,10 +40,13 @@ class ProfileComponentIdentity final {
         : identifier_(identifier), version_(version), reserved_(reserved) {}
 
     /// Returns the unmodified raw identity code.
+    /// @return Exact caller-supplied 32-bit identifier.
     [[nodiscard]] constexpr std::uint32_t identifier() const noexcept { return identifier_; }
     /// Returns the unmodified component-contract version.
+    /// @return Exact caller-supplied 16-bit version.
     [[nodiscard]] constexpr std::uint16_t version() const noexcept { return version_; }
     /// Returns the versioned reserved field.
+    /// @return Exact caller-supplied reserved value.
     [[nodiscard]] constexpr std::uint16_t reserved() const noexcept { return reserved_; }
 
     /// Compares the complete raw semantic value.
@@ -78,19 +84,25 @@ class MachineTargetProfile final {
           expansions_(expansions) {}
 
     /// Returns the canonical BBC Microcomputer Model B identity.
+    /// @return Independently owned canonical schema-version-1 value.
     [[nodiscard]] static MachineTargetProfile modelB() noexcept;
     /// Returns the canonical BBC Model B+ 64K identity without claiming machine support.
+    /// @return Independently owned canonical identity for classification.
     [[nodiscard]] static MachineTargetProfile modelBPlus64K() noexcept;
 
     /// Returns the raw profile-envelope version.
+    /// @return Exact caller-supplied schema version.
     [[nodiscard]] constexpr std::uint16_t schemaVersion() const noexcept { return schemaVersion_; }
     /// Returns the independently owned base-machine component.
+    /// @return Read-only reference valid for this profile value's lifetime.
     [[nodiscard]] constexpr const ProfileComponentIdentity& base() const noexcept { return base_; }
     /// Returns the declared expansion count without indexing storage.
+    /// @return Exact caller-supplied count, which may exceed capacity in a malformed fixture.
     [[nodiscard]] constexpr std::uint16_t expansionCount() const noexcept {
         return expansionCount_;
     }
     /// Returns all fixed expansion slots, including required zero-filled unused slots.
+    /// @return Read-only fixed storage valid for this profile value's lifetime.
     [[nodiscard]] constexpr const ExpansionStorage& expansions() const noexcept {
         return expansions_;
     }

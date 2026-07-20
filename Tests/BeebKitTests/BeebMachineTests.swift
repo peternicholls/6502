@@ -207,6 +207,7 @@ final class BeebMachineTests: XCTestCase {
         let duplicate = futureComponent(0xF000_0200)
         let modelBExpansion = BeebMachineProfile.modelB.base
 
+        /// One owned Swift candidate paired with its precedence-selected category.
         struct Fixture {
             let name: String
             let profile: BeebMachineProfile
