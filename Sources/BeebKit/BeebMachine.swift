@@ -117,18 +117,38 @@ public struct BeebMachineProfile: Sendable, Equatable {
     /// A later imported C enum value is contained as ``unknown`` and can never
     /// be interpreted as support by an older Swift wrapper.
     public var support: BeebMachineProfileSupport {
+        classification.support
+    }
+
+    /// Copies one pure C classification into Swift-owned category and text.
+    fileprivate var classification: (
+        status: beeb_status,
+        support: BeebMachineProfileSupport,
+        message: String
+    ) {
         var profile = cValue
         var validation = beeb_machine_profile_validation()
         let status = beeb_validate_machine_profile(&profile, &validation)
-        guard status.code == BEEB_STATUS_OK else { return .unknown }
+        guard status.code == BEEB_STATUS_OK else { return (status, .unknown, "") }
+        let support: BeebMachineProfileSupport
         switch validation.support {
-        case .BEEB_MACHINE_PROFILE_SUPPORTED: return .supported
-        case .BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE: return .recognisedUnavailable
-        case .BEEB_MACHINE_PROFILE_UNKNOWN: return .unknown
-        case .BEEB_MACHINE_PROFILE_INCOMPATIBLE: return .incompatible
-        case .BEEB_MACHINE_PROFILE_MALFORMED: return .malformed
-        @unknown default: return .unknown
+        case .BEEB_MACHINE_PROFILE_SUPPORTED: support = .supported
+        case .BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE: support = .recognisedUnavailable
+        case .BEEB_MACHINE_PROFILE_UNKNOWN: support = .unknown
+        case .BEEB_MACHINE_PROFILE_INCOMPATIBLE: support = .incompatible
+        case .BEEB_MACHINE_PROFILE_MALFORMED: support = .malformed
+        @unknown default: support = .unknown
         }
+        var message = validation.message
+        let ownedMessage = withUnsafePointer(to: &message) { pointer in
+            pointer.withMemoryRebound(
+                to: CChar.self,
+                capacity: Int(BEEB_STATUS_MESSAGE_CAPACITY)
+            ) {
+                String(cString: $0)
+            }
+        }
+        return (status, support, ownedMessage)
     }
 
     /// Copies a canonical fixed C aggregate into Swift-owned fields.
@@ -329,6 +349,12 @@ public enum BeebError: LocalizedError {
     case invalidKey
     /// A recognised machine identity has no implementation in this release.
     case machineProfileUnavailable(BeebMachineProfile)
+    /// The bounded profile envelope violates its schema invariants.
+    case malformedMachineProfile(BeebMachineProfile, String)
+    /// The profile contains an identifier or version with no assigned contract.
+    case unknownMachineProfile(BeebMachineProfile, String)
+    /// Known components cannot be combined in their supplied roles.
+    case incompatibleMachineProfile(BeebMachineProfile, String)
     /// Recoverable audio pressure carrying every valid partial sample and counter.
     case audioPressure(BeebStatusCategory, BeebAudioDrain)
     /// A C status category and its operation-scoped diagnostic.
@@ -351,6 +377,12 @@ public enum BeebError: LocalizedError {
             return "Keyboard row and column must both be in 0...15."
         case let .machineProfileUnavailable(profile):
             return "\(profile.displayName) is recognised, but machine support is not yet available."
+        case let .malformedMachineProfile(profile, message):
+            return "\(profile.displayName) is malformed: \(message)"
+        case let .unknownMachineProfile(profile, message):
+            return "\(profile.displayName) is unknown: \(message)"
+        case let .incompatibleMachineProfile(profile, message):
+            return "\(profile.displayName) is incompatible: \(message)"
         case let .audioPressure(category, drain):
             return "Audio reported \(category) after copying \(drain.samples.count) samples " +
                 "with a shortfall of \(drain.shortfall)."
@@ -382,16 +414,27 @@ public final class BeebMachine: @unchecked Sendable {
 
     /// Creates a paused machine for one explicit profile.
     /// - Parameter profile: Complete immutable identity copied into the C boundary.
-    /// - Throws: ``BeebError/machineProfileUnavailable(_:)`` for recognised
-    ///   Model B+ 64K, or ``BeebError/coreStatus(_:_:)`` for another failure.
+    /// - Throws: A profile-specific ``BeebError`` for a classified rejection,
+    ///   or ``BeebError/coreStatus(_:_:)`` when validation or creation itself fails.
     public init(profile: BeebMachineProfile) throws {
+        let classification = profile.classification
+        try Self.check(classification.status)
+        switch classification.support {
+        case .supported:
+            break
+        case .recognisedUnavailable:
+            throw BeebError.machineProfileUnavailable(profile)
+        case .malformed:
+            throw BeebError.malformedMachineProfile(profile, classification.message)
+        case .unknown:
+            throw BeebError.unknownMachineProfile(profile, classification.message)
+        case .incompatible:
+            throw BeebError.incompatibleMachineProfile(profile, classification.message)
+        }
+
         var cProfile = profile.cValue
         var created: OpaquePointer?
         let status = beeb_create_with_profile(&cProfile, &created)
-        if status.code == BEEB_STATUS_UNAVAILABLE,
-           profile.support == .recognisedUnavailable {
-            throw BeebError.machineProfileUnavailable(profile)
-        }
         try Self.check(status)
         guard let created else {
             throw BeebError.coreStatus(

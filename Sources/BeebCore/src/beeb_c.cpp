@@ -494,9 +494,17 @@ beeb_status beeb_create_with_profile(const beeb_machine_profile* profile,
     try {
         auto translated = translateProfile(*profile);
         const auto validation = beeb::validateMachineTargetProfile(translated);
-        if (validation.support == beeb::ProfileSupport::recognisedUnavailable)
+        switch (validation.support) {
+        case beeb::ProfileSupport::supported:
+            return createMachine(out_machine, std::move(translated));
+        case beeb::ProfileSupport::recognisedUnavailable:
             return makeStatus(BEEB_STATUS_UNAVAILABLE, validation.message);
-        return createMachine(out_machine, std::move(translated));
+        case beeb::ProfileSupport::unknown:
+        case beeb::ProfileSupport::incompatible:
+        case beeb::ProfileSupport::malformed:
+            return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, validation.message);
+        }
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "unknown machine-profile support category");
     } catch (const std::bad_alloc&) {
         return makeStatus(BEEB_STATUS_RESOURCE_EXHAUSTED,
                           "machine-profile validation allocation failed");
