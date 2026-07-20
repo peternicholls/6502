@@ -185,6 +185,159 @@ final class BeebMachineTests: XCTestCase {
         XCTAssertEqual(try explicitModelB.profile, .modelB)
     }
 
+    func testInvalidProfileMatrixOwnsValuesMapsErrorsAndPreservesActiveModelB() throws {
+        let futureComponent: (UInt32) -> BeebMachineProfileComponent = {
+            BeebMachineProfileComponent(identifier: $0, version: 1)
+        }
+        let rawUnknown = futureComponent(0xF000_0001)
+        var source = [rawUnknown]
+        let ownedUnknown = BeebMachineProfile(
+            schemaVersion: 1,
+            base: rawUnknown,
+            expansions: source
+        )
+        source[0] = futureComponent(0xF000_00FF)
+        XCTAssertEqual(ownedUnknown.base.identifier, 0xF000_0001)
+        XCTAssertEqual(ownedUnknown.expansions, [rawUnknown])
+
+        let orderedSixteen = (0..<16).map {
+            futureComponent(0xF000_0100 + UInt32($0))
+        }
+        let orderedSeventeen = orderedSixteen + [futureComponent(0xF000_0110)]
+        let duplicate = futureComponent(0xF000_0200)
+        let modelBExpansion = BeebMachineProfile.modelB.base
+
+        struct Fixture {
+            let name: String
+            let profile: BeebMachineProfile
+            let expected: BeebMachineProfileSupport
+        }
+        let fixtures = [
+            Fixture(
+                name: "raw unassigned base",
+                profile: BeebMachineProfile(schemaVersion: 1, base: rawUnknown, expansions: []),
+                expected: .unknown
+            ),
+            Fixture(
+                name: "future schema",
+                profile: BeebMachineProfile(
+                    schemaVersion: 2,
+                    base: BeebMachineProfile.modelB.base,
+                    expansions: []
+                ),
+                expected: .unknown
+            ),
+            Fixture(
+                name: "exact count sixteen",
+                profile: BeebMachineProfile(
+                    schemaVersion: 1,
+                    base: BeebMachineProfile.modelB.base,
+                    expansions: orderedSixteen
+                ),
+                expected: .unknown
+            ),
+            Fixture(
+                name: "count seventeen",
+                profile: BeebMachineProfile(
+                    schemaVersion: 1,
+                    base: BeebMachineProfile.modelB.base,
+                    expansions: orderedSeventeen
+                ),
+                expected: .malformed
+            ),
+            Fixture(
+                name: "duplicate expansions",
+                profile: BeebMachineProfile(
+                    schemaVersion: 1,
+                    base: BeebMachineProfile.modelB.base,
+                    expansions: [duplicate, duplicate]
+                ),
+                expected: .malformed
+            ),
+            Fixture(
+                name: "unsorted expansions",
+                profile: BeebMachineProfile(
+                    schemaVersion: 1,
+                    base: BeebMachineProfile.modelB.base,
+                    expansions: [futureComponent(0xF000_0202), futureComponent(0xF000_0201)]
+                ),
+                expected: .malformed
+            ),
+            Fixture(
+                name: "known base used as expansion",
+                profile: BeebMachineProfile(
+                    schemaVersion: 1,
+                    base: BeebMachineProfile.modelB.base,
+                    expansions: [modelBExpansion]
+                ),
+                expected: .incompatible
+            ),
+            Fixture(
+                name: "malformed precedes unknown",
+                profile: BeebMachineProfile(
+                    schemaVersion: 0,
+                    base: rawUnknown,
+                    expansions: [duplicate, duplicate]
+                ),
+                expected: .malformed
+            ),
+            Fixture(
+                name: "unknown precedes incompatible",
+                profile: BeebMachineProfile(
+                    schemaVersion: 1,
+                    base: rawUnknown,
+                    expansions: [modelBExpansion]
+                ),
+                expected: .unknown
+            ),
+            Fixture(
+                name: "incompatible precedes recognised unavailable",
+                profile: BeebMachineProfile(
+                    schemaVersion: 1,
+                    base: BeebMachineProfile.modelBPlus64K.base,
+                    expansions: [modelBExpansion]
+                ),
+                expected: .incompatible
+            ),
+        ]
+
+        let activeModelB = try BeebMachine(profile: .modelB)
+        let activeIdentity = try activeModelB.profile
+        for fixture in fixtures {
+            XCTAssertEqual(fixture.profile.support, fixture.expected, fixture.name)
+            var rejectedMachine: BeebMachine?
+            XCTAssertThrowsError(
+                try { rejectedMachine = try BeebMachine(profile: fixture.profile) }(),
+                fixture.name
+            ) { error in
+                switch fixture.expected {
+                case .malformed:
+                    guard case let BeebError.malformedMachineProfile(profile, message) = error else {
+                        return XCTFail("\(fixture.name): expected malformedMachineProfile, got \(error)")
+                    }
+                    XCTAssertEqual(profile, fixture.profile)
+                    XCTAssertFalse(message.isEmpty)
+                case .unknown:
+                    guard case let BeebError.unknownMachineProfile(profile, message) = error else {
+                        return XCTFail("\(fixture.name): expected unknownMachineProfile, got \(error)")
+                    }
+                    XCTAssertEqual(profile, fixture.profile)
+                    XCTAssertFalse(message.isEmpty)
+                case .incompatible:
+                    guard case let BeebError.incompatibleMachineProfile(profile, message) = error else {
+                        return XCTFail("\(fixture.name): expected incompatibleMachineProfile, got \(error)")
+                    }
+                    XCTAssertEqual(profile, fixture.profile)
+                    XCTAssertFalse(message.isEmpty)
+                case .recognisedUnavailable, .supported:
+                    XCTFail("\(fixture.name): fixture was not expected to use \(fixture.expected)")
+                }
+            }
+            XCTAssertNil(rejectedMachine, fixture.name)
+            XCTAssertEqual(try activeModelB.profile, activeIdentity, fixture.name)
+        }
+    }
+
     func testLifecycleStateStartPauseAndIdempotence() throws {
         let machine = try BeebMachine()
         try machine.loadOSROM(loopingOSROM())

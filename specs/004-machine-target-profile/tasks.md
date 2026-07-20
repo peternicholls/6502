@@ -119,7 +119,7 @@ unchanged.
 ### Red tests for User Story 3
 
 - [X] T024 [US3] Add the red C++/C invalid-profile matrix—zero fields, future schema/component versions, exact count 16, count 17 without out-of-bounds access, non-zero reserved/unused slots, unsorted/duplicate expansions, unassigned future-option raw fixtures, known base identifiers misused as expansions and multi-defect precedence—with output-canary and active Model B digest assertions in `Tests/test_main.cpp`; observe expected failures and commit the red test (FR-007, FR-008, FR-009, FR-010, FR-015, SC-002, SC-007).
-- [ ] T025 [P] [US3] Add red Swift tests for owned raw unknown values, exact 16/17 bounds, multi-defect category precedence, malformed/incompatible/unsupported error mapping and unchanged active Model B query after each failed candidate in `Tests/BeebKitTests/BeebMachineTests.swift`; observe expected failures and commit the red test (FR-007, FR-008, FR-009, FR-010, FR-015, SC-002, SC-007).
+- [X] T025 [P] [US3] Add red Swift tests for owned raw unknown values, exact 16/17 bounds, multi-defect category precedence, malformed/incompatible/unsupported error mapping and unchanged active Model B query after each failed candidate in `Tests/BeebKitTests/BeebMachineTests.swift`; observe expected failures and commit the red test (FR-007, FR-008, FR-009, FR-010, FR-015, SC-002, SC-007).
 - [ ] T026 [US3] Extend `Tests/TargetProfile/test-boundaries.sh` with red concurrent query/destroy, C output-canary and C++/C/Swift representation-loss probes; observe expected failures and commit the red boundary test (FR-003, FR-008, FR-010, SC-001, SC-002).
 
 ### Implementation for User Story 3
