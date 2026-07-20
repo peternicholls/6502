@@ -24,7 +24,7 @@ create an empty duplicate checkpoint. Stage only that task's files.
 **Purpose**: Establish a focused, independently runnable target-profile gate
 before behavior changes.
 
-- [ ] T001 Create `Tests/TargetProfile/testlib.sh`, `Tests/TargetProfile/test-aggregate-runner.sh` and the `test-machine-target-profile` Make target in `Makefile`; verify the empty focused aggregate and existing tooling gates pass, then commit the setup checkpoint.
+- [X] T001 Create `Tests/TargetProfile/testlib.sh`, `Tests/TargetProfile/test-aggregate-runner.sh` and the `test-machine-target-profile` Make target in `Makefile`; verify the empty focused aggregate and existing tooling gates pass, then commit the setup checkpoint.
 
 ---
 
