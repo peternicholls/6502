@@ -212,11 +212,33 @@ beeb_machine_profile beeb_machine_profile_model_b_plus_64k(void);
 /// @return Non-zero only when both pointers are non-null and all fields match.
 int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machine_profile* rhs);
 
-/// Creates a paused runtime with no ROM or disc loaded.
+/// Creates a paused runtime for one explicit supported machine profile.
+///
+/// The input is copied during the call. Invalid or unsupported values never
+/// select a default profile and never register a handle.
+/// @param profile Required complete caller-owned profile value.
+/// @param out_machine Required output, written only on success.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for null input or
+/// output, or the contained allocation/internal construction failure.
+beeb_status beeb_create_with_profile(const beeb_machine_profile* profile,
+                                     beeb_machine** out_machine);
+
+/// Creates a paused canonical Model B runtime with no ROM or disc loaded.
+///
+/// This is a deliberate convenience routed through
+/// `beeb_create_with_profile()`, never a fallback for invalid explicit input.
 /// @param out_machine Required output, written only on success.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` when output is null;
 /// `BEEB_STATUS_RESOURCE_EXHAUSTED` if allocation fails.
 beeb_status beeb_create(beeb_machine** out_machine);
+
+/// Copies the immutable active profile through the runtime owner.
+/// @param machine Live runtime token.
+/// @param out_profile Required caller-owned output, written only on success.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// null output, `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure,
+/// or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+beeb_status beeb_get_machine_profile(beeb_machine* machine, beeb_machine_profile* out_profile);
 
 /// Stops acceptance, drains accepted commands, joins, and releases a runtime.
 /// @param machine Live token from `beeb_create()`; null is invalid.

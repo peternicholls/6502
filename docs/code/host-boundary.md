@@ -15,12 +15,19 @@ and underrun accounting. Other non-OK paths preserve caller outputs. There is
 no shared last-error slot and no sentinel that must be interpreted using a
 later call.
 
-`beeb_create()` writes an opaque token only after both the runtime and the outer
-handle state exist. The token is a registry key, not an object that entry points
-dereference. `ActiveCall` looks it up under the registry mutex, retains the
-shared `HandleState`, and increments the active-call count before touching
-`MachineRuntime`. This indirection closes the raw-pointer race in which destroy
-could otherwise free a mutex while another call was entering it.
+`beeb_create_with_profile()` copies and validates an explicit profile before it
+publishes anything. Only successful Model B construction writes and registers
+an opaque token. `beeb_create()` is a deliberate canonical Model B convenience
+routed through that same path; invalid explicit input never reaches it as a
+fallback. `beeb_get_machine_profile()` copies runtime-owner truth into a complete
+caller value only after the serialized query succeeds.
+
+The token is published only after both the runtime and outer handle state exist.
+It is a registry key, not an object that entry points dereference. `ActiveCall`
+looks it up under the registry mutex, retains the shared `HandleState`, and
+increments the active-call count before touching `MachineRuntime`. This
+indirection closes the raw-pointer race in which destroy could otherwise free a
+mutex while another call was entering it.
 
 The first `beeb_destroy()` caller marks the state as destroying, which makes new
 entries return `unavailable`. It waits for admitted calls, invokes the runtime's
@@ -31,9 +38,10 @@ caller must not use the pointer after destroy returns.
 ## Payloads and outputs
 
 ROM and disc functions copy caller bytes into their runtime command before the
-call completes. CPU, lifecycle, safe-point, and fault results are plain value
-aggregates. Audio renders into a caller buffer only after validation and
-successful owner completion.
+call completes. Machine profile, CPU, lifecycle, safe-point, and fault results
+are plain value aggregates. The profile is an in-process semantic value, not a
+persisted byte layout. Audio renders into a caller buffer only after validation
+and successful owner completion.
 
 `beeb_get_frame()` returns a complete caller-owned RGBA value. No completed
 frame is a successful value with `available == 0`, null storage, and zero
