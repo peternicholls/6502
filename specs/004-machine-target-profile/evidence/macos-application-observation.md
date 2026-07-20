@@ -53,3 +53,60 @@ Result: the requested identity, active runtime identity and selected native
 control all agreed on Model B. No mismatch, fallback or unresponsive state was
 observed. This closes the Model B-only application journey; Model B+ rejection
 and recovery are intentionally deferred to User Story 2.
+
+## User Story 2: Model B+ 64K rejection and Model B recovery
+
+This journey used source commit
+`fca9bb002696524cc8186e8be563316986c81f17` on the same host, operating system
+and Xcode toolchain recorded above. The application was rebuilt with:
+
+`xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-macOS -destination platform=macOS -derivedDataPath .build/target-profile/t023-derived CODE_SIGNING_ALLOWED=NO build`
+
+The build reported `** BUILD SUCCEEDED **`; its retained log is
+`.build/target-profile/t023-macos-build.log`. BeebDemo was quit, not merely
+closed, before launching the rebuilt product from the recorded launch path.
+
+The complete Model B+ request, assistive-technology inspection and Model B
+recovery ran from 17:28:36 to 17:34:44 BST (6 minutes 8 seconds). In the native
+picker, `End` highlighted `BBC Model B+ 64K` and `Return` confirmed it. The
+visible and captured accessibility state then reported:
+
+- picker/requested profile: `BBC Model B+ 64K`
+- active profile: `BBC Microcomputer Model B`
+- rejection: `BBC Model B+ 64K is recognised, but machine support is not yet
+  available. Active profile remains: BBC Microcomputer Model B`
+- emulator placeholder: `BBC MICRO`
+
+The rejection appeared 5 ms after the final `Return` event. The live
+accessibility tree exposed a `Machine profile` pop-up button with value
+`BBC Model B+ 64K` and identifier `machine-profile-picker`. Its requested-state
+region carried identifier `requested-machine-profile` and exposed the B+
+request, unchanged Model B active identity and full recognised-unavailable
+message together. The visible active label remained independently Model B; no
+B+ runtime, fallback label or unresponsive state was observed.
+
+VoiceOver was started for the B+ state and the BeebDemo window was traversed
+with the VoiceOver next-item chord. The simultaneous accessibility capture
+reported the same B+ picker value, requested identity, rejection and retained
+Model B text. As in User Story 1, no spoken-audio recording was made; this claim
+is limited to the live VoiceOver navigation and captured accessibility output.
+
+Accessibility Inspector 26.3 targeted `BeebDemo (22436)`. Its inspection view
+identified the exact BeebDemo application and focused window. The 736 ms audit
+reported four warnings, recorded rather than suppressed:
+
+- low contrast for the `BBC MICRO` placeholder text;
+- a parent/child mismatch in `NSThemeWidgetZoomMenuRemoteView`;
+- missing useful information on the generic SwiftUI window-hosting view; and
+- a missing equivalent action warning on SwiftUI's native pop-up adaptor.
+
+None of the warnings identified the requested, active or rejection text as
+missing. The pop-up warning is retained as a known Inspector discrepancy:
+keyboard selection succeeded in both directions and the live accessibility
+tree exposed the control's pop-up role, label, current value and stable
+identifier.
+
+Finally, the picker was reopened, `Home` highlighted
+`BBC Microcomputer Model B` and `Return` confirmed it. Recovery took 1.060
+seconds and restored matching Model B picker, requested and active values while
+clearing the B+ rejection. This closes the User Story 2 application journey.
