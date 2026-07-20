@@ -89,6 +89,21 @@ typedef struct beeb_machine_profile {
     beeb_profile_component expansions[BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY];
 } beeb_machine_profile;
 
+/// Stable support classification returned by pure machine-profile validation.
+typedef enum beeb_machine_profile_support {
+    BEEB_MACHINE_PROFILE_SUPPORTED = 0,              ///< Canonical Model B can construct a runtime.
+    BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE = 1, ///< Known identity lacks behavior.
+    BEEB_MACHINE_PROFILE_UNKNOWN = 2,                ///< Identifier or version is unassigned.
+    BEEB_MACHINE_PROFILE_INCOMPATIBLE = 3,           ///< Known components are miscombined.
+    BEEB_MACHINE_PROFILE_MALFORMED = 4               ///< The bounded envelope is invalid.
+} beeb_machine_profile_support;
+
+/// Owned result of classifying one caller-supplied machine profile.
+typedef struct beeb_machine_profile_validation {
+    beeb_machine_profile_support support;       ///< Stable support category.
+    char message[BEEB_STATUS_MESSAGE_CAPACITY]; ///< Empty only for supported input.
+} beeb_machine_profile_validation;
+
 /// Opaque token for one independent runtime and its machine owner.
 ///
 /// Create with `beeb_create()` and release with `beeb_destroy()`. Operations
@@ -212,6 +227,14 @@ beeb_machine_profile beeb_machine_profile_model_b_plus_64k(void);
 /// @return Non-zero only when both pointers are non-null and all fields match.
 int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machine_profile* rhs);
 
+/// Classifies one profile without constructing or registering a machine.
+/// @param profile Required complete caller-owned profile value.
+/// @param out_validation Required output written only on successful classification.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a null pointer,
+/// or `BEEB_STATUS_RESOURCE_EXHAUSTED` if classification cannot allocate its diagnostic.
+beeb_status beeb_validate_machine_profile(const beeb_machine_profile* profile,
+                                          beeb_machine_profile_validation* out_validation);
+
 /// Creates a paused runtime for one explicit supported machine profile.
 ///
 /// The input is copied during the call. Invalid or unsupported values never
@@ -219,7 +242,8 @@ int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machi
 /// @param profile Required complete caller-owned profile value.
 /// @param out_machine Required output, written only on success.
 /// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for null input or
-/// output, or the contained allocation/internal construction failure.
+/// output, `BEEB_STATUS_UNAVAILABLE` for recognised Model B+ 64K, or the
+/// contained allocation/internal construction failure.
 beeb_status beeb_create_with_profile(const beeb_machine_profile* profile,
                                      beeb_machine** out_machine);
 

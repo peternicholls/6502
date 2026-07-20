@@ -73,6 +73,23 @@ bool equalProfileComponent(const beeb_profile_component& lhs,
            lhs.reserved == rhs.reserved;
 }
 
+/// Maps the closed C++ support vocabulary one-to-one into the public C vocabulary.
+beeb_machine_profile_support translateProfileSupport(beeb::ProfileSupport support) noexcept {
+    switch (support) {
+    case beeb::ProfileSupport::supported:
+        return BEEB_MACHINE_PROFILE_SUPPORTED;
+    case beeb::ProfileSupport::recognisedUnavailable:
+        return BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE;
+    case beeb::ProfileSupport::unknown:
+        return BEEB_MACHINE_PROFILE_UNKNOWN;
+    case beeb::ProfileSupport::incompatible:
+        return BEEB_MACHINE_PROFILE_INCOMPATIBLE;
+    case beeb::ProfileSupport::malformed:
+        return BEEB_MACHINE_PROFILE_MALFORMED;
+    }
+    return BEEB_MACHINE_PROFILE_MALFORMED;
+}
+
 /// Adapter-owned frame allocation whose vector buffer transfers from the
 /// runtime without a second pixel allocation after destructive dequeue.
 struct CFrameStorage final {
@@ -439,6 +456,31 @@ int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machi
     return 1;
 }
 
+beeb_status beeb_validate_machine_profile(const beeb_machine_profile* profile,
+                                          beeb_machine_profile_validation* out_validation) {
+    if (!profile) return missingOutput("machine profile is null");
+    if (!out_validation) return missingOutput("machine-profile validation output is null");
+    try {
+        const auto validation = beeb::validateMachineTargetProfile(translateProfile(*profile));
+        beeb_machine_profile_validation output{};
+        output.support = translateProfileSupport(validation.support);
+        const auto length = std::min(validation.message.size(),
+                                     static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
+        if (length != 0) std::memcpy(output.message, validation.message.data(), length);
+        output.message[length] = '\0';
+        *out_validation = output;
+        return makeStatus(BEEB_STATUS_OK);
+    } catch (const std::bad_alloc&) {
+        return makeStatus(BEEB_STATUS_RESOURCE_EXHAUSTED,
+                          "machine-profile validation allocation failed");
+    } catch (const std::exception& error) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
+    } catch (...) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
+                          "unknown machine-profile validation failure");
+    }
+}
+
 // Keep creation on the same transactional helper used by allocation-failure tests.
 beeb_status beeb_create(beeb_machine** out_machine) {
     const auto profile = beeb_machine_profile_model_b();
@@ -448,7 +490,22 @@ beeb_status beeb_create(beeb_machine** out_machine) {
 beeb_status beeb_create_with_profile(const beeb_machine_profile* profile,
                                      beeb_machine** out_machine) {
     if (!profile) return missingOutput("machine profile is null");
-    return createMachine(out_machine, translateProfile(*profile));
+    if (!out_machine) return missingOutput("machine output is null");
+    try {
+        auto translated = translateProfile(*profile);
+        const auto validation = beeb::validateMachineTargetProfile(translated);
+        if (validation.support == beeb::ProfileSupport::recognisedUnavailable)
+            return makeStatus(BEEB_STATUS_UNAVAILABLE, validation.message);
+        return createMachine(out_machine, std::move(translated));
+    } catch (const std::bad_alloc&) {
+        return makeStatus(BEEB_STATUS_RESOURCE_EXHAUSTED,
+                          "machine-profile validation allocation failed");
+    } catch (const std::exception& error) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
+    } catch (...) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
+                          "unknown machine-profile construction failure");
+    }
 }
 
 beeb_status beeb_get_machine_profile(beeb_machine* machine, beeb_machine_profile* out_profile) {

@@ -126,8 +126,9 @@ struct ProfileValidation {
 
 /// Classifies a profile without constructing or mutating a machine.
 ///
-/// At the Model B checkpoint only the canonical Model B value is supported;
-/// later tasks refine the non-supported categories without changing success.
+/// Canonical Model B is supported and canonical Model B+ 64K is recognised but
+/// unavailable. Later validation work refines malformed, unknown and
+/// incompatible inputs without changing either committed identity.
 /// @param profile Complete independently owned profile value.
 /// @return Supported with no message for canonical Model B, or an owned rejection.
 [[nodiscard]] ProfileValidation validateMachineTargetProfile(const MachineTargetProfile& profile);

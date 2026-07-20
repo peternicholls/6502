@@ -191,7 +191,9 @@ class MachineRuntime final {
     /// Creates a paused runtime for one explicit supported profile.
     /// @param profile Complete immutable identity copied before owner startup.
     /// @param options Opt-in diagnostic behavior; normal hosts use the default.
-    /// @throws std::invalid_argument when the profile is not supported.
+    /// @throws std::invalid_argument when validation does not return
+    /// `ProfileSupport::supported`; validate first to retain the typed category,
+    /// including `ProfileSupport::recognisedUnavailable` for Model B+ 64K.
     /// @throws std::bad_alloc when owner or machine construction cannot allocate.
     MachineRuntime(MachineTargetProfile profile, MachineRuntimeOptions options = {});
     /// Drains accepted work and joins the owner before releasing the machine.
