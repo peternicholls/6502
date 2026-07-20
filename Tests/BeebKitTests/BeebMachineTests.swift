@@ -101,6 +101,49 @@ final class BeebMachineTests: XCTestCase {
         XCTAssertEqual(BeebVersion.current, "0.3.0")
     }
 
+    func testMachineProfileValuesOwnRawIdentityAndNames() {
+        func requireSendable<T: Sendable>(_: T) {}
+
+        let raw = BeebMachineProfileComponent(
+            identifier: 0xF000_0001,
+            version: 23,
+            reserved: 0
+        )
+        var source = [raw]
+        let rawProfile = BeebMachineProfile(
+            schemaVersion: 1,
+            base: raw,
+            expansions: source
+        )
+        source[0] = BeebMachineProfileComponent(identifier: 7, version: 1)
+
+        requireSendable(raw)
+        requireSendable(rawProfile)
+        XCTAssertEqual(rawProfile.base.identifier, 0xF000_0001)
+        XCTAssertEqual(rawProfile.base.version, 23)
+        XCTAssertEqual(rawProfile.base.reserved, 0)
+        XCTAssertEqual(rawProfile.expansions, [raw])
+        XCTAssertNotEqual(rawProfile, BeebMachineProfile.modelB)
+
+        XCTAssertEqual(BeebMachineProfile.schemaVersion, 1)
+        XCTAssertEqual(BeebMachineProfile.expansionCapacity, 16)
+        XCTAssertEqual(BeebMachineProfile.modelB.base.identifier, 0x0000_0001)
+        XCTAssertEqual(BeebMachineProfile.modelB.base.version, 1)
+        XCTAssertEqual(BeebMachineProfile.modelB.expansions, [])
+        XCTAssertEqual(
+            BeebMachineProfile.modelB.displayName,
+            "BBC Microcomputer Model B"
+        )
+        XCTAssertEqual(BeebMachineProfile.modelBPlus64K.base.identifier, 0x0000_0002)
+        XCTAssertEqual(BeebMachineProfile.modelBPlus64K.base.version, 1)
+        XCTAssertEqual(BeebMachineProfile.modelBPlus64K.expansions, [])
+        XCTAssertEqual(
+            BeebMachineProfile.modelBPlus64K.displayName,
+            "BBC Model B+ 64K"
+        )
+        XCTAssertNotEqual(BeebMachineProfile.modelB, BeebMachineProfile.modelBPlus64K)
+    }
+
     func testLifecycleStateStartPauseAndIdempotence() throws {
         let machine = try BeebMachine()
         try machine.loadOSROM(loopingOSROM())
