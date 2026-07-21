@@ -25,4 +25,4 @@ This folder contains a collection of official Acorn hardware and service manuals
 
 ## Archimedes / Other Systems
 * [A500 R200 Service Manual](Acorn_A500R200SM.pdf) (`Acorn_A500R200SM.pdf`)
-* [A500 R200 Service Manual Drawings (ZIP)](Acorn_A500R200SM_drawings.zip) (`Acorn_A500R200SM_drawings.zip`)
+* [A500 R200 Service Manual Drawings (ZIP)](Acorn_A500R200SM_drawings/) (`Acorn_A500R200SM_drawings/`)

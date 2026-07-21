@@ -24,6 +24,7 @@ gate.
 - [Release procedure](RELEASING.md)
 - [Project constitution](../.specify/memory/constitution.md)
 - [Spec Kit workflow](../specs/README.md)
+- [Acorn Guides and Manuals](./Acorn_guides_manuals/)
 
 ## Separated history
 
