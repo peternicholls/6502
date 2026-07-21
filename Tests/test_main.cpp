@@ -1007,10 +1007,16 @@ void loadNOPFixture(beeb::MachineRuntime& runtime) {
     checkRuntimeOK(runtime.reset());
 }
 
+void loadLoopingFixture(beeb::MachineRuntime& runtime) {
+    const auto os = makeLoopingOSROM();
+    checkRuntimeOK(runtime.loadOSROM(os));
+    checkRuntimeOK(runtime.reset());
+}
+
 void testC1RuntimeContractLifecycleMatrix() {
     beeb::MachineRuntime runtime;
     CHECK(runtimeValue(runtime.state()) == beeb::RuntimeState::paused);
-    loadNOPFixture(runtime);
+    loadLoopingFixture(runtime);
 
     checkRuntimeOK(runtime.pause());
     checkRuntimeOK(runtime.start());
@@ -1529,7 +1535,7 @@ struct C1CapturedReplay {
 
 C1CapturedReplay captureC1ConcurrentLedger() {
     beeb::MachineRuntime runtime({.enableLedger = true});
-    loadNOPFixture(runtime);
+    loadLoopingFixture(runtime);
 
     constexpr unsigned callerCount = 12;
     std::latch ready(callerCount);
@@ -1578,7 +1584,7 @@ C1ReplayOutcome replayC1Ledger(const std::vector<beeb::LedgerEntry>& ledger) {
     auto previousSequence = std::uint64_t{0};
     auto previousAcceptance = std::uint64_t{0};
     beeb::SafePoint finalSafePoint{};
-    const auto os = makeNOPOSROM();
+    const auto os = makeLoopingOSROM();
     std::uint64_t audioRemainder = 0;
     const auto publishAudio = [&](std::uint64_t cycles) {
         const auto fractional = audioRemainder + (cycles % 125) * 3;
@@ -1675,7 +1681,7 @@ void testC1ReplayCapturedConcurrentLedgerExactly() {
 
 void testC1RuntimeFixedExecutionSlices() {
     beeb::MachineRuntime runtime({.enableLedger = true});
-    loadNOPFixture(runtime);
+    loadLoopingFixture(runtime);
     checkRuntimeOK(runtime.start());
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
@@ -1707,7 +1713,7 @@ void testC1RuntimeFixedExecutionSlices() {
 
 void testC1PauseCompletesWithinOneAcceptedSlice() {
     beeb::MachineRuntime runtime({.enableLedger = true});
-    loadNOPFixture(runtime);
+    loadLoopingFixture(runtime);
     checkRuntimeOK(runtime.start());
 
     const auto sliceDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
@@ -1764,8 +1770,8 @@ void waitForC1Acceptance(beeb::MachineRuntime& runtime, std::uint64_t expected) 
 
 void testC1TransactionsFIFOAndNoAutoResume() {
     beeb::MachineRuntime runtime({.enableLedger = true});
-    const auto os = makeNOPOSROM();
-    loadNOPFixture(runtime);
+    const auto os = makeLoopingOSROM();
+    loadLoopingFixture(runtime);
     checkRuntimeOK(runtime.start());
 
     auto nextAcceptance = runtime.acceptedCommandCount() + 1;
@@ -1817,7 +1823,7 @@ void testC1TransactionsFIFOAndNoAutoResume() {
 
 void testC1TransactionsRejectAtomicallyAndCopyInput() {
     beeb::MachineRuntime runtime;
-    auto source = makeNOPOSROM();
+    auto source = makeLoopingOSROM();
     checkRuntimeOK(runtime.loadOSROM(source));
     checkRuntimeOK(runtime.reset());
 
