@@ -95,3 +95,7 @@ delivery programme, add canonical values and role rules, preserve the existing
 classification precedence, and prove failure-output preservation at C and
 owned error mapping in Swift. More than sixteen expansions requires a new
 schema version and an explicit compatibility decision.
+
+Post-acceptance observations that may inform later, separately selected work are
+recorded in the non-authoritative
+`docs/reviews/target-profile-engineering-review.md`.
