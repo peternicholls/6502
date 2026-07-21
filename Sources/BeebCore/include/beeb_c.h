@@ -24,6 +24,19 @@ extern "C" {
 /// Fixed storage available for each operation-scoped UTF-8 diagnostic.
 #define BEEB_STATUS_MESSAGE_CAPACITY 256
 
+/// Version of the bounded in-memory machine-profile contract.
+#define BEEB_MACHINE_PROFILE_SCHEMA_VERSION 1
+/// Permanent base identifier for the BBC Microcomputer Model B.
+#define BEEB_MODEL_B_BASE_IDENTIFIER UINT32_C(0x00000001)
+/// Permanent base identifier for the BBC Model B+ 64K.
+#define BEEB_MODEL_B_PLUS_64K_BASE_IDENTIFIER UINT32_C(0x00000002)
+/// Version shared by the two assigned base identities.
+#define BEEB_MACHINE_PROFILE_COMPONENT_VERSION 1
+/// Fixed expansion slots carried by the version-1 aggregate.
+#define BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY 16
+/// Expansion identities assigned by this feature; deliberately zero.
+#define BEEB_MACHINE_PROFILE_KNOWN_EXPANSION_COUNT 0
+
 /// Stable status categories shared with the C++ runtime and output contracts.
 /// Documentation rationale: docs/code/host-boundary.md owns the cross-language
 /// category and recovery contract represented by this closed vocabulary.
@@ -33,7 +46,7 @@ typedef enum beeb_status_code {
     BEEB_STATUS_INVALID_STATE = 2,      ///< Command is not legal in the current state.
     BEEB_STATUS_EXECUTION_FAILED = 3,   ///< Emulated execution faulted at a safe point.
     BEEB_STATUS_RESOURCE_EXHAUSTED = 4, ///< Required allocation or capacity failed.
-    BEEB_STATUS_UNAVAILABLE = 5,        ///< Runtime is shutting down or no longer accepts work.
+    BEEB_STATUS_UNAVAILABLE = 5,        ///< Runtime or requested capability is unavailable.
     BEEB_STATUS_REENTRANT_CALL = 6,     ///< Reserved: owner-thread re-entry would deadlock.
     BEEB_STATUS_INTERNAL_FAILURE = 7,   ///< Unexpected implementation failure was contained.
     BEEB_STATUS_EMPTY = 8,              ///< No complete output value is currently retained.
@@ -52,6 +65,52 @@ typedef struct beeb_status {
     beeb_status_code code;                      ///< Stable machine-readable category.
     char message[BEEB_STATUS_MESSAGE_CAPACITY]; ///< Operation-owned UTF-8 diagnostic.
 } beeb_status;
+
+/// Owned raw identity for one base-machine or expansion component.
+///
+/// Identifier/version pairs are permanent once assigned. Raw unknown values
+/// remain representable for later validation, and `reserved` must be zero in a
+/// canonical schema-version-1 value.
+typedef struct beeb_profile_component {
+    uint32_t identifier; ///< Stable raw identity code.
+    uint16_t version;    ///< Version of the identified component contract.
+    uint16_t reserved;   ///< Reserved for a later schema; zero in version 1.
+} beeb_profile_component;
+
+/// Fixed, caller-owned in-memory machine identity.
+///
+/// The aggregate is a semantic carrier, not a persisted byte layout. It owns
+/// one base component and exactly sixteen expansion slots. Canonical values
+/// zero every unused slot; no expansion identifier is assigned in this slice.
+typedef struct beeb_machine_profile {
+    uint16_t schema_version;     ///< Profile-envelope version.
+    beeb_profile_component base; ///< Raw base-machine identity.
+    uint16_t expansion_count;    ///< Used slots; zero for both canonical values.
+    beeb_profile_component expansions[BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY]; ///< Fixed slots.
+} beeb_machine_profile;
+
+#if defined(__clang__)
+/// Allows later support categories to import safely through Swift's `@unknown default`.
+#define BEEB_ENUM_EXTENSIBILITY_OPEN __attribute__((enum_extensibility(open)))
+#else
+/// Empty portability form of the Clang enum-extensibility annotation.
+#define BEEB_ENUM_EXTENSIBILITY_OPEN
+#endif
+/// Stable support classification returned by pure machine-profile validation.
+typedef enum BEEB_ENUM_EXTENSIBILITY_OPEN beeb_machine_profile_support {
+    BEEB_MACHINE_PROFILE_SUPPORTED = 0,              ///< Canonical Model B can construct a runtime.
+    BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE = 1, ///< Known identity lacks behavior.
+    BEEB_MACHINE_PROFILE_UNKNOWN = 2,                ///< Identifier or version is unassigned.
+    BEEB_MACHINE_PROFILE_INCOMPATIBLE = 3,           ///< Known components are miscombined.
+    BEEB_MACHINE_PROFILE_MALFORMED = 4               ///< The bounded envelope is invalid.
+} beeb_machine_profile_support;
+#undef BEEB_ENUM_EXTENSIBILITY_OPEN
+
+/// Owned result of classifying one caller-supplied machine profile.
+typedef struct beeb_machine_profile_validation {
+    beeb_machine_profile_support support;       ///< Stable support category.
+    char message[BEEB_STATUS_MESSAGE_CAPACITY]; ///< Empty only for supported input.
+} beeb_machine_profile_validation;
 
 /// Opaque token for one independent runtime and its machine owner.
 ///
@@ -159,11 +218,60 @@ typedef struct beeb_output_diagnostics {
 /// @return Borrowed process-owned semantic-version string; never null.
 const char* beeb_version_string(void);
 
-/// Creates a paused runtime with no ROM or disc loaded.
+/// Returns the canonical BBC Microcomputer Model B identity by value.
+/// @return Independently owned schema-version-1 value with no expansions.
+beeb_machine_profile beeb_machine_profile_model_b(void);
+
+/// Returns the canonical BBC Model B+ 64K identity by value.
+///
+/// Identity availability does not claim that Model B+ machine behavior is
+/// implemented; construction support is classified separately.
+/// @return Independently owned schema-version-1 value with no expansions.
+beeb_machine_profile beeb_machine_profile_model_b_plus_64k(void);
+
+/// Compares every semantic profile field without relying on object padding.
+/// @param lhs First required caller-owned value.
+/// @param rhs Second required caller-owned value.
+/// @return Non-zero only when both pointers are non-null and all fields match.
+int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machine_profile* rhs);
+
+/// Classifies one profile without constructing or registering a machine.
+/// @param profile Required complete caller-owned profile value.
+/// @param out_validation Required output written only on successful classification.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a null pointer,
+/// or `BEEB_STATUS_RESOURCE_EXHAUSTED` if classification cannot allocate its diagnostic.
+beeb_status beeb_validate_machine_profile(const beeb_machine_profile* profile,
+                                          beeb_machine_profile_validation* out_validation);
+
+/// Creates a paused runtime for one explicit supported machine profile.
+///
+/// The input is copied during the call. Invalid or unsupported values never
+/// select a default profile and never register a handle.
+/// @param profile Required complete caller-owned profile value.
+/// @param out_machine Required output, written only on success.
+/// @return `BEEB_STATUS_OK`; `BEEB_STATUS_INVALID_ARGUMENT` for null input or
+/// output or a malformed, unknown or incompatible profile;
+/// `BEEB_STATUS_UNAVAILABLE` for recognised but unavailable Model B+ 64K; or
+/// the contained allocation/internal construction failure.
+beeb_status beeb_create_with_profile(const beeb_machine_profile* profile,
+                                     beeb_machine** out_machine);
+
+/// Creates a paused canonical Model B runtime with no ROM or disc loaded.
+///
+/// This is a deliberate convenience routed through
+/// `beeb_create_with_profile()`, never a fallback for invalid explicit input.
 /// @param out_machine Required output, written only on success.
 /// @return `BEEB_STATUS_OK`, or `BEEB_STATUS_INVALID_ARGUMENT` when output is null;
 /// `BEEB_STATUS_RESOURCE_EXHAUSTED` if allocation fails.
 beeb_status beeb_create(beeb_machine** out_machine);
+
+/// Copies the immutable active profile through the runtime owner.
+/// @param machine Live runtime token.
+/// @param out_profile Required caller-owned output, written only on success.
+/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for a bad token or
+/// null output, `BEEB_STATUS_RESOURCE_EXHAUSTED` on command allocation failure,
+/// or `BEEB_STATUS_UNAVAILABLE` during shutdown.
+beeb_status beeb_get_machine_profile(beeb_machine* machine, beeb_machine_profile* out_profile);
 
 /// Stops acceptance, drains accepted commands, joins, and releases a runtime.
 /// @param machine Live token from `beeb_create()`; null is invalid.

@@ -1,7 +1,7 @@
 # Implementation constraints
 
 **Status:** Supporting technical requirements for unfinished work
-**Updated:** 2026-07-19
+**Updated:** 2026-07-21
 
 This file constrains technical design after a slice is selected from the
 [Machine delivery plan](product/MACHINE_DELIVERY_PLAN.md). It is not a roadmap,
@@ -20,16 +20,21 @@ backlog or completion ledger. [STATUS.md](STATUS.md) records what exists.
 - Define fixtures, observation intervals and tolerances for every fidelity,
   timing, latency or throughput claim.
 
-## Target profile
+## Profile-consuming work
 
-The profile contract must:
+The completed profile contract provides a stable versioned base plus a bounded
+ordered expansion list across C++, C and Swift. Downstream work must:
 
-- represent a stable base machine plus explicit versioned expansions;
-- commit Model B and Model B+ 64K identities;
-- reserve later B+ 128K, Master-family, Tube, Econet and storage/peripheral
-  identifiers without claiming support;
-- flow through core, C, Swift, snapshots and host configuration; and
-- reject unsupported identifiers without falling back to another machine.
+- preserve the permanent Model B and Model B+ 64K identities and their raw
+  round-trip values;
+- treat Model B as supported and Model B+ 64K as recognised-unavailable until a
+  separately accepted implementation supplies its machine behavior;
+- leave B+ 128K, Master-family, Tube, Econet and storage/peripheral identifiers
+  unassigned until their own specifications allocate them;
+- persist the complete identity in snapshots and host configuration rather than
+  infer it from firmware or media; and
+- retain bounded validation precedence and reject unsupported identities
+  without fallback or partial mutation.
 
 ## C3 — session continuity
 

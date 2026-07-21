@@ -7,6 +7,7 @@
 #include "beeb/cpu6502.hpp"
 #include "beeb/disc_image.hpp"
 #include "beeb/output.hpp"
+#include "beeb/profile.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -107,6 +108,7 @@ enum class RuntimeCommandKind {
     setKey,
     setBreak,
     runtimeState,
+    profile,
     safePoint,
     fault,
     cpuState,
@@ -186,6 +188,14 @@ class MachineRuntime final {
     /// @param options Opt-in diagnostic behavior; normal hosts use the default.
     /// @throws std::bad_alloc when owner or machine construction cannot allocate.
     explicit MachineRuntime(MachineRuntimeOptions options = {});
+    /// Creates a paused runtime for one explicit supported profile.
+    /// @param profile Complete immutable identity copied before owner startup.
+    /// @param options Opt-in diagnostic behavior; normal hosts use the default.
+    /// @throws std::invalid_argument when validation does not return
+    /// `ProfileSupport::supported`; validate first to retain the typed category,
+    /// including `ProfileSupport::recognisedUnavailable` for Model B+ 64K.
+    /// @throws std::bad_alloc when owner or machine construction cannot allocate.
+    MachineRuntime(MachineTargetProfile profile, MachineRuntimeOptions options = {});
     /// Drains accepted work and joins the owner before releasing the machine.
     ~MachineRuntime();
 
@@ -201,6 +211,9 @@ class MachineRuntime final {
     /// Queries lifecycle state in FIFO order at one safe point.
     /// @return Operation status and the state on success.
     [[nodiscard]] RuntimeResult<RuntimeState> state();
+    /// Copies the active machine profile through the runtime owner.
+    /// @return Independently owned identity without advancing emulated state.
+    [[nodiscard]] RuntimeResult<MachineTargetProfile> profile();
     /// Requests sustained execution; starting while running is idempotent.
     /// @return Operation-owned success or lifecycle failure.
     [[nodiscard]] RuntimeStatus start();

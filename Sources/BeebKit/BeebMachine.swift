@@ -3,6 +3,194 @@ import Foundation
 
 // C0-DOC-RATIONALE: docs/code/host-boundary.md owns Swift/C lifetime and recovery.
 
+/// Owned raw identity for one base-machine or expansion component.
+///
+/// Identifiers remain raw so a later code can cross Swift without being
+/// truncated to a closed enum. Assigned identifier/version pairs are stable;
+/// the reserved field must be zero for a canonical schema-version-1 value.
+public struct BeebMachineProfileComponent: Sendable, Equatable {
+    /// Stable raw 32-bit identity code.
+    public let identifier: UInt32
+    /// Version of the identified component contract.
+    public let version: UInt16
+    /// Reserved for a later profile schema; valid version-1 values use zero.
+    public let reserved: UInt16
+
+    /// Creates an independently owned raw component value.
+    /// - Parameters:
+    ///   - identifier: Stable identity code, or a raw fixture value.
+    ///   - version: Version of the identified component contract.
+    ///   - reserved: Reserved schema field; defaults to zero.
+    public init(identifier: UInt32, version: UInt16, reserved: UInt16 = 0) {
+        self.identifier = identifier
+        self.version = version
+        self.reserved = reserved
+    }
+
+    /// Copies all semantic fields out of the imported C aggregate.
+    fileprivate init(_ value: beeb_profile_component) {
+        self.init(
+            identifier: value.identifier,
+            version: value.version,
+            reserved: value.reserved
+        )
+    }
+
+    /// Copies the raw Swift fields into one imported C component value.
+    fileprivate var cValue: beeb_profile_component {
+        var value = beeb_profile_component()
+        value.identifier = identifier
+        value.version = version
+        value.reserved = reserved
+        return value
+    }
+}
+
+/// Stable support classification for one complete machine-profile value.
+///
+/// Identity and implementation availability remain separate: a recognised
+/// profile may cross the boundary even when its machine behavior is absent.
+public enum BeebMachineProfileSupport: Sendable, Equatable {
+    /// The profile can construct a machine in this release.
+    case supported
+    /// The identity is known, but its machine behavior is not implemented.
+    case recognisedUnavailable
+    /// An identifier or component version has no assigned contract.
+    case unknown
+    /// Known components cannot be combined in the supplied roles.
+    case incompatible
+    /// The bounded profile envelope violates its schema invariants.
+    case malformed
+}
+
+/// Immutable, owned identity requested for one machine runtime.
+///
+/// The Swift value preserves raw component identifiers and owns its expansion
+/// array. It is not a persisted byte format and does not imply that a named
+/// machine is constructible. Schema version 1 can classify at most sixteen
+/// expansion entries; no expansion identity is assigned by this feature.
+public struct BeebMachineProfile: Sendable, Equatable {
+    /// Current bounded in-memory profile schema.
+    public static let schemaVersion = UInt16(BEEB_MACHINE_PROFILE_SCHEMA_VERSION)
+    /// Maximum expansion entries admitted by schema version 1.
+    public static let expansionCapacity = Int(BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY)
+
+    /// Canonical BBC Microcomputer Model B identity.
+    public static let modelB = BeebMachineProfile(beeb_machine_profile_model_b())
+    /// Canonical BBC Model B+ 64K identity, without a machine-support claim.
+    public static let modelBPlus64K =
+        BeebMachineProfile(beeb_machine_profile_model_b_plus_64k())
+
+    /// Raw profile-envelope version.
+    public let schemaVersion: UInt16
+    /// Owned base-machine component.
+    public let base: BeebMachineProfileComponent
+    /// Owned raw expansion entries in caller-supplied order.
+    public let expansions: [BeebMachineProfileComponent]
+
+    /// Creates a raw profile value without classifying or canonicalizing it.
+    /// - Parameters:
+    ///   - schemaVersion: Profile-envelope version.
+    ///   - base: Raw base-machine identity.
+    ///   - expansions: Raw expansion entries; validation enforces the versioned bound.
+    public init(
+        schemaVersion: UInt16,
+        base: BeebMachineProfileComponent,
+        expansions: [BeebMachineProfileComponent]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.base = base
+        self.expansions = expansions
+    }
+
+    /// Unambiguous name for an assigned base identity or a raw unassigned
+    /// identifier.
+    ///
+    /// Structural and compatibility failures retain the assigned base name so
+    /// diagnostics can identify the user's request. Unassigned values
+    /// deliberately receive no reserved future-option name.
+    public var displayName: String {
+        switch base.identifier {
+        case Self.modelB.base.identifier:
+            return "BBC Microcomputer Model B"
+        case Self.modelBPlus64K.base.identifier:
+            return "BBC Model B+ 64K"
+        default:
+            return String(format: "Unknown machine profile 0x%08X", base.identifier)
+        }
+    }
+
+    /// Pure support classification copied from the C/core validator.
+    ///
+    /// A later imported C enum value is contained as `unknown` and can never
+    /// be interpreted as support by an older Swift wrapper.
+    public var support: BeebMachineProfileSupport {
+        classification.support
+    }
+
+    /// Copies one pure C classification into Swift-owned category and text.
+    fileprivate var classification: (
+        status: beeb_status,
+        support: BeebMachineProfileSupport,
+        message: String
+    ) {
+        var profile = cValue
+        var validation = beeb_machine_profile_validation()
+        let status = beeb_validate_machine_profile(&profile, &validation)
+        guard status.code == BEEB_STATUS_OK else { return (status, .unknown, "") }
+        let support: BeebMachineProfileSupport
+        switch validation.support {
+        case .BEEB_MACHINE_PROFILE_SUPPORTED: support = .supported
+        case .BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE: support = .recognisedUnavailable
+        case .BEEB_MACHINE_PROFILE_UNKNOWN: support = .unknown
+        case .BEEB_MACHINE_PROFILE_INCOMPATIBLE: support = .incompatible
+        case .BEEB_MACHINE_PROFILE_MALFORMED: support = .malformed
+        @unknown default: support = .unknown
+        }
+        var message = validation.message
+        let ownedMessage = withUnsafePointer(to: &message) { pointer in
+            pointer.withMemoryRebound(
+                to: CChar.self,
+                capacity: Int(BEEB_STATUS_MESSAGE_CAPACITY)
+            ) {
+                String(cString: $0)
+            }
+        }
+        return (status, support, ownedMessage)
+    }
+
+    /// Copies a canonical fixed C aggregate into Swift-owned fields.
+    fileprivate init(_ value: beeb_machine_profile) {
+        var storage = value.expansions
+        let usedCount = min(Int(value.expansion_count), Self.expansionCapacity)
+        let copiedExpansions = withUnsafeBytes(of: &storage) { bytes in
+            Array(bytes.bindMemory(to: beeb_profile_component.self).prefix(usedCount))
+                .map(BeebMachineProfileComponent.init)
+        }
+        self.init(
+            schemaVersion: value.schema_version,
+            base: BeebMachineProfileComponent(value.base),
+            expansions: copiedExpansions
+        )
+    }
+
+    /// Copies the complete Swift value into fixed C storage without truncating
+    /// the declared count used by later validation.
+    fileprivate var cValue: beeb_machine_profile {
+        var value = beeb_machine_profile()
+        value.schema_version = schemaVersion
+        value.base = base.cValue
+        value.expansion_count = UInt16(clamping: expansions.count)
+        withUnsafeMutableBytes(of: &value.expansions) { bytes in
+            let slots = bytes.bindMemory(to: beeb_profile_component.self)
+            for (index, expansion) in expansions.prefix(Self.expansionCapacity).enumerated() {
+                slots[index] = expansion.cValue
+            }
+        }
+        return value
+    }
+}
+
 /// Stable Swift mapping of the C runtime status categories.
 public enum BeebStatusCategory: Sendable, Equatable {
     /// Operation completed successfully.
@@ -25,7 +213,7 @@ public enum BeebStatusCategory: Sendable, Equatable {
     case executionFailed
     /// A required allocation or capacity could not be obtained.
     case resourceExhausted
-    /// The runtime was shutting down or no longer accepted work.
+    /// Runtime or requested capability is unavailable.
     case unavailable
     /// Reserved mapping for an owner-thread producer that would have deadlocked.
     case reentrantCall
@@ -167,6 +355,14 @@ public enum BeebError: LocalizedError {
     case invalidAudioRequest
     /// The keyboard matrix coordinates were outside 0...15.
     case invalidKey
+    /// A recognised machine identity has no implementation in this release.
+    case machineProfileUnavailable(BeebMachineProfile)
+    /// The bounded profile envelope violates its schema invariants.
+    case malformedMachineProfile(BeebMachineProfile, String)
+    /// The profile contains an identifier or version with no assigned contract.
+    case unknownMachineProfile(BeebMachineProfile, String)
+    /// Known components cannot be combined in their supplied roles.
+    case incompatibleMachineProfile(BeebMachineProfile, String)
     /// Recoverable audio pressure carrying every valid partial sample and counter.
     case audioPressure(BeebStatusCategory, BeebAudioDrain)
     /// A C status category and its operation-scoped diagnostic.
@@ -187,6 +383,14 @@ public enum BeebError: LocalizedError {
             return "Audio needs a positive frame count and finite positive sample rate."
         case .invalidKey:
             return "Keyboard row and column must both be in 0...15."
+        case let .machineProfileUnavailable(profile):
+            return "\(profile.displayName) is recognised, but machine support is not yet available."
+        case let .malformedMachineProfile(profile, message):
+            return "\(profile.displayName) is malformed: \(message)"
+        case let .unknownMachineProfile(profile, message):
+            return "\(profile.displayName) is unknown: \(message)"
+        case let .incompatibleMachineProfile(profile, message):
+            return "\(profile.displayName) is incompatible: \(message)"
         case let .audioPressure(category, drain):
             return "Audio reported \(category) after copying \(drain.samples.count) samples " +
                 "with a shortfall of \(drain.shortfall)."
@@ -207,11 +411,39 @@ public final class BeebMachine: @unchecked Sendable {
     /// Opaque C token whose registry admission keeps concurrent calls alive through return.
     private let handle: OpaquePointer
 
-    /// Creates a paused machine with no ROM or disc loaded.
+    /// Creates a paused canonical Model B machine with no ROM or disc loaded.
+    ///
+    /// This convenience delegates to ``init(profile:)`` and is never used as a
+    /// fallback for an invalid explicit profile.
     /// - Throws: ``BeebError/coreStatus(_:_:)`` if runtime creation fails.
-    public init() throws {
+    public convenience init() throws {
+        try self.init(profile: .modelB)
+    }
+
+    /// Creates a paused machine for one explicit profile.
+    /// - Parameter profile: Complete immutable identity copied into the C boundary.
+    /// - Throws: A profile-specific ``BeebError`` for a classified rejection,
+    ///   or ``BeebError/coreStatus(_:_:)`` when validation or creation itself fails.
+    public init(profile: BeebMachineProfile) throws {
+        let classification = profile.classification
+        try Self.check(classification.status)
+        switch classification.support {
+        case .supported:
+            break
+        case .recognisedUnavailable:
+            throw BeebError.machineProfileUnavailable(profile)
+        case .malformed:
+            throw BeebError.malformedMachineProfile(profile, classification.message)
+        case .unknown:
+            throw BeebError.unknownMachineProfile(profile, classification.message)
+        case .incompatible:
+            throw BeebError.incompatibleMachineProfile(profile, classification.message)
+        }
+
+        var cProfile = profile.cValue
         var created: OpaquePointer?
-        try Self.check(beeb_create(&created))
+        let status = beeb_create_with_profile(&cProfile, &created)
+        try Self.check(status)
         guard let created else {
             throw BeebError.coreStatus(
                 .internalFailure, "C runtime succeeded without returning a handle")
@@ -220,6 +452,19 @@ public final class BeebMachine: @unchecked Sendable {
     }
 
     deinit { _ = beeb_destroy(handle) }
+
+    /// Immutable active identity copied through the runtime owner.
+    ///
+    /// The returned value owns every component and query storage. Reading it
+    /// neither caches host truth nor advances emulated time.
+    /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.
+    public var profile: BeebMachineProfile {
+        get throws {
+            var profile = beeb_machine_profile()
+            try Self.check(beeb_get_machine_profile(handle, &profile))
+            return BeebMachineProfile(profile)
+        }
+    }
 
     /// Lifecycle state from one FIFO safe point.
     /// - Throws: ``BeebError/coreStatus(_:_:)`` if the runtime is unavailable.

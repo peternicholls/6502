@@ -4,6 +4,7 @@
 #include "beeb/cpu6502.hpp"
 #include "beeb/crtc6845.hpp"
 #include "beeb/intel8271.hpp"
+#include "beeb/profile.hpp"
 #include "beeb/sn76489.hpp"
 #include "beeb/teletext_renderer.hpp"
 #include "beeb/via6522.hpp"
@@ -62,8 +63,16 @@ class BBCMicro final : public Bus {
         bool breakPressed = false;              ///< BREAK edge-tracking state.
     };
 
-    /// Constructs a machine, connects device callbacks, and resets all state.
+    /// Constructs the canonical Model B convenience profile and resets all state.
     BBCMicro();
+    /// Constructs a machine for one already classified supported profile.
+    /// @param profile Complete immutable identity retained for this machine's lifetime.
+    /// @throws std::invalid_argument when the profile is not supported.
+    explicit BBCMicro(MachineTargetProfile profile);
+
+    /// Returns the immutable identity retained by this machine.
+    /// @return Read-only value reference valid for this machine's lifetime.
+    [[nodiscard]] const MachineTargetProfile& profile() const noexcept { return profile_; }
 
     /// Reads the CPU memory map, including device side effects.
     /// @param address 16-bit CPU address.
@@ -170,6 +179,7 @@ class BBCMicro final : public Bus {
   private:
     friend struct BBCMicroTestAccess;
 
+    MachineTargetProfile profile_;
     std::array<std::uint8_t, 0x8000> ram_{};
     std::array<std::uint8_t, 0x4000> osROM_{};
     std::array<std::array<std::uint8_t, 0x4000>, 16> sidewaysROM_{};

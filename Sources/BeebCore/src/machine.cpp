@@ -9,7 +9,21 @@
 
 namespace beeb {
 
-BBCMicro::BBCMicro() : cpu_(*this) {
+namespace {
+
+MachineTargetProfile requireSupportedProfile(MachineTargetProfile profile) {
+    const auto validation = validateMachineTargetProfile(profile);
+    if (validation.support != ProfileSupport::supported)
+        throw std::invalid_argument(validation.message);
+    return profile;
+}
+
+} // namespace
+
+BBCMicro::BBCMicro() : BBCMicro(MachineTargetProfile::modelB()) {}
+
+BBCMicro::BBCMicro(MachineTargetProfile profile)
+    : profile_(requireSupportedProfile(std::move(profile))), cpu_(*this) {
     // This wiring is the BBC Model B collaboration boundary: System VIA owns keyboard
     // scanning and IC32/sound outputs, the FDC can raise NMI, and all devices advance
     // from CPU cycles through tick(). Address decoding below intentionally preserves
@@ -123,6 +137,17 @@ std::uint64_t BBCMicro::testDigest() const noexcept {
         for (const auto byte : bytes)
             add(byte);
     };
+
+    add(profile_.schemaVersion());
+    add(profile_.base().identifier());
+    add(profile_.base().version());
+    add(profile_.base().reserved());
+    add(profile_.expansionCount());
+    for (const auto& expansion : profile_.expansions()) {
+        add(expansion.identifier());
+        add(expansion.version());
+        add(expansion.reserved());
+    }
 
     const auto cpu = cpu_.state();
     add(cpu.a);

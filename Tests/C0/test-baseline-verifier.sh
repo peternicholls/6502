@@ -35,6 +35,15 @@ all_pass="${C0_TEST_TMP}/all-pass.groups"
 printf 'alpha\tall\t%s\ncharlie\tall\t%s\nswift-only\tmacos\t%s\n' \
     "${commands}/pass-a" "${commands}/pass-c" "${commands}/pass-swift" >"${all_pass}"
 
+isolated_root="${C0_TEST_TMP}/fresh-checkout"
+mkdir -p "${isolated_root}/scripts"
+cp "${verifier}" "${isolated_root}/scripts/verify-c0.sh"
+c0_capture fresh-default "${isolated_root}/scripts/verify-c0.sh" --profile portable \
+    --groups "${all_pass}"
+c0_expect_status 0 fresh-default
+test -f "${isolated_root}/.build/c0/run/run.txt"
+c0_pass "default evidence directory is created in a fresh checkout"
+
 assert_verify_output_rejected() {
     local name="$1"
     local output="$2"

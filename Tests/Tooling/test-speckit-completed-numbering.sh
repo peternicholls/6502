@@ -9,6 +9,7 @@ trap 'rm -rf "$test_root"' EXIT
 mkdir -p "$test_root/.specify/scripts/bash"
 mkdir -p "$test_root/.specify/extensions/git/scripts/bash"
 mkdir -p "$test_root/specs/completed/003-bounded-output-contracts"
+mkdir -p "$test_root/specs/completed/004-machine-target-profile"
 
 cp "$repo_root/.specify/scripts/bash/common.sh" \
   "$test_root/.specify/scripts/bash/common.sh"
@@ -25,7 +26,7 @@ assert_next_number() {
     "$script" --dry-run --short-name machine-target-profile \
       'Define machine target profiles'
   )"
-  grep -Fq 'FEATURE_NUM: 004' <<<"$output"
+  grep -Fq 'FEATURE_NUM: 005' <<<"$output"
 }
 
 assert_next_number .specify/scripts/bash/create-new-feature.sh

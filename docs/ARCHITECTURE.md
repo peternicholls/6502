@@ -1,7 +1,7 @@
 # Architecture
 
 **Status:** Current system boundary contract
-**Updated:** 2026-07-19
+**Updated:** 2026-07-21
 
 The [Machine delivery plan](product/MACHINE_DELIVERY_PLAN.md) selects outcomes.
 This document constrains their implementation. It does not set priority or
@@ -35,8 +35,11 @@ Hosts supply bytes and consume owned values through the C ABI and `BeebKit`.
 5. **Output is bounded and owned.** Frame/audio pressure cannot block the
    emulator or expose borrowed producer storage. Reset discards stale retained
    output as an accounted epoch boundary.
-6. **Identity is explicit.** Machine profile and expansion identifiers must be
-   versioned, persisted where relevant and rejected safely when unknown.
+6. **Identity is explicit and separate from support.** Machine profiles are
+   bounded owned values with versioned base and expansion identifiers. Model B
+   is supported; Model B+ 64K is recognised but unavailable. Malformed,
+   unknown, incompatible and unavailable values reject without fallback or
+   partial machine mutation.
 7. **User content stays external.** Firmware and media are imported bytes.
    Source media is never silently overwritten.
 
@@ -51,14 +54,14 @@ Hosts supply bytes and consume owned values through the C ABI and `BeebKit`.
 
 ## Required evolution
 
-- Target-profile work must add extensible Model B and Model B+ 64K identities
-  without a closed two-value design.
 - Snapshot work must preserve the current quiescent safe point, use a bounded
-  versioned envelope and restore failure-atomically.
+  versioned envelope, persist the selected profile and restore
+  failure-atomically.
 - Bus-cycle work may refine internal execution but must retain a documented
   public quiescent boundary until a separately versioned contract replaces it.
 - Model B+ work must be reference-led and keep profile-specific firmware,
-  memory, controller and compatibility evidence separate from Model B.
+  memory, controller and compatibility evidence separate from Model B. Its
+  assigned identity is not evidence that any B+ behavior exists.
 - Inspection and editing must use stable observations and atomic transactions;
   no UI may borrow or mutate live core state directly.
 

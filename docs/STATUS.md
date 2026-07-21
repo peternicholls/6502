@@ -1,7 +1,7 @@
 # Implementation status
 
 **Status:** Sole authority for verified implementation claims
-**Updated:** 2026-07-19
+**Updated:** 2026-07-21
 
 This file states what exists now. It does not choose future work. Direction and
 gate definitions live only in the
@@ -14,11 +14,12 @@ gate definitions live only in the
 | C0 baseline evidence | **DONE** | Reproducible clean-room, build and documentation evidence exists. |
 | C1 runtime ownership | **DONE** | Supported hosts use one recoverable runtime owner across C++, C and Swift. |
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
-| Active feature | **NONE** | `.specify/feature.json` is empty. |
-| Next feature | **NEXT** | `machine-target-profile` has not started. |
+| Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
+| Active feature | **NONE** | `.specify/feature.json` is empty after target-profile archival. |
+| Next feature | **NEXT** | `machine-firmware-onboarding` is the first unfinished M1 slice. |
 | M1 running Model B application | **TODO** | No complete user-facing boot/type/run/video/audio workflow exists. |
 | M2 continuity | **TODO** | Snapshot and application lifecycle contracts do not exist. |
-| M3 Model B+ 64K preview | **TODO** | The selectable B+ profile and post-C6 product demonstrations do not exist. |
+| M3 Model B+ 64K preview | **TODO** | B+ machine behavior and the post-C6 product demonstrations do not exist. |
 
 `DONE` means implemented with passed evidence. `NEXT` and `TODO` never imply
 partial delivery.
@@ -37,6 +38,12 @@ partial delivery.
   exact pressure accounting and owned cross-language values.
 - Swift Package Manager, the checked-in Xcode project, macOS, iOS Simulator and
   the shared test scheme are maintained build surfaces.
+- Machine profiles are owned bounded values across C++, C and Swift. Model B is
+  the only supported runtime profile; owner-serialized queries return its
+  immutable identity without changing safe-point or replay behavior.
+- Model B+ 64K has a permanent distinct identity and an accessible host request,
+  but construction reports recognised-unavailable. It does not emulate B+
+  hardware, fall back to Model B or mutate the active Model B session.
 
 ## Known fidelity limits
 
@@ -50,7 +57,7 @@ partial delivery.
 | Disc | Logical SSD/DSD sector read/write through the 8271 model | Full command timing/errors, formatting, deleted sectors and flux |
 | Keyboard | Matrix injection through the System VIA | Complete host mapping and all IC32 details |
 | Cassette | Not implemented | 6850, Serial ULA, UEF/WAV decoding and motor timing |
-| Profiles | Model B core only | Selectable Model B application and Model B+ 64K implementation |
+| Profiles | Extensible identity transport; Model B construction/query; distinct recognised-unavailable B+ 64K request | Model B+ 64K machine behavior; persistence; later profile and expansion assignments |
 | Persistence | None | Versioned snapshots and lifecycle restoration |
 
 ## Evidence
@@ -61,6 +68,7 @@ baseline:
 - [C0 baseline ledger](completed/CORE_BASELINE.md)
 - [Full status ledger through C2](completed/STATUS-through-C2-2026-07-19.md)
 - [Completed Spec Kit runs](../specs/completed/)
+- [Machine target-profile acceptance](../specs/completed/004-machine-target-profile/evidence/verification.md)
 
 Current verification commands remain `make test`, `make sanitize`,
 `make verify-c0`, `make test-c1`, `make test-c2`, `swift test`, `swift build`,

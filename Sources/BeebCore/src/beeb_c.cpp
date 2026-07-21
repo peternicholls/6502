@@ -2,6 +2,7 @@
 
 // C0-DOC-RATIONALE: docs/code/host-boundary.md owns C token and status invariants.
 
+#include "beeb/profile.hpp"
 #include "beeb/runtime.hpp"
 
 #include <algorithm>
@@ -27,6 +28,67 @@ struct beeb_machine final {};
 /// @endcond
 
 namespace {
+
+static_assert(BEEB_MACHINE_PROFILE_SCHEMA_VERSION == beeb::machineProfileSchemaVersion);
+static_assert(BEEB_MODEL_B_BASE_IDENTIFIER == beeb::modelBBaseIdentifier);
+static_assert(BEEB_MODEL_B_PLUS_64K_BASE_IDENTIFIER == beeb::modelBPlus64KBaseIdentifier);
+static_assert(BEEB_MACHINE_PROFILE_COMPONENT_VERSION == beeb::machineProfileComponentVersion);
+static_assert(BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY == beeb::machineProfileExpansionCapacity);
+static_assert(BEEB_MACHINE_PROFILE_KNOWN_EXPANSION_COUNT ==
+              beeb::knownMachineProfileExpansionCount);
+
+/// Copies the private C++ value representation into caller-owned C fields.
+beeb_machine_profile translateProfile(const beeb::MachineTargetProfile& profile) noexcept {
+    beeb_machine_profile output{};
+    output.schema_version = profile.schemaVersion();
+    output.base = {profile.base().identifier(), profile.base().version(),
+                   profile.base().reserved()};
+    output.expansion_count = profile.expansionCount();
+    for (std::size_t index = 0; index < beeb::machineProfileExpansionCapacity; ++index) {
+        const auto& expansion = profile.expansions()[index];
+        output.expansions[index] = {expansion.identifier(), expansion.version(),
+                                    expansion.reserved()};
+    }
+    return output;
+}
+
+/// Copies every fixed C field into the private immutable C++ value shape.
+beeb::MachineTargetProfile translateProfile(const beeb_machine_profile& profile) noexcept {
+    beeb::MachineTargetProfile::ExpansionStorage expansions{};
+    for (std::size_t index = 0; index < beeb::machineProfileExpansionCapacity; ++index) {
+        const auto& expansion = profile.expansions[index];
+        expansions[index] = beeb::ProfileComponentIdentity{expansion.identifier, expansion.version,
+                                                           expansion.reserved};
+    }
+    return {profile.schema_version,
+            {profile.base.identifier, profile.base.version, profile.base.reserved},
+            profile.expansion_count,
+            expansions};
+}
+
+/// Compares fixed profile components field by field so padding is irrelevant.
+bool equalProfileComponent(const beeb_profile_component& lhs,
+                           const beeb_profile_component& rhs) noexcept {
+    return lhs.identifier == rhs.identifier && lhs.version == rhs.version &&
+           lhs.reserved == rhs.reserved;
+}
+
+/// Maps the closed C++ support vocabulary one-to-one into the public C vocabulary.
+beeb_machine_profile_support translateProfileSupport(beeb::ProfileSupport support) noexcept {
+    switch (support) {
+    case beeb::ProfileSupport::supported:
+        return BEEB_MACHINE_PROFILE_SUPPORTED;
+    case beeb::ProfileSupport::recognisedUnavailable:
+        return BEEB_MACHINE_PROFILE_RECOGNISED_UNAVAILABLE;
+    case beeb::ProfileSupport::unknown:
+        return BEEB_MACHINE_PROFILE_UNKNOWN;
+    case beeb::ProfileSupport::incompatible:
+        return BEEB_MACHINE_PROFILE_INCOMPATIBLE;
+    case beeb::ProfileSupport::malformed:
+        return BEEB_MACHINE_PROFILE_MALFORMED;
+    }
+    return BEEB_MACHINE_PROFILE_MALFORMED;
+}
 
 /// Adapter-owned frame allocation whose vector buffer transfers from the
 /// runtime without a second pixel allocation after destructive dequeue.
@@ -212,7 +274,8 @@ beeb_safe_point translateSafePoint(const beeb::SafePoint& point) noexcept {
 /// retention, and first-destroy ownership. Later destroyers wait for the owner's result;
 /// calls arriving after destruction starts are rejected as unavailable.
 struct HandleState final {
-    explicit HandleState(beeb::MachineRuntimeOptions options = {}) : runtime(options) {}
+    HandleState(beeb::MachineTargetProfile profile, beeb::MachineRuntimeOptions options = {})
+        : runtime(std::move(profile), options) {}
 
     std::mutex mutex;
     std::condition_variable callsFinished;
@@ -318,11 +381,12 @@ beeb_status missingOutput(const char* name) noexcept {
 
 /// Constructs state before publishing its stable token, leaving caller output
 /// untouched unless both allocations and registry insertion succeed.
-beeb_status createMachine(beeb_machine** out_machine, beeb::MachineRuntimeOptions options) {
+beeb_status createMachine(beeb_machine** out_machine, beeb::MachineTargetProfile profile,
+                          beeb::MachineRuntimeOptions options = {}) {
     if (!out_machine) return missingOutput("machine output is null");
     try {
         auto token = std::make_unique<beeb_machine>();
-        auto state = std::make_shared<HandleState>(options);
+        auto state = std::make_shared<HandleState>(std::move(profile), options);
         {
             std::lock_guard lock(registryMutex);
             registry.emplace(token.get(), std::move(state));
@@ -344,7 +408,8 @@ beeb_status createMachine(beeb_machine** out_machine, beeb::MachineRuntimeOption
 /// the C-boundary construction tests; this is not part of the public C ABI.
 beeb_status beeb_test_create_with_allocation_failure(beeb_machine** out_machine,
                                                      beeb::RuntimeAllocationFailurePoint point) {
-    return createMachine(out_machine, {.failAllocationAt = point});
+    return createMachine(out_machine, beeb::MachineTargetProfile::modelB(),
+                         {.failAllocationAt = point});
 }
 
 /// Holds a private operation after normal admission so lifetime tests can
@@ -372,9 +437,94 @@ const char* beeb_version_string(void) {
     return BEEB_VERSION_STRING;
 }
 
+beeb_machine_profile beeb_machine_profile_model_b(void) {
+    return translateProfile(beeb::MachineTargetProfile::modelB());
+}
+
+beeb_machine_profile beeb_machine_profile_model_b_plus_64k(void) {
+    return translateProfile(beeb::MachineTargetProfile::modelBPlus64K());
+}
+
+int beeb_machine_profile_equal(const beeb_machine_profile* lhs, const beeb_machine_profile* rhs) {
+    if (!lhs || !rhs || lhs->schema_version != rhs->schema_version ||
+        !equalProfileComponent(lhs->base, rhs->base) ||
+        lhs->expansion_count != rhs->expansion_count)
+        return 0;
+    for (std::size_t index = 0; index < BEEB_MACHINE_PROFILE_EXPANSION_CAPACITY; ++index) {
+        if (!equalProfileComponent(lhs->expansions[index], rhs->expansions[index])) return 0;
+    }
+    return 1;
+}
+
+beeb_status beeb_validate_machine_profile(const beeb_machine_profile* profile,
+                                          beeb_machine_profile_validation* out_validation) {
+    if (!profile) return missingOutput("machine profile is null");
+    if (!out_validation) return missingOutput("machine-profile validation output is null");
+    try {
+        const auto validation = beeb::validateMachineTargetProfile(translateProfile(*profile));
+        beeb_machine_profile_validation output{};
+        output.support = translateProfileSupport(validation.support);
+        const auto length = std::min(validation.message.size(),
+                                     static_cast<std::size_t>(BEEB_STATUS_MESSAGE_CAPACITY - 1));
+        if (length != 0) std::memcpy(output.message, validation.message.data(), length);
+        output.message[length] = '\0';
+        *out_validation = output;
+        return makeStatus(BEEB_STATUS_OK);
+    } catch (const std::bad_alloc&) {
+        return makeStatus(BEEB_STATUS_RESOURCE_EXHAUSTED,
+                          "machine-profile validation allocation failed");
+    } catch (const std::exception& error) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
+    } catch (...) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
+                          "unknown machine-profile validation failure");
+    }
+}
+
 // Keep creation on the same transactional helper used by allocation-failure tests.
 beeb_status beeb_create(beeb_machine** out_machine) {
-    return createMachine(out_machine, {});
+    const auto profile = beeb_machine_profile_model_b();
+    return beeb_create_with_profile(&profile, out_machine);
+}
+
+beeb_status beeb_create_with_profile(const beeb_machine_profile* profile,
+                                     beeb_machine** out_machine) {
+    if (!profile) return missingOutput("machine profile is null");
+    if (!out_machine) return missingOutput("machine output is null");
+    try {
+        auto translated = translateProfile(*profile);
+        const auto validation = beeb::validateMachineTargetProfile(translated);
+        switch (validation.support) {
+        case beeb::ProfileSupport::supported:
+            return createMachine(out_machine, std::move(translated));
+        case beeb::ProfileSupport::recognisedUnavailable:
+            return makeStatus(BEEB_STATUS_UNAVAILABLE, validation.message);
+        case beeb::ProfileSupport::unknown:
+        case beeb::ProfileSupport::incompatible:
+        case beeb::ProfileSupport::malformed:
+            return makeStatus(BEEB_STATUS_INVALID_ARGUMENT, validation.message);
+        }
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, "unknown machine-profile support category");
+    } catch (const std::bad_alloc&) {
+        return makeStatus(BEEB_STATUS_RESOURCE_EXHAUSTED,
+                          "machine-profile validation allocation failed");
+    } catch (const std::exception& error) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE, error.what());
+    } catch (...) {
+        return makeStatus(BEEB_STATUS_INTERNAL_FAILURE,
+                          "unknown machine-profile construction failure");
+    }
+}
+
+beeb_status beeb_get_machine_profile(beeb_machine* machine, beeb_machine_profile* out_profile) {
+    if (!out_profile) return missingOutput("machine-profile output is null");
+    return operation(machine, [&](beeb::MachineRuntime& runtime) {
+        const auto result = runtime.profile();
+        if (!result.status) return translateStatus(result.status);
+        const auto output = translateProfile(*result.value);
+        *out_profile = output;
+        return makeStatus(BEEB_STATUS_OK);
+    });
 }
 
 beeb_status beeb_destroy(beeb_machine* machine) {

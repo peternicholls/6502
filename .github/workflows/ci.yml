@@ -12,8 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: sudo apt-get update && sudo apt-get install -y doxygen
+        with:
+          fetch-depth: 0
+      - name: Install verification tools
+        run: sudo apt-get update && sudo apt-get install -y doxygen python3-yaml ripgrep
       - name: Test C0 verifier orchestration
         run: Tests/C0/test-baseline-verifier.sh
       - name: Build and test the C++ core
@@ -41,14 +43,22 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: brew install doxygen
+        with:
+          fetch-depth: 0
+      - name: Install verification tools
+        run: |
+          brew install doxygen ripgrep
+          python3 -m venv .build/ci-python
+          .build/ci-python/bin/python -m pip install pyyaml
+          echo "${PWD}/.build/ci-python/bin" >> "${GITHUB_PATH}"
       - name: Test C0 verifier orchestration
         run: Tests/C0/test-baseline-verifier.sh
       - name: Test the Swift package
         run: swift test
       - name: Build the SwiftUI demo
         run: swift build
+      - name: Run machine target-profile contract aggregate
+        run: make test-machine-target-profile
       - name: Run Apple C2 Xcode contract
         run: make test-c2-xcode
       - name: Validate complete code documentation
@@ -58,8 +68,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: sudo apt-get update && sudo apt-get install -y doxygen
+      - name: Install verification tools
+        run: sudo apt-get update && sudo apt-get install -y doxygen ripgrep
       - name: Run complete portable C0 evidence
         run: make verify-c0 C0_PROFILE=portable
 
@@ -67,7 +77,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install documentation generator
-        run: brew install doxygen
+      - name: Install verification tools
+        run: brew install doxygen ripgrep
       - name: Run complete macOS C0 evidence
         run: make verify-c0 C0_PROFILE=macos
