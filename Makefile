@@ -3,7 +3,7 @@ CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror
 THREAD_FLAGS ?= -pthread
 INCLUDES = -ISources/BeebCore/include
 CORE_SOURCES = $(wildcard Sources/BeebCore/src/*.cpp)
-CORE_HEADERS = $(wildcard Sources/BeebCore/include/*.h Sources/BeebCore/include/beeb/*.hpp)
+CORE_HEADERS = $(wildcard Sources/BeebCore/include/*.h Sources/BeebCore/include/beeb/*.h Sources/BeebCore/include/beeb/*.hpp)
 C0_TEST_SCRIPTS ?= $(wildcard Tests/C0/test-*.sh)
 C1_TEST_SCRIPTS ?= $(filter-out Tests/C1/testlib.sh,$(wildcard Tests/C1/test-*.sh))
 C2_TEST_SCRIPTS ?= $(filter-out Tests/C2/testlib.sh,$(wildcard Tests/C2/test-*.sh))

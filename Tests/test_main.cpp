@@ -447,7 +447,7 @@ beeb_machine* createCMachine() {
 void testCAPI02StatusOutParametersAndNullability() {
     // Declaration-driven C 0.2 matrix: keep one applicable success and one
     // output-preserving validation failure for every fallible header family.
-    CHECK(std::string(beeb_version_string()) == "0.3.0");
+    CHECK(std::string(beeb_version_string()) == "0.4.0");
     checkCStatus(beeb_create(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
     checkCStatus(beeb_destroy(nullptr), BEEB_STATUS_INVALID_ARGUMENT);
 
