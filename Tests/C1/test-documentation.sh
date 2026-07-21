@@ -38,7 +38,18 @@ assert_source_contains CHANGELOG.md "instruction-level tracing remains"
 make -C "${repo_root}" --no-print-directory docs-check
 test -f "${repo_root}/.build/docs/cpp/beeb__c_8h.html"
 test -f "${repo_root}/.build/docs/cpp/classbeeb_1_1_machine_runtime.html"
-test -f "${repo_root}/.build/docs/swift/documentation/beebkit/beebstatuscategory/index.html"
+
+docs_profile="${DOCS_PROFILE:-auto}"
+if [[ "${docs_profile}" == auto ]]; then
+    if [[ "$(uname -s)" == Darwin ]]; then
+        docs_profile=macos
+    else
+        docs_profile=portable
+    fi
+fi
+if [[ "${docs_profile}" == macos ]]; then
+    test -f "${repo_root}/.build/docs/swift/documentation/beebkit/beebstatuscategory/index.html"
+fi
 rg -q "MachineRuntime" "${repo_root}/.build/docs/cpp/runtime_ownership.html"
 rg -q "operation-owned" "${repo_root}/.build/docs/cpp/md_docs_2code_2host-boundary.html"
 
