@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Install verification tools
         run: sudo apt-get update && sudo apt-get install -y doxygen python3-yaml ripgrep
       - name: Test C0 verifier orchestration
@@ -41,6 +43,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Install verification tools
         run: |
           brew install doxygen ripgrep
