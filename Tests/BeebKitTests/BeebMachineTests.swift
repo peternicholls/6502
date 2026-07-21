@@ -124,6 +124,7 @@ final class BeebMachineTests: XCTestCase {
         XCTAssertEqual(rawProfile.base.reserved, 0)
         XCTAssertEqual(rawProfile.expansions, [raw])
         XCTAssertNotEqual(rawProfile, BeebMachineProfile.modelB)
+        XCTAssertEqual(rawProfile.displayName, "Unknown machine profile 0xF0000001")
 
         XCTAssertEqual(BeebMachineProfile.schemaVersion, 1)
         XCTAssertEqual(BeebMachineProfile.expansionCapacity, 16)
@@ -142,6 +143,20 @@ final class BeebMachineTests: XCTestCase {
             "BBC Model B+ 64K"
         )
         XCTAssertNotEqual(BeebMachineProfile.modelB, BeebMachineProfile.modelBPlus64K)
+
+        let futureModelBSchema = BeebMachineProfile(
+            schemaVersion: 2,
+            base: BeebMachineProfile.modelB.base,
+            expansions: []
+        )
+        XCTAssertEqual(futureModelBSchema.displayName, "BBC Microcomputer Model B")
+
+        let incompatibleModelBPlus = BeebMachineProfile(
+            schemaVersion: 1,
+            base: BeebMachineProfile.modelBPlus64K.base,
+            expansions: [BeebMachineProfile.modelB.base]
+        )
+        XCTAssertEqual(incompatibleModelBPlus.displayName, "BBC Model B+ 64K")
     }
 
     func testModelBConstructionAndProfileQueryRemainObservational() throws {

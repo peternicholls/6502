@@ -46,7 +46,7 @@ typedef enum beeb_status_code {
     BEEB_STATUS_INVALID_STATE = 2,      ///< Command is not legal in the current state.
     BEEB_STATUS_EXECUTION_FAILED = 3,   ///< Emulated execution faulted at a safe point.
     BEEB_STATUS_RESOURCE_EXHAUSTED = 4, ///< Required allocation or capacity failed.
-    BEEB_STATUS_UNAVAILABLE = 5,        ///< Runtime is shutting down or no longer accepts work.
+    BEEB_STATUS_UNAVAILABLE = 5,        ///< Runtime or requested capability is unavailable.
     BEEB_STATUS_REENTRANT_CALL = 6,     ///< Reserved: owner-thread re-entry would deadlock.
     BEEB_STATUS_INTERNAL_FAILURE = 7,   ///< Unexpected implementation failure was contained.
     BEEB_STATUS_EMPTY = 8,              ///< No complete output value is currently retained.
@@ -249,9 +249,10 @@ beeb_status beeb_validate_machine_profile(const beeb_machine_profile* profile,
 /// select a default profile and never register a handle.
 /// @param profile Required complete caller-owned profile value.
 /// @param out_machine Required output, written only on success.
-/// @return `BEEB_STATUS_OK`, `BEEB_STATUS_INVALID_ARGUMENT` for null input or
-/// output, `BEEB_STATUS_UNAVAILABLE` for recognised Model B+ 64K, or the
-/// contained allocation/internal construction failure.
+/// @return `BEEB_STATUS_OK`; `BEEB_STATUS_INVALID_ARGUMENT` for null input or
+/// output or a malformed, unknown or incompatible profile;
+/// `BEEB_STATUS_UNAVAILABLE` for recognised but unavailable Model B+ 64K; or
+/// the contained allocation/internal construction failure.
 beeb_status beeb_create_with_profile(const beeb_machine_profile* profile,
                                      beeb_machine** out_machine);
 

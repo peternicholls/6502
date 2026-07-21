@@ -34,6 +34,8 @@ require_text docs/code/target-profile.md \
 require_text docs/code/target-profile.md \
     'transporting its raw value neither reserves that code'
 require_text docs/code/target-profile.md \
+    'Assigned base identifiers retain their human-readable Model B or Model B+ 64K'
+require_text docs/code/target-profile.md \
     'not a serialized or persisted byte format'
 require_text docs/code/target-profile.md \
     'must not persist raw object bytes or the release-dependent support result'
@@ -44,6 +46,16 @@ require_text docs/code/host-boundary.md \
     'Each profile error owns the original raw candidate'
 require_text docs/code/host-boundary.md \
     '[Machine Target Profiles](target-profile.md)'
+
+require_text Sources/BeebCore/include/beeb_c.h \
+    'Runtime or requested capability is unavailable.'
+require_text Sources/BeebCore/include/beeb_c.h \
+    'malformed, unknown or incompatible profile'
+require_text Sources/BeebCore/include/beeb_c.h \
+    'recognised but unavailable Model B+ 64K'
+
+require_text Sources/BeebKit/BeebMachine.swift \
+    'Runtime or requested capability is unavailable.'
 
 make -C "${repo_root}" --no-print-directory docs-check
 test -f "${repo_root}/.build/docs/cpp/md_docs_2code_2target-profile.html"

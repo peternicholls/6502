@@ -103,13 +103,21 @@ public struct BeebMachineProfile: Sendable, Equatable {
         self.expansions = expansions
     }
 
-    /// Unambiguous name for a known profile or a raw unknown base identifier.
+    /// Unambiguous name for an assigned base identity or a raw unassigned
+    /// identifier.
     ///
-    /// Unknown values deliberately receive no reserved future-option name.
+    /// Structural and compatibility failures retain the assigned base name so
+    /// diagnostics can identify the user's request. Unassigned values
+    /// deliberately receive no reserved future-option name.
     public var displayName: String {
-        if self == Self.modelB { return "BBC Microcomputer Model B" }
-        if self == Self.modelBPlus64K { return "BBC Model B+ 64K" }
-        return String(format: "Unknown machine profile 0x%08X", base.identifier)
+        switch base.identifier {
+        case Self.modelB.base.identifier:
+            return "BBC Microcomputer Model B"
+        case Self.modelBPlus64K.base.identifier:
+            return "BBC Model B+ 64K"
+        default:
+            return String(format: "Unknown machine profile 0x%08X", base.identifier)
+        }
     }
 
     /// Pure support classification copied from the C/core validator.
@@ -205,7 +213,7 @@ public enum BeebStatusCategory: Sendable, Equatable {
     case executionFailed
     /// A required allocation or capacity could not be obtained.
     case resourceExhausted
-    /// The runtime was shutting down or no longer accepted work.
+    /// Runtime or requested capability is unavailable.
     case unavailable
     /// Reserved mapping for an owner-thread producer that would have deadlocked.
     case reentrantCall

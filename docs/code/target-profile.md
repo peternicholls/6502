@@ -27,6 +27,11 @@ public profile constants. A non-zero raw fixture labelled with one of those
 names remains `unknown`; transporting its raw value neither reserves that code
 nor promises future support, picker exposure or compatibility.
 
+Assigned base identifiers retain their human-readable Model B or Model B+ 64K
+name even when the surrounding schema, version or expansions make the complete
+profile invalid. The typed support category and diagnostic explain that
+rejection without obscuring which assigned base the caller requested.
+
 ## Bounded canonical envelope
 
 The version-1 value owns one base component, a declared expansion count and
