@@ -69,6 +69,18 @@ failure rather than a waived pass.
 
 The three stories pass together. Identity transport does not imply B+ machine
 behavior; Model B+ and invalid values never fall back, never publish partial
-construction, and never mutate the active Model B session. The remaining tasks
-are the final rebuilt application observation, synchronized 0.4.0 completion
-documents, and feature archival.
+construction, and never mutate the active Model B session.
+
+## 0.4.0 completion checkpoint
+
+The synchronized candidate surfaces now report 0.4.0. A forced rebuild replaced
+the stale local headless binary, after which ordinary `make check-version`
+passed and `.build/cpp/beeb-headless --version` reported `Beeb6502 0.4.0`. The
+focused Swift version test passed with `BeebVersion.current == "0.4.0"`.
+
+`make test-tooling`, `DOCS_BASE=develop make docs-check`, `make format-check`,
+the target-profile documentation test and full-worktree `git diff --check` all
+passed. The live status, programme, architecture and constraint documents
+record identity transport as complete while retaining Model B+ machine behavior,
+profile persistence and the M1 application as unfinished. Only feature archival
+remains.
