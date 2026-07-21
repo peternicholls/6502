@@ -1,7 +1,7 @@
 # Machine delivery plan
 
 **Status:** Sole canonical forward programme authority
-**Updated:** 2026-07-19
+**Updated:** 2026-07-21
 
 This is the only document that commits scope, selects next work, orders delivery
 or defines programme gates. Every new feature must trace to a named row or gate
@@ -29,25 +29,27 @@ durable intent. None may create a competing backlog.
 | C0 baseline evidence | **DONE** | Reproducible foundation evidence |
 | C1 runtime ownership | **DONE** | Single owner and recoverable C++/C/Swift boundary |
 | C2 bounded output and Xcode delivery | **DONE** | Owned frame/audio output, diagnostics and maintained Apple builds |
-| Active feature | **NONE** | `.specify/feature.json` is empty |
-| `machine-target-profile` | **NEXT** | Create a fresh feature from row 1 |
+| Active feature | **ACTIVE** | `machine-target-profile` is at its completion/version checkpoint pending archival |
+| `machine-target-profile` | **DONE** | Extensible identity transport and safe rejection across core, C, Swift and host |
 | M1 running Model B application | **TODO** | First usable application |
 | M2 continuity | **TODO** | Snapshot and lifecycle completion |
 | M3 Model B+ 64K developer preview | **TODO** | Required post-C6 outcome |
 
-Completed foundations are not a completed application. No firmware onboarding,
-host video/audio presentation, full host keyboard workflow, snapshots or
-selectable B+ profile has been delivered.
+Completed foundations and profile identity are not a completed application. No
+firmware onboarding, host video/audio presentation, full host keyboard
+workflow, snapshots or Model B+ machine behavior has been delivered.
 
 ## Machine profiles
 
 Profiles use a stable base identifier plus explicit versioned expansions. They
 are not a closed two-value enum.
 
-- **Model B — committed:** core profile verified; application workflow still
-  required for M1.
-- **Model B+ 64K — committed:** separately researched selectable profile
-  required for M3.
+- **Model B — committed and supported:** its identity flows across core, C,
+  Swift and host construction/query; the complete application workflow is
+  still required for M1.
+- **Model B+ 64K — committed identity, unavailable behavior:** its distinct
+  identity and host request are recognised, but construction rejects without
+  fallback. Reference-led machine implementation remains required for M3.
 - **B+ 128K, Master-family, Tube, Econet, ADFS and other storage/peripheral
   expansions — RESERVED:** each needs a product case, primary references,
   lawful fixtures and a plan amendment.
@@ -118,8 +120,8 @@ acceptance evidence.
 
 | Order | State | Specification | Depends on | Demonstrable outcome |
 | --- | --- | --- | --- | --- |
-| 1 | **NEXT** | `machine-target-profile` | C2 | Extensible Model B/B+ identity across core, C, Swift and host; later identifiers reject safely. |
-| 2 | **TODO** | `machine-firmware-onboarding` | 1 | Import, validate, assign and remember user-owned OS/language ROMs with actionable guidance. |
+| 1 | **DONE** | `machine-target-profile` | C2 | Extensible Model B/B+ identity across core, C, Swift and host; later identifiers reject safely. |
+| 2 | **NEXT** | `machine-firmware-onboarding` | 1 | Import, validate, assign and remember user-owned OS/language ROMs with actionable guidance. |
 | 3 | **TODO** | `machine-runtime-presentation` | C1, C2 | Sustained owner execution and completed-frame presentation without host-driven time. |
 | 4 | **TODO** | `machine-audio-output` | C2 | AVAudioEngine consumes bounded audio with measured pressure and recoverable device lifecycle. |
 | 5 | **TODO** | `machine-keyboard-controls` | 3 | BBC mapping plus distinct accessible run, pause, reset, BREAK, capture and full-screen controls. |

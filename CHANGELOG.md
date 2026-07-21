@@ -6,13 +6,43 @@ All notable changes to Beeb6502 are documented in this file. The project uses
 
 ## [Unreleased]
 
-No post-0.3.0-candidate changes have been assigned to a later version.
+No post-0.4.0-candidate changes have been assigned to a later version.
+
+## [0.4.0] - Unreleased
+
+This is the current development candidate. It has not been published as an
+annotated `v0.4.0` tag or GitHub release; complete the release checklist before
+replacing `Unreleased` with a date.
+
+### Added
+
+- An additive, extensible machine-profile value contract across C++, C and
+  Swift, with permanent Model B and Model B+ 64K base identifiers, a bounded
+  16-entry expansion envelope and owned round-trip values.
+- Profile-aware Model B construction and owner-serialized active-profile
+  queries through the runtime, C ABI and Swift wrapper.
+- Typed malformed, unknown, incompatible and recognised-unavailable
+  classification with deterministic precedence, diagnostics and
+  failure-atomic rejection across public boundaries.
+- A keyboard-accessible macOS profile choice that reports the requested and
+  active identities separately when a recognised profile cannot be created.
+
+### Changed
+
+- `beeb_create()` remains a deliberate Model B convenience while explicit
+  profile-aware construction is available for callers that own an identity.
+- Model B+ 64K is now a recognised identity and selectable request, but its
+  machine behaviour remains unimplemented. Construction rejects as unavailable
+  without falling back to or mutating the active Model B runtime.
+- Later machine and expansion identifiers remain unassigned; unknown values
+  reject safely and the profile is not yet persisted by snapshots or host
+  configuration.
 
 ## [0.3.0] - Unreleased
 
-This is the current development candidate. It has not been published as an
-annotated `v0.3.0` tag or GitHub release; complete the release checklist before
-replacing `Unreleased` with a date.
+This section records the unreleased C2 candidate accumulated under 0.3.0. It
+was not published as an annotated `v0.3.0` tag or GitHub release; the current
+development candidate is 0.4.0.
 
 ### Added
 
@@ -69,7 +99,7 @@ replacing `Unreleased` with a date.
 
 This section records the unreleased C1 candidate accumulated under 0.2.0. It
 was not published as an annotated `v0.2.0` tag or GitHub release; the current
-development candidate is 0.3.0.
+development candidate is 0.4.0.
 
 ### Added
 

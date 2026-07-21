@@ -98,7 +98,7 @@ final class BeebMachineTests: XCTestCase {
     }
 
     func testPublicVersionMatchesReleaseVersion() {
-        XCTAssertEqual(BeebVersion.current, "0.3.0")
+        XCTAssertEqual(BeebVersion.current, "0.4.0")
     }
 
     func testMachineProfileValuesOwnRawIdentityAndNames() {
