@@ -29,7 +29,7 @@ durable intent. None may create a competing backlog.
 | C0 baseline evidence | **DONE** | Reproducible foundation evidence |
 | C1 runtime ownership | **DONE** | Single owner and recoverable C++/C/Swift boundary |
 | C2 bounded output and Xcode delivery | **DONE** | Owned frame/audio output, diagnostics and maintained Apple builds |
-| Active feature | **ACTIVE** | `machine-target-profile` is at its completion/version checkpoint pending archival |
+| Active feature | **NONE** | `.specify/feature.json` is empty after target-profile archival |
 | `machine-target-profile` | **DONE** | Extensible identity transport and safe rejection across core, C, Swift and host |
 | M1 running Model B application | **TODO** | First usable application |
 | M2 continuity | **TODO** | Snapshot and lifecycle completion |

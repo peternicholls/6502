@@ -15,7 +15,7 @@ gate definitions live only in the
 | C1 runtime ownership | **DONE** | Supported hosts use one recoverable runtime owner across C++, C and Swift. |
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
 | Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
-| Active feature | **ACTIVE** | `machine-target-profile` is at its completion/version checkpoint pending archival. |
+| Active feature | **NONE** | `.specify/feature.json` is empty after target-profile archival. |
 | Next feature | **NEXT** | `machine-firmware-onboarding` is the first unfinished M1 slice. |
 | M1 running Model B application | **TODO** | No complete user-facing boot/type/run/video/audio workflow exists. |
 | M2 continuity | **TODO** | Snapshot and application lifecycle contracts do not exist. |
@@ -68,7 +68,7 @@ baseline:
 - [C0 baseline ledger](completed/CORE_BASELINE.md)
 - [Full status ledger through C2](completed/STATUS-through-C2-2026-07-19.md)
 - [Completed Spec Kit runs](../specs/completed/)
-- [Machine target-profile acceptance](../specs/004-machine-target-profile/evidence/verification.md)
+- [Machine target-profile acceptance](../specs/completed/004-machine-target-profile/evidence/verification.md)
 
 Current verification commands remain `make test`, `make sanitize`,
 `make verify-c0`, `make test-c1`, `make test-c2`, `swift test`, `swift build`,
