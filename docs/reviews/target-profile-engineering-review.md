@@ -1,6 +1,6 @@
 # Target-profile engineering review
 
-**Status:** Non-authoritative follow-up considerations
+**Status:** Resolved findings and non-authoritative follow-up considerations
 **Reviewed:** 2026-07-21
 **Source feature:** `specs/completed/004-machine-target-profile/`
 
@@ -14,6 +14,24 @@ inside the relevant new specification.
 The immediate next specification may assess the firmware-related observation
 below. Other observations remain dormant until their owning delivery slice is
 selected; proximity in this document is not priority.
+
+## Post-completion remediation
+
+An independent implementation review found four concrete delivery defects and
+one diagnostic-quality gap. They were corrected as maintenance of the 0.4.0
+candidate without reopening feature 004 or adding programme scope.
+
+| Finding | Resolution | Durable evidence |
+| --- | --- | --- |
+| Native C tests still expected 0.3.0 | Synchronized the assertion with 0.4.0 | `Tests/Tooling/test-version-contract.sh` derives required surfaces from `VERSION` |
+| Nested `beeb/version.h` changes did not rebuild native tools | Included nested C headers in every native binary dependency set | The version contract dry-runs all three binary targets with `version.h` forced newer |
+| Public availability and invalid-profile returns were under-documented | Corrected C/Swift contracts and preserved assigned base names in rejected-profile diagnostics | Swift value/error tests and the target-profile documentation group |
+| The complete feature aggregate was absent from hosted CI | Added `make test-machine-target-profile` to the macOS job | `Tests/TargetProfile/test-ci-contract.sh` protects the workflow gate |
+| Sustained C1 tests could run beyond a finite NOP fixture under slow scheduling | Reused the closed-loop ROM in every affected sustained scenario | Focused replay stress plus the C1 replay aggregate |
+
+These fixes strengthen verification and diagnostics only. They do not change
+the machine-support classification: Model B remains supported, Model B+ 64K
+remains recognised but unavailable, and later identities remain unassigned.
 
 ## What feature 004 established well
 

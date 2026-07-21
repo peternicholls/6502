@@ -38,6 +38,18 @@ replacing `Unreleased` with a date.
   reject safely and the profile is not yet persisted by snapshots or host
   configuration.
 
+### Fixed
+
+- Synchronized the native C version assertion with 0.4.0 and made nested public
+  C headers rebuild every native executable, preventing `make check-version`
+  from accepting a stale binary.
+- Corrected C and Swift availability documentation and retained assigned Model
+  B/Model B+ names in diagnostics for invalid profile envelopes.
+- Added the complete target-profile aggregate to hosted macOS CI and made its
+  presence a tested workflow contract.
+- Replaced finite NOP ROMs in sustained-runtime tests with a closed-loop
+  fixture, removing scheduler-dependent Linux replay and lifecycle failures.
+
 ## [0.3.0] - Unreleased
 
 This section records the unreleased C2 candidate accumulated under 0.3.0. It
