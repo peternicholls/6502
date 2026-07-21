@@ -44,7 +44,9 @@ jobs:
       - name: Install verification tools
         run: |
           brew install doxygen ripgrep
-          python3 -m pip install --user pyyaml
+          python3 -m venv .build/ci-python
+          .build/ci-python/bin/python -m pip install pyyaml
+          echo "${PWD}/.build/ci-python/bin" >> "${GITHUB_PATH}"
       - name: Test C0 verifier orchestration
         run: Tests/C0/test-baseline-verifier.sh
       - name: Test the Swift package

@@ -24,6 +24,9 @@ require_job_text() {
 }
 
 require_job_text core 'python3-yaml'
-require_job_text apple-package 'python3 -m pip install --user pyyaml'
+require_job_text apple-package 'python3 -m venv .build/ci-python'
+require_job_text apple-package '.build/ci-python/bin/python -m pip install pyyaml'
+require_job_text apple-package \
+    'echo "${PWD}/.build/ci-python/bin" >> "${GITHUB_PATH}"'
 
 echo 'CI verification dependency tests passed'
