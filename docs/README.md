@@ -20,6 +20,7 @@ gate.
 
 - [Code documentation standard](CODE_DOCUMENTATION.md)
 - [Conceptual code guides](code/)
+- [Evidence and testing strategy](code/evidence-and-testing.md)
 - [Primary references and legal boundaries](REFERENCES.md)
 - [Release procedure](RELEASING.md)
 - [Project constitution](../.specify/memory/constitution.md)

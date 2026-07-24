@@ -1,7 +1,7 @@
 # Implementation constraints
 
 **Status:** Supporting technical requirements for unfinished work
-**Updated:** 2026-07-21
+**Updated:** 2026-07-24
 
 This file constrains technical design after a slice is selected from the
 [Machine delivery plan](product/MACHINE_DELIVERY_PLAN.md). It is not a roadmap,
@@ -19,6 +19,22 @@ backlog or completion ledger. [STATUS.md](STATUS.md) records what exists.
   failures.
 - Define fixtures, observation intervals and tolerances for every fidelity,
   timing, latency or throughput claim.
+
+## Delivery economy
+
+- Prefer the smallest vertical feature that proves a user or machine outcome.
+  Do not create separate features solely for core, C, Swift and host portions of
+  one inseparable journey.
+- Keep tasks narrow inside a vertical feature. A feature may cross layers
+  without becoming permission to absorb a second outcome or speculative
+  abstraction.
+- Reuse the established owner, boundary adapters, queues, fixtures and host
+  patterns. Add a new layer only when the selected outcome cannot remain clear
+  or safe without it.
+- Verification is proportional: focused tests while implementing, affected
+  wider regressions at slice closure and the full maintained matrix at milestone
+  or release closure. Safety, persistence, concurrency and public-boundary
+  changes still receive the regression depth their failure risk requires.
 
 ## Profile-consuming work
 
@@ -79,6 +95,9 @@ contracts before editor transformation work expands them.
 
 ## Specification rule
 
-Sequence labels in the delivery plan are planning containers. Each child gets a
-stable feature identity, its own Spec Kit artifacts and independently passing
-evidence. A container is never implemented as one umbrella feature.
+Each feature row in the delivery plan gets a stable feature identity, its own
+Spec Kit artifacts and independently passing evidence. Milestone gates are
+closed by integrated evidence from the final contributing feature and do not
+need empty validation features. A vertical feature may implement a single
+outcome across core, C, Swift and host; unrelated outcomes and speculative
+future support remain separate.

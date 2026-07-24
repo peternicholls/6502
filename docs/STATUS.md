@@ -1,7 +1,7 @@
 # Implementation status
 
 **Status:** Sole authority for verified implementation claims
-**Updated:** 2026-07-21
+**Updated:** 2026-07-24
 
 This file states what exists now. It does not choose future work. Direction and
 gate definitions live only in the
@@ -16,7 +16,7 @@ gate definitions live only in the
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
 | Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
 | Active feature | **NONE** | `.specify/feature.json` is empty after target-profile archival. |
-| Next feature | **NEXT** | `machine-firmware-onboarding` is the first unfinished M1 slice. |
+| Next feature | **NEXT** | `machine-model-b-workflow` is the first unfinished M1 slice. |
 | M1 running Model B application | **TODO** | No complete user-facing boot/type/run/video/audio workflow exists. |
 | M2 continuity | **TODO** | Snapshot and application lifecycle contracts do not exist. |
 | M3 Model B+ 64K preview | **TODO** | B+ machine behavior and the post-C6 product demonstrations do not exist. |
@@ -72,8 +72,11 @@ baseline:
 
 Current verification commands remain `make test`, `make sanitize`,
 `make verify-c0`, `make test-c1`, `make test-c2`, `swift test`, `swift build`,
-`make docs-check` and `make format-check`. Local unsupported ThreadSanitizer is
-`N/A`; supported Linux CI remains strict.
+`make docs-check` and `make format-check`. They are the maintained verification
+surfaces, not a requirement to repeat every surface after every focused change.
+The delivery plan and [evidence guide](code/evidence-and-testing.md) define when
+focused, affected-wider and full milestone verification run. Local unsupported
+ThreadSanitizer is `N/A`; supported Linux CI remains strict.
 
 ## Claim rule
 

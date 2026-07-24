@@ -1,7 +1,7 @@
 # Machine delivery plan
 
 **Status:** Sole canonical forward programme authority
-**Updated:** 2026-07-21
+**Updated:** 2026-07-24
 
 This is the only document that commits scope, selects next work, orders delivery
 or defines programme gates. Every new feature must trace to a named row or gate
@@ -81,12 +81,16 @@ iPhone/iPad layout and input claims require the later adaptation row.
 
 **State:** **TODO**
 
-**Depends on:** M1, C3 snapshot contracts and iOS/iPadOS adaptation.
+**Depends on:** M1 and the version-1 snapshot/host lifecycle slices.
 
 M2 passes when background/termination restoration preserves the selected
 profile, CPU, RAM, ROM selection, devices and mounted-media state. Stale output
 does not cross restore. Corrupt, oversized or incompatible data leaves the
 active session unchanged.
+
+M2 is proved first on the maintained macOS application. iOS/iPadOS adaptation
+remains committed release work after M1, but does not delay the portable
+snapshot contract or macOS continuity evidence.
 
 ### M3 — Post-C6 Model B+ Developer Preview
 
@@ -111,39 +115,49 @@ M3 passes when:
 M3 is a limited developer preview. It is not preservation-grade or complete
 BBC emulation.
 
-## Specification sequence
+## Delivery strategy
 
-Order is topological, not total serialization. After row 1, independent M1 and
-C3 work may overlap when their dependencies are met. A sequence row is a
-planning container; every child requires its own stable feature identity and
-acceptance evidence.
+The critical path is M1, then M2, then M3. Work is divided by demonstrable
+outcome rather than by implementation layer: one bounded feature may cross
+core, C, Swift and host boundaries when those changes are inseparable from the
+same user journey. Features must not be split merely to create separate
+firmware, presentation, keyboard or validation phases.
 
-| Order | State | Specification | Depends on | Demonstrable outcome |
+Only the feature named by `.specify/feature.json` is active in this repository.
+Rows whose dependencies are already met may be selected in either order, which
+keeps specialist or fixture work available when the critical-path slice is
+temporarily blocked without creating multiple competing active features.
+
+### Critical-path slices
+
+| Order | State | Feature or gate | Depends on | Demonstrable outcome |
 | --- | --- | --- | --- | --- |
 | 1 | **DONE** | `machine-target-profile` | C2 | Extensible Model B/B+ identity across core, C, Swift and host; later identifiers reject safely. |
-| 2 | **NEXT** | `machine-firmware-onboarding` | 1 | Import, validate, assign and remember user-owned OS/language ROMs with actionable guidance. |
-| 3 | **TODO** | `machine-runtime-presentation` | C1, C2 | Sustained owner execution and completed-frame presentation without host-driven time. |
-| 4 | **TODO** | `machine-audio-output` | C2 | AVAudioEngine consumes bounded audio with measured pressure and recoverable device lifecycle. |
-| 5 | **TODO** | `machine-keyboard-controls` | 3 | BBC mapping plus distinct accessible run, pause, reset, BREAK, capture and full-screen controls. |
-| 6 | **TODO** | `machine-mvp-validation` | 2-5 | Automated/manual evidence proves M1 end to end. |
-| 7 | **TODO** | `machine-ios-ipados-adaptation` | M1 | Maintained iPhone/iPad layouts, input and accessibility evidence. |
-| 8 | **TODO** | `snapshot-format-v1` | C1, 1 | Bounded versioned profile-aware state envelope. |
-| 9 | **TODO** | `snapshot-round-trip` | 8 | Deterministic CPU, memory, ROM and device continuation. |
-| 10 | **TODO** | `snapshot-mounted-media` | 8 | Media identity/private modifications restore or reject explicitly. |
-| 11 | **TODO** | `snapshot-host-boundary` | 8-10 | Owned C/Swift save-load values and recoverable failures. |
-| 12 | **TODO** | `machine-session-lifecycle` | M1, 7-11 | Background, termination and restoration prove M2. |
-| 13 | **TODO** | C4 bus-cycle sequence | 8-11 | Reference-backed bus traces improve timing without breaking M2. |
-| 14 | **TODO** | `bplus-reference-fixture-set` | 1 | Primary references and lawful fixtures bind processor, memory, display, firmware and controller claims. |
-| 15 | **TODO** | Model B+ 64K profile sequence | 1, 8-11, 13, 14 | Selection, boot, display/audio, persistence and selected storage satisfy the B+ portion of M3. |
-| 16 | **TODO** | C5 disc-core sequence | 8-11; relevant 13 | Bounded deterministic controller/media contracts support named disc profiles. |
-| 17 | **TODO** | `machine-disk-workflow` | 16 | Safe mount, diagnosis, protection and explicit export. |
-| 18 | **TODO** | C5 tape/file-core sequence | 8-11; relevant 13 | Bounded deterministic cassette/file contracts support named formats. |
-| 19 | **TODO** | `machine-tape-file-workflow` | 18 | Safe open, diagnosis and explicit export. |
-| 20 | **TODO** | C6 inspection/editor bridge sequence | C1, 8-11 | Stable inspection, bounded control, atomic transactions and BASIC boundaries. |
-| 21 | **TODO** | `machine-inspector` | 20 inspection/control | Read-only state and bounded breakpoint/watchpoint product workflow. |
-| 22 | **TODO** | `machine-c6-bridge-validation` | 20 transaction/BASIC contracts, 21 | Product demonstrations close the C6 portion of M3. |
-| 23 | **TODO** | BASIC transformation/editing sequence | 20 program boundary | Separately specified tokenization, labels, inject/retrieve and conflict handling. |
-| 24 | **TODO** | `product-release-readiness` | Selected maintained gates | Device, accessibility, onboarding, privacy, legal and beta evidence support a release decision. |
+| 2 | **NEXT** | `machine-model-b-workflow` | 1, C1, C2 | A macOS user imports and remembers compatible OS/language ROM assignments, boots Model B, sees continuous completed frames, types/runs the M1 BASIC program and uses accessible run, pause, reset and BREAK controls with actionable diagnostics. |
+| 3 | **TODO** | `machine-audio-output` | C2 | AVAudioEngine consumes bounded audio during the maintained Model B run with measured pressure and recoverable device lifecycle. |
+| M1 | **TODO** | Running Model B gate | 2-3 | One integrated macOS journey proves every M1 acceptance bullet; no standalone validation feature is required unless integration defects create new behavior work. |
+| 4 | **TODO** | `snapshot-continuity-v1` | 1, C1 | One bounded profile-aware format round-trips CPU, memory, ROM selection, devices and supported mounted-media state through owned C/Swift values; invalid restore is failure-atomic and stale output is discarded. |
+| 5 | **TODO** | `machine-session-continuity` | M1, 4 | The macOS application saves and restores the active session across background/termination recovery. |
+| M2 | **TODO** | Continuity-complete gate | 4-5 | The maintained Model B application proves the complete M2 recovery journey. |
+| 6 | **TODO** | `bplus-reference-fixture-set` | 1 | Primary references and lawful fixtures bind the selected Model B+ processor, memory, display, firmware and controller claims. |
+| 7 | **TODO** | `timing-fixture-v1` | 4 | The smallest bus-phase implementation needed by one named timing-sensitive M3 fixture, without attempting full timing refinement. |
+| 8 | **TODO** | `machine-model-bplus-64k-workflow` | M2, 6-7 | Model B+ 64K selection, firmware boot, display/audio and snapshot continuation work end to end without weakening Model B. |
+| 9 | **TODO** | `machine-disc-workflow-v1` | 4; relevant 7 | One named disc profile supports bounded core behavior plus safe host mount, diagnosis, protection and explicit export. |
+| 10 | **TODO** | `machine-inspection-basic-bridge` | 4, C1 | Stable inspection, bounded breakpoint/watchpoint control, one atomic memory transaction and one BASIC program-boundary round trip work through the application. |
+| M3 | **TODO** | Model B+ developer-preview gate | 8-10 | One integrated maintained-application journey proves every M3 acceptance bullet and records the known fidelity limits. |
+
+Rows 6, 9 and 10 may be selected as soon as their dependencies pass; they do
+not need to wait for unrelated work in the table. Rows 6 and 7 deliberately
+bound B+ research and timing to the evidence M3 actually claims.
+
+### Committed work outside the M1-M3 critical path
+
+| State | Feature | Earliest start | Delivery purpose |
+| --- | --- | --- | --- |
+| **TODO** | `machine-ios-ipados-adaptation` | M1 | Maintained iPhone/iPad layouts, input, lifecycle and accessibility evidence before release claims include those platforms. |
+| **TODO** | `machine-tape-file-workflow` | 4; selected timing evidence | Safe open, diagnosis and explicit export for named cassette/file formats; not required by M3's single-media demonstration. |
+| **TODO** | `basic-transformation-editing` | 10 | Deterministic tokenization, labels, inject/retrieve and conflict handling after the program boundary is proven. |
+| **TODO** | `product-release-readiness` | Selected maintained gates | Device, accessibility, onboarding, privacy, legal and beta evidence support a release decision. |
 
 ## Scope and evidence rules
 
@@ -154,8 +168,15 @@ acceptance evidence.
 - Proprietary firmware and user media remain outside the repository.
 - Accessibility and recovery are acceptance requirements of each user-facing
   slice.
-- User-facing acceptance builds and launches the maintained application,
-  executes the documented journey and records observed visual, audio and
-  interaction results; unit tests alone do not close a row or gate.
+- During implementation, run the narrow failing test and the immediately
+  affected boundary checks. At slice completion, run its focused aggregate and
+  affected wider regressions. Reserve the full maintained matrix and complete
+  end-to-end application journey for M1, M2, M3 and release closure.
+- User-facing slice acceptance still builds and launches the maintained
+  application, but observes the changed journey rather than repeating every
+  unchanged milestone step. Unit tests alone do not close a user-facing row.
+- A milestone gate is closed by the final contributing feature's integrated
+  acceptance evidence. It does not require a documentation-only validation
+  feature or duplicate implementation phase.
 - A row changes state only with its feature artifacts and acceptance evidence.
 - Work not named here is unscheduled. Amend this file before specifying it.

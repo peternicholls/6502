@@ -121,7 +121,7 @@ between the public C aggregate and private C++ classes.
 error. That is accurate because Model B is the only constructible profile. It is
 not target-profile debt and should not be generalized pre-emptively.
 
-The `machine-firmware-onboarding` specification should decide how firmware type,
+The `machine-model-b-workflow` specification should decide how firmware type,
 size, assignment and diagnostics relate to the selected profile. Later B+
 implementation must make its own reference-backed decision. The specification
 should also decide whether Swift preflight validation remains useful or whether
@@ -156,11 +156,11 @@ copied into the documented capacity.
 
 | Consideration | Earliest relevant programme slice | Required evidence before change |
 | --- | --- | --- |
-| Profile-aware firmware requirements | `machine-firmware-onboarding` | Reference-backed size/type rules, typed rejection and observed onboarding recovery |
+| Profile-aware firmware requirements | `machine-model-b-workflow` | Reference-backed size/type rules, typed rejection and observed onboarding recovery |
 | Validation phases and translation helpers | A feature that assigns expansions or a new profile schema | Existing precedence/boundary matrix plus new schema compatibility fixtures |
 | Swift API organization | Snapshot, media or C6 host work that materially expands the wrapper | One-handle lifetime, concurrency and failure-mapping regression evidence |
 | Richer C diagnostics | A feature requiring information that cannot remain actionable within 255 bytes | Versioned public contract and cross-language ownership tests |
-| Persisted profile identity | `snapshot-format-v1` | Semantic encoding, bounds, compatibility and failure-atomic restore evidence |
+| Persisted profile identity | `snapshot-continuity-v1` | Semantic encoding, bounds, compatibility and failure-atomic restore evidence |
 
 These are review prompts, not acceptance criteria. Each owning specification may
 retain the present design when evidence shows that change would add more
