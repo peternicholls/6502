@@ -10,7 +10,7 @@
 
 **Purpose**: Establish and enforce one small aggregate for this vertical slice.
 
-- [ ] T001 Create `Tests/ModelBWorkflow/testlib.sh`, `Tests/ModelBWorkflow/test-aggregate-runner.sh`, `Tests/ModelBWorkflow/test-ci-contract.sh` and the `test-model-b-workflow` target in `Makefile`; add `make test-model-b-workflow` to the `apple-package` job in `.github/workflows/ci.yml`; verify the empty aggregate and source contract, then commit the harness/CI checkpoint.
+- [X] T001 Create `Tests/ModelBWorkflow/testlib.sh`, `Tests/ModelBWorkflow/test-aggregate-runner.sh`, `Tests/ModelBWorkflow/test-ci-contract.sh` and the `test-model-b-workflow` target in `Makefile`; add `make test-model-b-workflow` to the `apple-package` job in `.github/workflows/ci.yml`; verify the empty aggregate and source contract, then commit the harness/CI checkpoint.
 
 **Checkpoint**: T001 passes before user-story work begins.
 

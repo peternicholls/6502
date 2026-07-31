@@ -59,6 +59,8 @@ jobs:
         run: swift build
       - name: Run machine target-profile contract aggregate
         run: make test-machine-target-profile
+      - name: Run Model B workflow contract aggregate
+        run: make test-model-b-workflow
       - name: Run Apple C2 Xcode contract
         run: make test-c2-xcode
       - name: Validate complete code documentation
