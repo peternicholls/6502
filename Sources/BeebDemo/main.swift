@@ -317,6 +317,7 @@ final class EmulatorModel: ObservableObject {
             return
         }
         try machine.reset()
+        invalidatePresentation()
         status = "Firmware ready — BASIC-ready"
         start()
     }
@@ -344,9 +345,7 @@ final class EmulatorModel: ObservableObject {
         guard let machine else { return }
         do {
             try machine.reset()
-            presentationEpoch &+= 1
-            lastPresentedFrame = 0
-            screen = nil
+            invalidatePresentation()
         }
         catch { status = error.localizedDescription; stop() }
     }
@@ -356,15 +355,19 @@ final class EmulatorModel: ObservableObject {
         do {
             try machine.setBreak(pressed: true)
             try machine.setBreak(pressed: false)
-            presentationEpoch &+= 1
-            lastPresentedFrame = 0
-            screen = nil
+            invalidatePresentation()
             status = "BREAK accepted — presentation epoch \(presentationEpoch)"
             stop()
         } catch {
             status = error.localizedDescription
             stop()
         }
+    }
+
+    private func invalidatePresentation() {
+        presentationEpoch &+= 1
+        lastPresentedFrame = 0
+        screen = nil
     }
 
     private func stepFrame() {

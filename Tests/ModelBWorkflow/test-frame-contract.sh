@@ -17,5 +17,6 @@ require_source "presentation epoch" 'presentationEpoch'
 require_source "owned completed-frame dequeue" 'dequeueVideoFrame\(\)'
 require_source "monotonic presented-frame guard" 'lastPresentedFrame'
 require_source "epoch invalidation on reset" 'presentationEpoch &\+= 1'
+require_source "firmware reset invalidation" 'invalidatePresentation\(\)'
 
 echo 'Model B frame contract tests passed'
