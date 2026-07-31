@@ -1,6 +1,7 @@
 import BeebKit
 
 // C0-DOC-RATIONALE: Sources/BeebKit/Documentation.docc/BeebKit.md owns host usage.
+import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -37,17 +38,31 @@ final class EmulatorModel: ObservableObject {
     @Published var status = "Choose a user-supplied BBC Model B OS ROM"
     @Published var isRunning = false
     @Published var isImportingOS = false
+    @Published var isImportingLanguage = false
     @Published var isImportingDisc = false
     @Published var requestedProfile = MachineProfileChoice.modelB
     @Published private(set) var activeProfile: BeebMachineProfile?
     @Published private(set) var profileStatus = "No machine profile is active"
+    @Published private(set) var osAssignment = "OS ROM: not assigned"
+    @Published private(set) var languageAssignment = "Language ROM: not assigned"
 
     /// Replaced only after a requested candidate constructs and reports its profile.
     private var machine: BeebMachine?
     private var timer: Timer?
+    private let defaults = UserDefaults.standard
+    private var hasOSROM = false
+    private var hasLanguageROM = false
+
+    private enum BookmarkKey {
+        static let os = "model-b.os-bookmark"
+        static let language = "model-b.language-bookmark"
+        static let osName = "model-b.os-name"
+        static let languageName = "model-b.language-name"
+    }
 
     init() {
         installRequestedProfile()
+        restoreRememberedFirmware()
     }
 
     /// Builds a candidate before atomically installing its runtime and active identity.
@@ -73,17 +88,28 @@ final class EmulatorModel: ObservableObject {
         }
     }
 
-    func loadOS(_ url: URL) {
+    func loadFirmware(_ url: URL, role: BeebFirmwareRole) {
         guard let machine else { return }
         do {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
-            try machine.loadOSROM(Data(contentsOf: url))
-            try machine.reset()
-            status = "OS loaded — running"
-            start()
-        } catch { status = error.localizedDescription }
+            let data = try Data(contentsOf: url)
+            let bookmark = try? url.bookmarkData(
+                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            try machine.loadFirmware(data, role: role)
+            remember(bookmark, url: url, role: role)
+            updateAssignment(url.lastPathComponent, role: role)
+            try resetIfFirmwareReady()
+        } catch {
+            updateAssignment("recovery needed — \(error.localizedDescription)", role: role)
+            status = error.localizedDescription
+        }
     }
+
+    func loadOS(_ url: URL) { loadFirmware(url, role: .operatingSystem) }
 
     func loadDisc(_ url: URL) {
         guard let machine else { return }
@@ -93,6 +119,78 @@ final class EmulatorModel: ObservableObject {
             try machine.mountDisc(Data(contentsOf: url), doubleSided: url.pathExtension.lowercased() == "dsd")
             status = "Disc mounted in drive 0"
         } catch { status = error.localizedDescription }
+    }
+
+    private func key(for role: BeebFirmwareRole) -> (bookmark: String, name: String) {
+        switch role {
+        case .operatingSystem: return (BookmarkKey.os, BookmarkKey.osName)
+        case .language: return (BookmarkKey.language, BookmarkKey.languageName)
+        }
+    }
+
+    private func remember(_ bookmark: Data?, url: URL, role: BeebFirmwareRole) {
+        let keys = key(for: role)
+        if let bookmark { defaults.set(bookmark, forKey: keys.bookmark) }
+        defaults.set(url.lastPathComponent, forKey: keys.name)
+    }
+
+    private func updateAssignment(_ name: String, role: BeebFirmwareRole) {
+        switch role {
+        case .operatingSystem:
+            osAssignment = "OS ROM: \(name)"
+            hasOSROM = !name.contains("recovery needed")
+        case .language:
+            languageAssignment = "Language ROM (bank 12): \(name)"
+            hasLanguageROM = !name.contains("recovery needed")
+        }
+    }
+
+    private func restoreRememberedFirmware() {
+        restoreRememberedFirmware(role: .operatingSystem)
+        restoreRememberedFirmware(role: .language)
+        do { try resetIfFirmwareReady() } catch { status = error.localizedDescription }
+    }
+
+    private func restoreRememberedFirmware(role: BeebFirmwareRole) {
+        guard let machine else { return }
+        let keys = key(for: role)
+        guard let bookmark = defaults.data(forKey: keys.bookmark) else { return }
+        do {
+            var stale = false
+            let url = try URL(
+                resolvingBookmarkData: bookmark,
+                options: [.withSecurityScope],
+                relativeTo: nil,
+                bookmarkDataIsStale: &stale
+            )
+            let access = url.startAccessingSecurityScopedResource()
+            defer { if access { url.stopAccessingSecurityScopedResource() } }
+            try machine.loadFirmware(Data(contentsOf: url), role: role)
+            if stale, let refreshed = try? url.bookmarkData(
+                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            ) {
+                defaults.set(refreshed, forKey: keys.bookmark)
+            }
+            updateAssignment(
+                defaults.string(forKey: keys.name) ?? url.lastPathComponent,
+                role: role
+            )
+        } catch {
+            updateAssignment("recovery needed", role: role)
+            status = "\(role == .operatingSystem ? "OS" : "Language") ROM needs to be selected again."
+        }
+    }
+
+    private func resetIfFirmwareReady() throws {
+        guard let machine, hasOSROM && hasLanguageROM else {
+            status = "Select both a Model B OS ROM and language ROM to reach BASIC-ready."
+            return
+        }
+        try machine.reset()
+        status = "Firmware ready — BASIC-ready"
+        start()
     }
 
     func start() {
@@ -192,15 +290,21 @@ struct ContentView: View {
 
             HStack {
                 Button("Open OS ROM…") { model.isImportingOS = true }
+                Button("Open Language ROM…") { model.isImportingLanguage = true }
                 Button("Mount Disc…") { model.isImportingDisc = true }
                 Button(model.isRunning ? "Pause" : "Run") { model.isRunning ? model.stop() : model.start() }
                 Button("Break") { model.reset() }
             }
             Text(model.status).font(.caption.monospaced()).frame(maxWidth: .infinity, alignment: .leading)
+            Text(model.osAssignment).frame(maxWidth: .infinity, alignment: .leading)
+            Text(model.languageAssignment).frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding()
         .fileImporter(isPresented: $model.isImportingOS, allowedContentTypes: [.data]) { result in
             if case let .success(url) = result { model.loadOS(url) }
+        }
+        .fileImporter(isPresented: $model.isImportingLanguage, allowedContentTypes: [.data]) { result in
+            if case let .success(url) = result { model.loadFirmware(url, role: .language) }
         }
         .fileImporter(isPresented: $model.isImportingDisc, allowedContentTypes: [.data]) { result in
             if case let .success(url) = result { model.loadDisc(url) }
