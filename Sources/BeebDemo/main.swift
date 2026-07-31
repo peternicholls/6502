@@ -319,6 +319,11 @@ final class EmulatorModel: ObservableObject {
         isRunning = false
     }
 
+    func pause() {
+        stop()
+        status = "Paused"
+    }
+
     func reset() {
         guard let machine else { return }
         do {
@@ -328,6 +333,22 @@ final class EmulatorModel: ObservableObject {
             screen = nil
         }
         catch { status = error.localizedDescription; stop() }
+    }
+
+    func breakExecution() {
+        guard let machine else { return }
+        do {
+            try machine.setBreak(pressed: true)
+            try machine.setBreak(pressed: false)
+            presentationEpoch &+= 1
+            lastPresentedFrame = 0
+            screen = nil
+            status = "BREAK accepted — presentation epoch \(presentationEpoch)"
+            stop()
+        } catch {
+            status = error.localizedDescription
+            stop()
+        }
     }
 
     private func stepFrame() {
@@ -412,8 +433,14 @@ struct ContentView: View {
                 Button("Open OS ROM…") { model.isImportingOS = true }
                 Button("Open Language ROM…") { model.isImportingLanguage = true }
                 Button("Mount Disc…") { model.isImportingDisc = true }
-                Button(model.isRunning ? "Pause" : "Run") { model.isRunning ? model.stop() : model.start() }
-                Button("Break") { model.reset() }
+                Button("Run") { model.start() }
+                    .accessibilityIdentifier("run-control")
+                Button("Pause") { model.pause() }
+                    .accessibilityIdentifier("pause-control")
+                Button("Reset") { model.reset() }
+                    .accessibilityIdentifier("reset-control")
+                Button("BREAK") { model.breakExecution() }
+                    .accessibilityIdentifier("break-control")
             }
             Text(model.status).font(.caption.monospaced()).frame(maxWidth: .infinity, alignment: .leading)
             Text(model.osAssignment).frame(maxWidth: .infinity, alignment: .leading)

@@ -38,7 +38,7 @@
 
 **Independent Test**: Controls cross the owner, reset/BREAK cannot present stale frames and one recoverable failure retains profile and firmware state.
 
-- [ ] T006 [US3] Add failing separate-control, lifecycle, reset/BREAK epoch and recovery probes in `Tests/ModelBWorkflow/test-application-build.sh`, `Tests/BeebKitTests/BeebMachineTests.swift` and the existing `Tests/C2/test-output-contract.sh` reset contract; implement independent run, pause, reset and BREAK actions plus diagnostic mapping and failure-atomic preservation in `Sources/BeebDemo/main.swift`; pass the focused checks and commit the checkpoint closing US3.
+- [X] T006 [US3] Add failing separate-control, lifecycle, reset/BREAK epoch and recovery probes in `Tests/ModelBWorkflow/test-application-build.sh`, `Tests/BeebKitTests/BeebMachineTests.swift` and the existing `Tests/C2/test-output-contract.sh` reset contract; implement independent run, pause, reset and BREAK actions plus diagnostic mapping and failure-atomic preservation in `Sources/BeebDemo/main.swift`; pass the focused checks and commit the checkpoint closing US3.
 
 ## Phase 5: Slice Acceptance and Completion
 
