@@ -432,6 +432,17 @@ final class BeebMachineTests: XCTestCase {
                 return XCTFail("Expected invalidOSROM, got \(error)")
             }
         }
+        XCTAssertEqual(BeebMachine.languageROMBank, 12)
+        XCTAssertThrowsError(try machine.loadFirmware(Data(), role: .operatingSystem)) { error in
+            guard case BeebError.invalidOSROM = error else {
+                return XCTFail("Expected invalidOSROM, got \(error)")
+            }
+        }
+        XCTAssertThrowsError(try machine.loadFirmware(Data(), role: .language)) { error in
+            guard case BeebError.invalidSidewaysROM = error else {
+                return XCTFail("Expected invalidSidewaysROM, got \(error)")
+            }
+        }
         XCTAssertThrowsError(try machine.loadSidewaysROM(Data(), bank: 0)) { error in
             guard case BeebError.invalidSidewaysROM = error else {
                 return XCTFail("Expected invalidSidewaysROM, got \(error)")
