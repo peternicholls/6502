@@ -1,7 +1,7 @@
 # Implementation constraints
 
 **Status:** Supporting technical requirements for unfinished work
-**Updated:** 2026-07-24
+**Updated:** 2026-07-31
 
 This file constrains technical design after a slice is selected from the
 [Machine delivery plan](product/MACHINE_DELIVERY_PLAN.md). It is not a roadmap,
@@ -19,6 +19,10 @@ backlog or completion ledger. [STATUS.md](STATUS.md) records what exists.
   failures.
 - Define fixtures, observation intervals and tolerances for every fidelity,
   timing, latency or throughput claim.
+- The first Model B host workflow remains bounded to typed firmware roles,
+  fixed language bank 12, physical-key matrix input, owned completed-frame
+  presentation and independent lifecycle controls; do not add text injection,
+  host-side emulation time or speculative persistence to close this slice.
 
 ## Delivery economy
 

@@ -1,7 +1,7 @@
 # Implementation status
 
 **Status:** Sole authority for verified implementation claims
-**Updated:** 2026-07-24
+**Updated:** 2026-07-31
 
 This file states what exists now. It does not choose future work. Direction and
 gate definitions live only in the
@@ -15,9 +15,9 @@ gate definitions live only in the
 | C1 runtime ownership | **DONE** | Supported hosts use one recoverable runtime owner across C++, C and Swift. |
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
 | Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
-| Active feature | **NONE** | `.specify/feature.json` is empty after target-profile archival. |
-| Next feature | **NEXT** | `machine-model-b-workflow` is the first unfinished M1 slice. |
-| M1 running Model B application | **TODO** | No complete user-facing boot/type/run/video/audio workflow exists. |
+| Active feature | **IN PROGRESS** | `005-model-b-workflow` has automated host workflow coverage; ROM-dependent macOS acceptance remains open. |
+| Next feature | **NEXT** | Continue the bounded Model B workflow gate, then close the remaining M1 acceptance evidence. |
+| M1 running Model B application | **TODO** | Firmware import, BASIC readiness, bounded keyboard/frame/control host paths exist; direct ROM-backed visual acceptance and audio presentation remain unverified. |
 | M2 continuity | **TODO** | Snapshot and application lifecycle contracts do not exist. |
 | M3 Model B+ 64K preview | **TODO** | B+ machine behavior and the post-C6 product demonstrations do not exist. |
 
@@ -44,6 +44,11 @@ partial delivery.
 - Model B+ 64K has a permanent distinct identity and an accessible host request,
   but construction reports recognised-unavailable. It does not emulate B+
   hardware, fall back to Model B or mutate the active Model B session.
+- The maintained demo host has a bounded Model B workflow path for typed OS and
+  language-ROM roles, fixed language bank 12, physical-key focus, owned frame
+  dequeue, presentation epochs, and independent Run/Pause/Reset/BREAK controls.
+  This is automated evidence only until lawful ROM-backed macOS observation is
+  recorded.
 
 ## Known fidelity limits
 

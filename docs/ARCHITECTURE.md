@@ -42,6 +42,11 @@ Hosts supply bytes and consume owned values through the C ABI and `BeebKit`.
    partial machine mutation.
 7. **User content stays external.** Firmware and media are imported bytes.
    Source media is never silently overwritten.
+8. **The first host workflow stays bounded.** Model B firmware roles, fixed
+   language bank 12, physical key translation, owned completed-frame dequeue,
+   presentation epochs and independent controls remain host concerns over the
+   existing owner; no text injection, second runtime or host-side emulation
+   clock is introduced.
 
 ## Maintained build boundaries
 

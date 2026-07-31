@@ -46,7 +46,7 @@
 
 - [X] T007 Run `make test-model-b-workflow`, `make test-machine-target-profile`, `make test-c1`, `make test-c2-xcode`, `swift test`, `swift build`, `xcodebuild -project Beeb6502.xcodeproj -scheme BeebDemo-macOS -configuration Debug build`, `make format-check`, `DOCS_BASE=HEAD make docs-check` and `git diff --check`; commit automated acceptance.
 - [ ] T008 Build and launch `BeebDemo-macOS`; perform OS/language import, bank-12 BASIC boot, the physical-key program, two-frame observation, run/pause/reset/BREAK and one recoverable failure; record keyboard and assistive observation in `specs/005-model-b-workflow/evidence/macos-application-observation.md`; commit observed acceptance.
-- [ ] T009 Update verified owners in `docs/STATUS.md`, `docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_CONSTRAINTS.md`, `docs/code/host-boundary.md` and `CHANGELOG.md` only where accepted behavior changed; do not close M1; commit live documentation.
+- [X] T009 Update verified owners in `docs/STATUS.md`, `docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_CONSTRAINTS.md`, `docs/code/host-boundary.md` and `CHANGELOG.md` only where accepted behavior changed; do not close M1; commit live documentation.
 - [ ] T010 After acceptance passes, clear `.specify/feature.json`, move `specs/005-model-b-workflow/` to `specs/completed/005-model-b-workflow/`, refresh `AGENTS.md`, verify numbering, links and `git diff --check`, then commit feature completion.
 
 ## Dependencies and Execution Order

@@ -16,6 +16,12 @@ replacing `Unreleased` with a date.
 
 ### Added
 
+- A bounded Model B host workflow path with typed OS/language firmware roles,
+  fixed language bank 12, physical keyboard focus, owned completed-frame
+  presentation epochs, and separate Run/Pause/Reset/BREAK controls. Direct
+  ROM-backed macOS acceptance remains an explicit gate; no proprietary ROM is
+  included.
+
 - An additive, extensible machine-profile value contract across C++, C and
   Swift, with permanent Model B and Model B+ 64K base identifiers, a bounded
   16-entry expansion envelope and owned round-trip values.

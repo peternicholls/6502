@@ -58,6 +58,14 @@ metadata; it is not a failure. Every successful frame carries an opaque
 the vector storage and clears the aggregate. Callers read but never free `rgba`
 directly. A failed frame call leaves the caller's aggregate untouched.
 
+The maintained macOS demo keeps workflow state in the host model: OS and
+language imports are typed roles, the language ROM uses fixed sideways bank 12,
+physical keys are translated into owner-serialized `setKey` calls, and display
+refresh consumes owned completed frames. Run, Pause, Reset and BREAK remain
+separate host actions; reset and BREAK invalidate the presentation epoch before
+later output is shown. This path is automated and does not claim ROM-backed
+visual acceptance until the named-host observation is recorded.
+
 `beeb_dequeue_frame()` allocates its small release context before it asks the
 owner to consume the oldest frame from the capacity-three FIFO. The returned
 pixel vector moves into that context without a second allocation. Allocation
