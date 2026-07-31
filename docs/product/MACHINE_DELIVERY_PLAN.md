@@ -18,6 +18,7 @@ durable intent. None may create a competing backlog.
 | --- | --- |
 | **DONE** | Implemented and backed by passed acceptance evidence linked from `STATUS.md`. |
 | **ACTIVE** | The single feature named by `.specify/feature.json` is in implementation. |
+| **PLANNING** | The single feature named by `.specify/feature.json` has active Spec Kit artifacts but implementation has not started. |
 | **NEXT** | First committed work, not started. |
 | **TODO** | Committed work, not delivered. |
 | **RESERVED** | Named future option, not committed for delivery. |
@@ -29,7 +30,7 @@ durable intent. None may create a competing backlog.
 | C0 baseline evidence | **DONE** | Reproducible foundation evidence |
 | C1 runtime ownership | **DONE** | Single owner and recoverable C++/C/Swift boundary |
 | C2 bounded output and Xcode delivery | **DONE** | Owned frame/audio output, diagnostics and maintained Apple builds |
-| Active feature | **NONE** | `.specify/feature.json` is empty after target-profile archival |
+| Active feature | **PLANNING** | `005-model-b-workflow` is the current Spec Kit feature; implementation has not started |
 | `machine-target-profile` | **DONE** | Extensible identity transport and safe rejection across core, C, Swift and host |
 | M1 running Model B application | **TODO** | First usable application |
 | M2 continuity | **TODO** | Snapshot and lifecycle completion |
@@ -133,7 +134,7 @@ temporarily blocked without creating multiple competing active features.
 | Order | State | Feature or gate | Depends on | Demonstrable outcome |
 | --- | --- | --- | --- | --- |
 | 1 | **DONE** | `machine-target-profile` | C2 | Extensible Model B/B+ identity across core, C, Swift and host; later identifiers reject safely. |
-| 2 | **NEXT** | `machine-model-b-workflow` | 1, C1, C2 | A macOS user imports and remembers compatible OS/language ROM assignments, boots Model B, sees continuous completed frames, types/runs the M1 BASIC program and uses accessible run, pause, reset and BREAK controls with actionable diagnostics. |
+| 2 | **PLANNING** | `machine-model-b-workflow` | 1, C1, C2 | A macOS user imports and remembers compatible OS/language ROM assignments, boots Model B, sees continuous completed frames, types/runs the M1 BASIC program and uses accessible run, pause, reset and BREAK controls with actionable diagnostics. |
 | 3 | **TODO** | `machine-audio-output` | C2 | AVAudioEngine consumes bounded audio during the maintained Model B run with measured pressure and recoverable device lifecycle. |
 | M1 | **TODO** | Running Model B gate | 2-3 | One integrated macOS journey proves every M1 acceptance bullet; no standalone validation feature is required unless integration defects create new behavior work. |
 | 4 | **TODO** | `snapshot-continuity-v1` | 1, C1 | One bounded profile-aware format round-trips CPU, memory, ROM selection, devices and supported mounted-media state through owned C/Swift values; invalid restore is failure-atomic and stale output is discarded. |

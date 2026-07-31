@@ -17,9 +17,14 @@ Before implementation, the command must resolve this feature and list `spec.md`,
 3. Run directly affected boundary checks and commit the verified task.
 
 For direct macOS observation, use a lawful user-provided Model B OS/language
-pair and enter `10 PRINT "BEEB6502"`, Return, `RUN`, Return. Record the physical
-key mapping and the visible `BEEB6502` result. Do not add ROM bytes to the
-repository.
+pair, install the language ROM in fixed bank 12, and enter `10 PRINT
+"BEEB6502"`, Return, `RUN`, Return. Record the physical key mapping and the
+visible `BEEB6502` result. Do not add ROM bytes to the repository.
+
+The host must verify the maintained macOS target's App Sandbox/signing decision
+before relying on remembered security-scoped bookmarks. If sandboxed, configure
+the smallest read-only user-selected-file and app-scoped bookmark entitlements;
+if not sandboxed, record that decision and still test relaunch recovery.
 
 The task document will name the exact workflow aggregate. Do not run the
 audio-inclusive M1 acceptance until `machine-audio-output` is complete.

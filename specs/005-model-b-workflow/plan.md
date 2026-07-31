@@ -8,7 +8,8 @@ Deliver the visual/control half of M1 as one bounded vertical feature:
 user-owned Model B OS and language-ROM onboarding, retained authorised
 assignments, BASIC-ready boot, physical-keyboard input, continuous completed
 frame presentation and recoverable controls. Reuse the owner-serialized
-runtime and existing C/Swift boundary; do not add audio device, persistence,
+runtime and existing C/Swift boundary; do not add audio device, machine
+snapshot/session-state persistence,
 mobile, Model B+ or timing scope. See [research.md](research.md).
 
 ## Technical Context
@@ -23,9 +24,9 @@ mobile, Model B+ or timing scope. See [research.md](research.md).
 
 **Primary Dependencies**: Existing C++20 core, C ABI, BeebKit, SwiftUI/Foundation, Xcode project and standard macOS file selection; no new runtime dependency
 
-**Storage**: Private copied ROM bytes in the machine; app-scoped read-only security-scoped bookmark data and non-sensitive display metadata for remembered user selections
+**Storage**: Private copied ROM bytes in the machine; app-scoped read-only security-scoped bookmark data and non-sensitive display metadata for remembered user selections. M1 assigns the language ROM to fixed sideways bank 12; no bank-selection UI is added.
 
-**Testing**: Focused C++/C/Swift regression tests, a focused Model B workflow aggregate, affected C1/C2 and target-profile regressions, `swift test`, the changed macOS build, documentation checks, and direct macOS observation. The complete M1 audio-inclusive journey remains later.
+**Testing**: Focused host and boundary regressions, a focused Model B workflow aggregate, `make test-machine-target-profile`, `make test-c1`, `make test-c2-xcode`, `swift test`, `swift build`, the maintained macOS Xcode build, documentation checks, and direct macOS observation. Add C++/C cases only when this slice changes that boundary. The complete M1 audio-inclusive journey remains later.
 
 **Code Documentation**: Update affected C/C++/Swift public contracts and named host state abstractions; update a conceptual guide only if a host-boundary or runtime invariant changes; run `DOCS_BASE=HEAD make docs-check`.
 

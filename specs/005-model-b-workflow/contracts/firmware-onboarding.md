@@ -12,7 +12,7 @@ changes the source file and never substitutes another ROM after failure.
 | Role | Accepted shape | On success | On failure |
 | --- | --- | --- | --- |
 | OS | Exactly 16 KiB Model B MOS bytes | Copy bytes into the runtime OS ROM and retain a host bookmark for later authorised source access. | Preserve prior assignment and report the role/recovery action. |
-| Language | One through 16 KiB sideways-ROM bytes in an explicit available Model B bank | Copy bytes into that bank and retain a host bookmark for later authorised source access. | Preserve prior assignment and report the role, bank or source-access problem. |
+| Language | One through 16 KiB sideways-ROM bytes for fixed Model B bank 12 | Copy bytes into bank 12 and retain a host bookmark for later authorised source access. | Preserve prior assignment and report the role, bank or source-access problem. |
 
 The host creates a read-only security-scoped bookmark only after successful user
 selection. Every resolved access balances start and stop. A stale bookmark is

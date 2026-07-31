@@ -13,6 +13,9 @@ The acceptance program is entered exactly as `10 PRINT "BEEB6502"`, Return,
 records the physical key press/release mapping used for that sequence alongside
 the macOS observation; it does not add text injection or another input path.
 
+The selected language ROM is installed in sideways bank 12 for this slice; no
+bank-selection control is exposed.
+
 ## Presentation
 
 The host requests bounded runtime progression and displays only owned completed

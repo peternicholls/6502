@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `role` | `operatingSystem` or `language` | Exactly one assignment per role in the active Model B session. |
 | `profile` | Explicit requested Model B identity | Must remain Model B; firmware never infers a profile. |
+| `bank` | Fixed sideways-ROM destination | `12` for the M1 language assignment; host rejects any other or unavailable destination. |
 | `bookmark` | Opaque host access token | Host-owned, read-only and resolved only for bounded access; absent without recoverable permission. |
 | `displayName` | User-visible source label | Derived safely from source metadata; never classifies compatibility. |
 | `availability` | `unassigned`, `available`, `stale`, `inaccessible`, `rejected` | Supplies typed recovery text. |

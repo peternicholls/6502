@@ -19,6 +19,11 @@ running `10 PRINT "BEEB6502"` followed by `RUN`. Automated checks use only
 synthetic or clean-room data and prove validation and state preservation, not
 that a fixture is authentic firmware.
 
+The M1 host assigns the language ROM to bank 12, matching the existing clean-room
+BASIC harness in `Tests/test_main.cpp`. This keeps the first workflow deterministic
+without introducing bank-selection UI; the assignment still records and validates
+the destination.
+
 **Alternatives considered**:
 
 - Accept any binary and infer its role from extension or contents — rejected:

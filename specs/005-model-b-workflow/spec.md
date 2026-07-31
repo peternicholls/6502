@@ -107,7 +107,7 @@ As a user running Model B software, I can run, pause, reset or press BREAK, unde
 - **FR-009**: The application MUST provide separate, keyboard-operable run, pause, reset and BREAK controls with visible and assistive state feedback.
 - **FR-010**: Control, firmware and presentation failures MUST be reported as actionable states; recovery MUST preserve the configured Model B identity and never fall back to Model B+ or another profile.
 - **FR-011**: Runtime mutation and observation MUST continue through the existing owner and completed-instruction/device-tick boundary; no UI object may borrow or mutate live core state directly.
-- **FR-012**: The feature MUST add no audio-device output, persistence/snapshot behavior, mobile adaptation, media workflow, Model B+ behavior, timing refinement, inspection/editor capability or new third-party dependency.
+- **FR-012**: The feature MUST add no audio-device output, machine snapshot/session-state persistence, mobile adaptation, media workflow, Model B+ behavior, timing refinement, inspection/editor capability or new third-party dependency.
 - **FR-013**: Acceptance evidence MUST include focused automated firmware, input, lifecycle and frame-presentation coverage; affected C/C++/Swift boundary checks; and a recorded macOS build, launch and direct observation of the three user stories with keyboard and assistive technology.
 
 ### Key Entities
@@ -132,6 +132,7 @@ As a user running Model B software, I can run, pause, reset or press BREAK, unde
 
 - The user supplies lawful OS and language ROM files compatible with the existing Model B foundation; the repository remains free of proprietary ROM bytes.
 - Model B is the only constructible profile throughout this feature; Model B+ 64K remains a separately displayed but unavailable request.
+- The M1 visual/control slice installs the selected language ROM in fixed sideways bank 12, matching the existing clean-room BASIC harness; it does not add bank-selection UI. The assignment records that bank explicitly and rejects any unavailable bank.
 - Compatibility is an observable Model B result, not file-type inference: the OS image is exactly 16 KiB, the selected language ROM is one through 16 KiB in an available bank, and the accepted pair must reset to the BASIC prompt and execute the documented program during direct observation. Automated tests use synthetic or clean-room fixtures and do not claim firmware authenticity.
 - The documented acceptance program is `10 PRINT "BEEB6502"` followed by `RUN`; its expected result is a visible `BEEB6502` line. The maintained physical-key mapping documents the required key presses and releases without adding input scope.
 - The maintained first acceptance platform is macOS with a physical keyboard. iPhone and iPad adaptation remain later committed work.
