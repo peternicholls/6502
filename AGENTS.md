@@ -3,7 +3,7 @@ Active Spec Kit feature: specs/005-model-b-workflow
 Its scope must trace to a named row or gate in
 docs/product/MACHINE_DELIVERY_PLAN.md, the sole forward programme authority.
 Completed and archived material cannot add scope.
-No implementation plan exists yet; complete specification before planning.
+Read the current implementation plan at specs/005-model-b-workflow/plan.md
 <!-- SPECKIT END -->
 
 ## Git Checkpoints
