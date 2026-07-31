@@ -131,6 +131,8 @@ final class EmulatorModel: ObservableObject {
     @Published private(set) var osAssignment = "OS ROM: not assigned"
     @Published private(set) var languageAssignment = "Language ROM: not assigned"
     @Published private(set) var inputFocus = false
+    @Published private(set) var presentationEpoch: UInt64 = 0
+    @Published private(set) var lastPresentedFrame: UInt64 = 0
 
     /// Replaced only after a requested candidate constructs and reports its profile.
     private var machine: BeebMachine?
@@ -319,17 +321,25 @@ final class EmulatorModel: ObservableObject {
 
     func reset() {
         guard let machine else { return }
-        do { try machine.reset() }
+        do {
+            try machine.reset()
+            presentationEpoch &+= 1
+            lastPresentedFrame = 0
+            screen = nil
+        }
         catch { status = error.localizedDescription; stop() }
     }
 
     private func stepFrame() {
         guard let machine else { return }
         do {
-            _ = try machine.runToNextFrame()
-            if let frame = try machine.videoFrame() { screen = platformImage(frame) }
+            guard try machine.runToNextFrame() else { return }
+            let frame = try machine.dequeueVideoFrame()
+            guard frame.number > lastPresentedFrame else { return }
+            lastPresentedFrame = frame.number
+            screen = platformImage(frame)
             let cpu = try machine.cpuState()
-            status = String(format: "PC %04X   %,llu cycles", cpu.programCounter, cpu.cycles)
+            status = String(format: "Frame %llu · epoch %llu · PC %04X   %,llu cycles", frame.number, presentationEpoch, cpu.programCounter, cpu.cycles)
         } catch { status = error.localizedDescription; stop() }
     }
 

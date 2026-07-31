@@ -16,13 +16,20 @@ the macOS observation; it does not add text injection or another input path.
 The selected language ROM is installed in sideways bank 12 for this slice; no
 bank-selection control is exposed.
 
+The documented key matrix is bounded to the acceptance sequence: `1`=(0,3),
+`0`=(7,2), `B`=(4,6), `E`=(2,2), `I`=(5,2), `N`=(5,5), `P`=(7,3),
+`R`=(3,3), `T`=(3,2), `U`=(5,3), space=(2,6), Return=(9,4), and Shift+`2`
+for the quote.
+
 ## Presentation
 
 The host requests bounded runtime progression and displays only owned completed
 frames. Display refresh and timer scheduling consume output; they do not derive
 emulated time. The host discards stale output after reset/BREAK according to the
 runtime output epoch and presents an actionable diagnostic if it cannot consume
-a frame.
+a frame. Each presented frame advances `lastPresentedFrame` within
+`presentationEpoch`; reset clears the displayed frame and increments the epoch
+before later output.
 
 ## Recovery
 
