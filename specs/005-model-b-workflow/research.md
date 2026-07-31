@@ -12,6 +12,13 @@ service documentation describes a 16 KiB MOS and language/service ROMs in paged
 space. Separate roles produce actionable recovery and stop file names from
 inferring profile identity or silently selecting another language.
 
+**Compatibility boundary**: File shape is necessary but not a claim of ROM
+identity or provenance. The product accepts the stated role bounds, then direct
+macOS acceptance proves the selected OS/language pair by resetting to BASIC and
+running `10 PRINT "BEEB6502"` followed by `RUN`. Automated checks use only
+synthetic or clean-room data and prove validation and state preservation, not
+that a fixture is authentic firmware.
+
 **Alternatives considered**:
 
 - Accept any binary and infer its role from extension or contents — rejected:

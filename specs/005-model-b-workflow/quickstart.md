@@ -16,6 +16,11 @@ Before implementation, the command must resolve this feature and list `spec.md`,
 2. Implement only enough behavior to pass it.
 3. Run directly affected boundary checks and commit the verified task.
 
+For direct macOS observation, use a lawful user-provided Model B OS/language
+pair and enter `10 PRINT "BEEB6502"`, Return, `RUN`, Return. Record the physical
+key mapping and the visible `BEEB6502` result. Do not add ROM bytes to the
+repository.
+
 The task document will name the exact workflow aggregate. Do not run the
 audio-inclusive M1 acceptance until `machine-audio-output` is complete.
 

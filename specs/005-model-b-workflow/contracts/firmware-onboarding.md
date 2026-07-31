@@ -19,6 +19,12 @@ selection. Every resolved access balances start and stop. A stale bookmark is
 refreshed; failed resolution or access changes only host availability and asks
 the user to reselect the source.
 
+Shape validation does not infer ROM identity, provenance or Model B+
+compatibility. For an accepted external OS/language pair, compatibility is
+established by the direct Model B observation: reset reaches BASIC and the
+documented program executes. Automated fixtures prove role bounds and recovery
+only.
+
 ## Boundary rules
 
 - The C++ core receives byte values, never URLs, bookmarks, paths or permissions.

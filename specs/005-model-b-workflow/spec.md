@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-31
 
-**Status**: Draft
+**Status**: Ready for implementation
 
 **Input**: User description: "Deliver the first running Model B application workflow."
 
@@ -122,7 +122,7 @@ As a user running Model B software, I can run, pause, reset or press BREAK, unde
 ### Measurable Outcomes
 
 - **SC-001**: On a named maintained macOS host, a user can complete the documented import, Model B boot and BASIC-ready journey entirely through the application; the acceptance record identifies the ROM roles, profile, inputs and observed result.
-- **SC-002**: On the same host, a user can type and run the documented short BASIC program through the physical-keyboard path, and the observed display result matches the program's documented expectation.
+- **SC-002**: On the same host, a user can type `10 PRINT "BEEB6502"`, press Return, type `RUN`, press Return, through the physical-keyboard path, and the observed display includes `BEEB6502`.
 - **SC-003**: During the recorded program run, the application presents at least two successive completed frames with distinct sequence identities or documented unchanged-image justification, while the machine advances only through its runtime owner.
 - **SC-004**: The recorded macOS journey demonstrates run, pause, reset and BREAK plus one recoverable failure; each leaves the application responsive and the active profile correctly identified as Model B.
 - **SC-005**: Automated tests cover accepted and rejected firmware assignment, keyboard input ordering, control recovery, stale-output handling and C/C++/Swift failure propagation relevant to changed boundaries.
@@ -132,6 +132,7 @@ As a user running Model B software, I can run, pause, reset or press BREAK, unde
 
 - The user supplies lawful OS and language ROM files compatible with the existing Model B foundation; the repository remains free of proprietary ROM bytes.
 - Model B is the only constructible profile throughout this feature; Model B+ 64K remains a separately displayed but unavailable request.
-- The exact fixture, BASIC program, supported firmware-role rules and persistent-access mechanism are selected during planning from current references and platform conventions without expanding the feature's non-goals.
+- Compatibility is an observable Model B result, not file-type inference: the OS image is exactly 16 KiB, the selected language ROM is one through 16 KiB in an available bank, and the accepted pair must reset to the BASIC prompt and execute the documented program during direct observation. Automated tests use synthetic or clean-room fixtures and do not claim firmware authenticity.
+- The documented acceptance program is `10 PRINT "BEEB6502"` followed by `RUN`; its expected result is a visible `BEEB6502` line. The maintained physical-key mapping documents the required key presses and releases without adding input scope.
 - The maintained first acceptance platform is macOS with a physical keyboard. iPhone and iPad adaptation remain later committed work.
 - Audio device presentation is the separately planned `machine-audio-output` slice; this feature may preserve the existing bounded audio producer but does not make audio a user-facing acceptance claim.

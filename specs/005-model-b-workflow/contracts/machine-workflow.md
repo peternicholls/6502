@@ -8,6 +8,11 @@ matrix command. Run, pause, reset and BREAK are independent keyboard-operable
 controls; BREAK remains a BREAK request rather than a host shortcut for an
 unrelated lifecycle mutation.
 
+The acceptance program is entered exactly as `10 PRINT "BEEB6502"`, Return,
+`RUN`, Return. The expected visible result includes `BEEB6502`. The implementation
+records the physical key press/release mapping used for that sequence alongside
+the macOS observation; it does not add text injection or another input path.
+
 ## Presentation
 
 The host requests bounded runtime progression and displays only owned completed
