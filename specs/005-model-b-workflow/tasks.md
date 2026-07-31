@@ -29,7 +29,7 @@
 
 **Independent Test**: Assigned firmware plus `10 PRINT "BEEB6502"`, Return, `RUN`, Return yields the expected result and two completed-frame identities without host-driven emulation.
 
-- [ ] T004 [US2] Add failing physical-key focus, press/release ordering and documented-program probes; implement `Sources/BeebDemo/main.swift` mapping and focus lifecycle using only `BeebMachine.setKey`, adding core/C/Swift boundary coverage only if the implementation changes that boundary; pass the focused input checks and commit the input checkpoint.
+- [X] T004 [US2] Add failing physical-key focus, press/release ordering and documented-program probes; implement `Sources/BeebDemo/main.swift` mapping and focus lifecycle using only `BeebMachine.setKey`, adding core/C/Swift boundary coverage only if the implementation changes that boundary; pass the focused input checks and commit the input checkpoint.
 - [ ] T005 [US2] Add failing frame/epoch probes; implement epoch-aware completed-frame consumption in `Sources/BeebDemo/main.swift` using existing owned output, record the physical key mapping and acceptance program in `contracts/machine-workflow.md` and `quickstart.md`, then pass focused frame/replay checks and commit the checkpoint closing US2.
 
 ## Phase 4: User Story 3 — Control and Recover a Running Session (Priority: P3)

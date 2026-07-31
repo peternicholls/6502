@@ -15,6 +15,91 @@ import UIKit
 typealias PlatformImage = UIImage
 #endif
 
+#if os(macOS)
+/// One physical-key translation into the BBC Model B matrix.
+fileprivate struct BBCKeyPosition {
+    let column: UInt8
+    let row: UInt8
+    let requiresShift: Bool
+}
+
+/// Focusable AppKit bridge that forwards physical key transitions to the host
+/// model; it never touches the machine directly.
+fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
+    let onKey: (BBCKeyPosition, Bool) -> Void
+    let onFocus: (Bool) -> Void
+
+    final class KeyView: NSView {
+        var onKey: ((BBCKeyPosition, Bool) -> Void)?
+        var onFocus: ((Bool) -> Void)?
+
+        override var acceptsFirstResponder: Bool { true }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil else { return }
+            window?.makeFirstResponder(self)
+            onFocus?(true)
+        }
+
+        override func becomeFirstResponder() -> Bool {
+            let result = super.becomeFirstResponder()
+            if result { onFocus?(true) }
+            return result
+        }
+
+        override func resignFirstResponder() -> Bool {
+            let result = super.resignFirstResponder()
+            if result { onFocus?(false) }
+            return result
+        }
+
+        override func keyDown(with event: NSEvent) {
+            guard let position = Self.position(for: event) else { return }
+            onKey?(position, true)
+        }
+
+        override func keyUp(with event: NSEvent) {
+            guard let position = Self.position(for: event) else { return }
+            onKey?(position, false)
+        }
+
+        private static func position(for event: NSEvent) -> BBCKeyPosition? {
+            if event.keyCode == 36 { return BBCKeyPosition(column: 9, row: 4, requiresShift: false) }
+            guard let character = event.charactersIgnoringModifiers?.uppercased() else { return nil }
+            let shift = event.characters == "\""
+            switch character {
+            case "1": return BBCKeyPosition(column: 0, row: 3, requiresShift: false)
+            case "2": return BBCKeyPosition(column: 1, row: 3, requiresShift: shift)
+            case "0": return BBCKeyPosition(column: 7, row: 2, requiresShift: false)
+            case "B": return BBCKeyPosition(column: 4, row: 6, requiresShift: false)
+            case "E": return BBCKeyPosition(column: 2, row: 2, requiresShift: false)
+            case "I": return BBCKeyPosition(column: 5, row: 2, requiresShift: false)
+            case "N": return BBCKeyPosition(column: 5, row: 5, requiresShift: false)
+            case "P": return BBCKeyPosition(column: 7, row: 3, requiresShift: false)
+            case "R": return BBCKeyPosition(column: 3, row: 3, requiresShift: false)
+            case "T": return BBCKeyPosition(column: 3, row: 2, requiresShift: false)
+            case "U": return BBCKeyPosition(column: 5, row: 3, requiresShift: false)
+            case " ": return BBCKeyPosition(column: 2, row: 6, requiresShift: false)
+            default: return nil
+            }
+        }
+    }
+
+    func makeNSView(context: Context) -> KeyView {
+        let view = KeyView()
+        view.onKey = onKey
+        view.onFocus = onFocus
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyView, context: Context) {
+        nsView.onKey = onKey
+        nsView.onFocus = onFocus
+    }
+}
+#endif
+
 /// Main-actor UI model owning the optional machine and 50 Hz display timer.
 /// It translates imported user files and runtime errors into view state.
 @MainActor
@@ -45,6 +130,7 @@ final class EmulatorModel: ObservableObject {
     @Published private(set) var profileStatus = "No machine profile is active"
     @Published private(set) var osAssignment = "OS ROM: not assigned"
     @Published private(set) var languageAssignment = "Language ROM: not assigned"
+    @Published private(set) var inputFocus = false
 
     /// Replaced only after a requested candidate constructs and reports its profile.
     private var machine: BeebMachine?
@@ -52,6 +138,7 @@ final class EmulatorModel: ObservableObject {
     private let defaults = UserDefaults.standard
     private var hasOSROM = false
     private var hasLanguageROM = false
+    let documentedProgram = "10 PRINT \"BEEB6502\""
 
     private enum BookmarkKey {
         static let os = "model-b.os-bookmark"
@@ -120,6 +207,29 @@ final class EmulatorModel: ObservableObject {
             status = "Disc mounted in drive 0"
         } catch { status = error.localizedDescription }
     }
+
+    #if os(macOS)
+    func setInputFocus(_ focused: Bool) {
+        inputFocus = focused
+    }
+
+    fileprivate func handleKey(_ position: BBCKeyPosition, pressed: Bool) {
+        guard let machine else { return }
+        do {
+            if position.requiresShift && pressed {
+                try machine.setKey(column: 0, row: 0, pressed: true)
+            }
+            try machine.setKey(column: position.column, row: position.row, pressed: pressed)
+            if position.requiresShift && !pressed {
+                try machine.setKey(column: 0, row: 0, pressed: false)
+            }
+            status = inputFocus ? "Keyboard focus active — (documentedProgram), Return, RUN, Return" : status
+        } catch {
+            status = error.localizedDescription
+            stop()
+        }
+    }
+    #endif
 
     private func key(for role: BeebFirmwareRole) -> (bookmark: String, name: String) {
         switch role {
@@ -298,6 +408,18 @@ struct ContentView: View {
             Text(model.status).font(.caption.monospaced()).frame(maxWidth: .infinity, alignment: .leading)
             Text(model.osAssignment).frame(maxWidth: .infinity, alignment: .leading)
             Text(model.languageAssignment).frame(maxWidth: .infinity, alignment: .leading)
+            Text("Keyboard focus: \(model.inputFocus ? "active" : "not active")")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel("Machine keyboard focus")
+                .accessibilityValue(model.inputFocus ? "Active" : "Not active")
+            #if os(macOS)
+            MachineKeyboardCapture(
+                onKey: { position, pressed in model.handleKey(position, pressed: pressed) },
+                onFocus: { focused in model.setInputFocus(focused) }
+            )
+            .frame(height: 1)
+            .accessibilityLabel("Machine keyboard input")
+            #endif
         }
         .padding()
         .fileImporter(isPresented: $model.isImportingOS, allowedContentTypes: [.data]) { result in
