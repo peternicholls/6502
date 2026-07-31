@@ -149,6 +149,22 @@ final class EmulatorModel: ObservableObject {
         static let languageName = "model-b.language-name"
     }
 
+    private var bookmarkCreationOptions: URL.BookmarkCreationOptions {
+        #if os(macOS)
+        return [.withSecurityScope, .securityScopeAllowOnlyReadAccess]
+        #else
+        return []
+        #endif
+    }
+
+    private var bookmarkResolutionOptions: URL.BookmarkResolutionOptions {
+        #if os(macOS)
+        return [.withSecurityScope]
+        #else
+        return []
+        #endif
+    }
+
     init() {
         installRequestedProfile()
         restoreRememberedFirmware()
@@ -184,7 +200,7 @@ final class EmulatorModel: ObservableObject {
             defer { if access { url.stopAccessingSecurityScopedResource() } }
             let data = try Data(contentsOf: url)
             let bookmark = try? url.bookmarkData(
-                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                options: bookmarkCreationOptions,
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )
@@ -271,7 +287,7 @@ final class EmulatorModel: ObservableObject {
             var stale = false
             let url = try URL(
                 resolvingBookmarkData: bookmark,
-                options: [.withSecurityScope],
+                options: bookmarkResolutionOptions,
                 relativeTo: nil,
                 bookmarkDataIsStale: &stale
             )
@@ -279,7 +295,7 @@ final class EmulatorModel: ObservableObject {
             defer { if access { url.stopAccessingSecurityScopedResource() } }
             try machine.loadFirmware(Data(contentsOf: url), role: role)
             if stale, let refreshed = try? url.bookmarkData(
-                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                options: bookmarkCreationOptions,
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             ) {
