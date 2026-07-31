@@ -30,15 +30,16 @@ durable intent. None may create a competing backlog.
 | C0 baseline evidence | **DONE** | Reproducible foundation evidence |
 | C1 runtime ownership | **DONE** | Single owner and recoverable C++/C/Swift boundary |
 | C2 bounded output and Xcode delivery | **DONE** | Owned frame/audio output, diagnostics and maintained Apple builds |
-| Active feature | **PLANNING** | `005-model-b-workflow` is the current Spec Kit feature; implementation has not started |
+| Active feature | **ACTIVE** | `005-model-b-workflow` is in implementation; automated workflow gates are delivered and ROM-backed macOS acceptance remains open |
 | `machine-target-profile` | **DONE** | Extensible identity transport and safe rejection across core, C, Swift and host |
 | M1 running Model B application | **TODO** | First usable application |
 | M2 continuity | **TODO** | Snapshot and lifecycle completion |
 | M3 Model B+ 64K developer preview | **TODO** | Required post-C6 outcome |
 
-Completed foundations and profile identity are not a completed application. No
-firmware onboarding, host video/audio presentation, full host keyboard
-workflow, snapshots or Model B+ machine behavior has been delivered.
+Completed foundations and profile identity are not a completed application. The
+current feature supplies bounded firmware onboarding, host video presentation,
+keyboard and control paths; direct ROM-backed acceptance, application audio,
+snapshots and Model B+ machine behavior remain outside this delivered slice.
 
 ## Machine profiles
 

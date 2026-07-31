@@ -51,6 +51,9 @@
 
 ## Dependencies and Execution Order
 
+T008 and T010 are intentionally gated: they require lawful ROM-backed macOS
+observation and must not be closed from automated build evidence alone.
+
 ```text
 T001 → T002 → T003 → T004 → T005 → T006 → T007 → T008 → T009 → T010
 ```
