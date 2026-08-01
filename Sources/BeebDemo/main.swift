@@ -147,6 +147,7 @@ final class EmulatorModel: ObservableObject {
     @Published var isImportingOS = false
     @Published var isImportingLanguage = false
     @Published var isImportingDisc = false
+    @Published private(set) var isDownloadingFirmware = false
     @Published var requestedProfile = MachineProfileChoice.modelB
     @Published private(set) var activeProfile: BeebMachineProfile?
     @Published private(set) var profileStatus = "No machine profile is active"
@@ -163,6 +164,15 @@ final class EmulatorModel: ObservableObject {
     private var hasOSROM = false
     private var hasLanguageROM = false
     let documentedProgram = "10 PRINT \"BEEB6502\""
+
+    static let firmwareRepositoryURL = URL(
+        string: "https://mdfs.net/System/ROMs/AcornMOS/BBC_120/"
+    )!
+
+    private static let downloadableFirmware: [(role: BeebFirmwareRole, name: String, url: URL)] = [
+        (.operatingSystem, "MOS120.rom", firmwareRepositoryURL.appendingPathComponent("MOS120")),
+        (.language, "BASIC200.rom", firmwareRepositoryURL.appendingPathComponent("BASIC200")),
+    ]
 
     private enum BookmarkKey {
         static let os = "model-b.os-bookmark"
@@ -248,6 +258,65 @@ final class EmulatorModel: ObservableObject {
     }
 
     func loadOS(_ url: URL) { loadFirmware(url, role: .operatingSystem) }
+
+    /// Downloads the user-requested Model B firmware pair into private app
+    /// storage, then loads it through the same runtime contract as imported ROMs.
+    func downloadModelBFirmware() async {
+        guard let machine, !isDownloadingFirmware else { return }
+        isDownloadingFirmware = true
+        status = "Downloading Model B ROMs…"
+        defer { isDownloadingFirmware = false }
+
+        do {
+            let romDirectory = try firmwareDirectory()
+            var downloads: [(role: BeebFirmwareRole, name: String, url: URL, data: Data)] = []
+
+            for firmware in Self.downloadableFirmware {
+                let (data, response) = try await URLSession.shared.data(from: firmware.url)
+                guard let response = response as? HTTPURLResponse,
+                      (200...299).contains(response.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+                switch firmware.role {
+                case .operatingSystem where data.count != 16 * 1024:
+                    throw BeebError.invalidOSROM
+                case .language where !(1...16 * 1024).contains(data.count):
+                    throw BeebError.invalidSidewaysROM
+                default:
+                    break
+                }
+                downloads.append((firmware.role, firmware.name,
+                                  romDirectory.appendingPathComponent(firmware.name), data))
+            }
+
+            for download in downloads {
+                try download.data.write(to: download.url, options: .atomic)
+                try machine.loadFirmware(download.data, role: download.role)
+                let bookmark = try download.url.bookmarkData(
+                    options: bookmarkCreationOptions,
+                    includingResourceValuesForKeys: nil,
+                    relativeTo: nil
+                )
+                remember(bookmark, url: download.url, role: download.role)
+                updateAssignment(download.name, role: download.role)
+            }
+            try resetIfFirmwareReady()
+        } catch {
+            status = "Model B ROM download failed — \(error.localizedDescription)"
+        }
+    }
+
+    private func firmwareDirectory() throws -> URL {
+        let base = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let directory = base.appendingPathComponent("BBC Micro ROMS", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
 
     func loadDisc(_ url: URL) {
         guard let machine else { return }
@@ -509,6 +578,10 @@ struct ContentView: View {
             HStack {
                 Button("Open OS ROM…") { model.isImportingOS = true }
                 Button("Open Language ROM…") { model.isImportingLanguage = true }
+                Button(model.isDownloadingFirmware ? "Downloading ROMs…" : "Download Model B ROMs") {
+                    Task { await model.downloadModelBFirmware() }
+                }
+                .disabled(model.isDownloadingFirmware)
                 Button("Mount Disc…") { model.isImportingDisc = true }
                 Button("Run") { model.start() }
                     .accessibilityIdentifier("run-control")
@@ -519,6 +592,8 @@ struct ContentView: View {
                 Button("BREAK") { model.breakExecution() }
                     .accessibilityIdentifier("break-control")
             }
+            Link("BBC Micro ROM repository", destination: EmulatorModel.firmwareRepositoryURL)
+                .frame(maxWidth: .infinity, alignment: .leading)
             #if os(macOS)
             Button("Focus keyboard") { keyboardFocusRequest &+= 1 }
                 .accessibilityIdentifier("focus-keyboard-control")
