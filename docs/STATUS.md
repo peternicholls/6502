@@ -15,9 +15,9 @@ gate definitions live only in the
 | C1 runtime ownership | **DONE** | Supported hosts use one recoverable runtime owner across C++, C and Swift. |
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
 | Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
-| Active feature | **IN PROGRESS** | `005-model-b-workflow` has automated host workflow coverage; ROM-dependent macOS acceptance remains open. |
-| Next feature | **NEXT** | Continue the bounded Model B workflow gate, then close the remaining M1 acceptance evidence. |
-| M1 running Model B application | **TODO** | Firmware import, BASIC readiness, bounded keyboard/frame/control host paths exist; direct ROM-backed visual acceptance and audio presentation remain unverified. |
+| Active feature | **COMPLETE** | `005-model-b-workflow` is archived with ROM-backed development-only macOS acceptance; the later audio-inclusive M1 gate remains open. |
+| Next feature | **NEXT** | Close the remaining audio-inclusive M1 acceptance evidence. |
+| M1 running Model B application | **TODO** | ROM-backed firmware import, BASIC readiness, bounded keyboard/frame/control host paths are accepted; audio presentation remains unverified. |
 | M2 continuity | **TODO** | Snapshot and application lifecycle contracts do not exist. |
 | M3 Model B+ 64K preview | **TODO** | B+ machine behavior and the post-C6 product demonstrations do not exist. |
 
