@@ -9,6 +9,11 @@ prototype, but moves the hardware engine into dependency-free C++20 behind a
 small C API. That keeps the core testable on non-Apple hosts while remaining
 straightforward to call from Swift, Metal and AVAudioEngine.
 
+Delivery is currently desktop-first: the macOS product will move to an
+AppKit-first machine window and gain a bare terminal connection over the same
+runtime before the committed iPhone/iPad product adaptation. This sequencing
+does not add Apple dependencies to the C++ core.
+
 No operating-system, BASIC, filing-system, game or character ROM is included.
 The demo deliberately loads user-supplied ROMs and media through the platform
 document picker.
@@ -150,7 +155,9 @@ clearly separates completed foundations from active, next, undelivered and
 reserved work. The
 [documentation index](docs/README.md) links supporting product intent, core
 constraints, verified [status](docs/STATUS.md) and
-[architecture](docs/ARCHITECTURE.md).
+[architecture](docs/ARCHITECTURE.md). The agreed native-window, safety,
+program-input and terminal behavior is recorded in the
+[desktop experience direction](docs/product/DESKTOP_EXPERIENCE.md).
 
 ## Releases and compatibility
 

@@ -1,7 +1,7 @@
 # Implementation constraints
 
 **Status:** Supporting technical requirements for unfinished work
-**Updated:** 2026-07-24
+**Updated:** 2026-07-31
 
 This file constrains technical design after a slice is selected from the
 [Machine delivery plan](product/MACHINE_DELIVERY_PLAN.md). It is not a roadmap,
@@ -10,6 +10,9 @@ backlog or completion ledger. [STATUS.md](STATUS.md) records what exists.
 ## Global constraints
 
 - Keep the C++20 core deterministic, dependency-light and host-agnostic.
+- Keep Foundation, AppKit, UIKit, SwiftUI, Metal, AVAudioEngine, Terminal/TTY
+  handling and ANSI rendering above `BeebKit`; no desktop or mobile convenience
+  may make the C++ core Apple-specific.
 - Preserve the `MachineRuntime` owner and quiescent completed-instruction/device
   boundary unless a feature explicitly versions a replacement.
 - Bound every queue, payload and untrusted input before mutation.
@@ -19,6 +22,63 @@ backlog or completion ledger. [STATUS.md](STATUS.md) records what exists.
   failures.
 - Define fixtures, observation intervals and tolerances for every fidelity,
   timing, latency or throughput claim.
+- The first Model B host workflow remains bounded to typed firmware roles,
+  fixed language bank 12, physical-key matrix input, owned completed-frame
+  presentation and independent lifecycle controls; do not add text injection,
+  host-side emulation time or speculative persistence to close this slice.
+
+## Desktop hosts and interaction
+
+- AppKit owns the maintained macOS application structure: windows, responder
+  chains, menus, toolbar, Settings, lifecycle actions and accessibility.
+  Selective SwiftUI embedding must not own or obscure those native contracts.
+- AppKit uses BeebKit while a portable terminal host may bind at the stable C
+  ABI. Both use the production `MachineRuntime` semantics; neither may duplicate
+  CPU/device behavior, create a second emulation clock or infer machine truth
+  from presentation state.
+- The main AppKit window orders its toolbar, full-width CRT, active-machine
+  footer and optional BBC keyboard drawer vertically. Opening UI chrome must not
+  distort the active raster.
+- Final display geometry is 4:3 with mode-correct source-pixel aspect,
+  underscan and nearest-neighbour sampling. A host font cannot replace the
+  emulated video/character-generator output.
+- Machine, memory, hardware and ROM layout are configured in Settings. Every
+  setting declares live, pause-required, restart-required or potentially
+  destructive application semantics; changes commit atomically at a runtime
+  boundary.
+- Safety interlocks are proportional. Prefer recovery checkpoints,
+  failure-atomic operations and explicit writable-media policy to repetitive
+  confirmation dialogs. BREAK remains immediate.
+- Text-program import previews line numbering and unsupported characters, then
+  delivers bounded, cancellable key events through the production input path.
+  Direct screen/RAM/BASIC-workspace injection belongs to a later explicit
+  program-boundary feature.
+
+## Terminal host and verification
+
+- Interactive terminal mode contains no host toolbar, footer, border or status
+  chrome. It disables local echo, routes ordinary input through the BBC key map
+  and restores raw/alternate-screen state on normal exit, errors and handled
+  signals.
+- Terminal text is reconstructed from emulated video state, not intercepted
+  BASIC or OS calls. An ANSI graphics approximation must not claim raster
+  fidelity or replace owned completed frames.
+- Noninteractive mode runs the production `MachineRuntime`, accepts bounded
+  profile/firmware/media/input commands, uses emulated-time or deterministic
+  machine conditions for stopping, and emits stable observations and process
+  status. It must never use wall-clock presentation to advance emulation.
+- Terminal aggregates complement portable C++ unit/evidence runs and AppKit
+  acceptance. They may prove CPU, ROM, device and cross-boundary behavior but
+  cannot substitute for direct user-interface observation.
+
+## UI and UX evidence
+
+Every user-facing desktop slice includes focused visual and interaction review:
+representative resize/full-screen states, pixel sharpness, focus capture and
+release, keyboard-only use, accessibility, Settings/interlock behavior and
+recoverable errors. Record direct screenshots or interaction evidence when the
+claim is visual or experiential; source-shape and unit checks alone do not close
+such claims.
 
 ## Delivery economy
 

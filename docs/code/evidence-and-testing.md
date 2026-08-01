@@ -47,7 +47,9 @@ Use three verification levels:
    checks. Run a sanitizer when memory, ownership, concurrency, parsing or
    untrusted-input risk makes it relevant.
 3. **Milestone or release closure:** run the complete maintained automated
-   matrix and the full documented M1, M2, M3 or release application journey.
+   matrix and the full documented M1-M5 or release application journey. Later
+   milestones add their host-specific journey without weakening earlier
+   portable evidence.
 
 Every behavior still starts with evidence that fails for the expected reason.
 The economy comes from choosing the smallest useful test and from not repeating
@@ -58,6 +60,20 @@ the interaction that changed. Repeat the complete end-to-end journey only when
 closing its milestone, unless a wider manual pass is needed to investigate a
 failure. Accessibility checks follow the same rule: exercise the affected
 control or flow at slice closure and the full journey at the milestone.
+
+The planned terminal host adds two evidence surfaces over the production
+runtime. Interactive checks prove raw keyboard/display/control behavior with no
+GUI chrome. Noninteractive checks submit bounded machine commands and emit
+deterministic text, state/frame digests, diagnostics and exit status. These
+checks complement C++ unit/evidence runs and are especially useful for ROM and
+complete-machine regression coverage, but they do not replace direct AppKit or
+mobile interaction evidence.
+
+Visual desktop work records representative window sizes,
+resize/full-screen transitions, active-raster aspect and sharpness, focus
+capture/release, toolbar/footer/keyboard-drawer state, Settings safety
+interlocks and accessibility behavior. UI/UX review happens in the slice that
+changes the experience rather than as an undifferentiated final-polish phase.
 
 Timing, fidelity, performance and compatibility measurements are required only
 when the slice makes or changes such a claim. Each measurement still names its

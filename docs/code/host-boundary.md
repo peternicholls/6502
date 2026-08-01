@@ -58,6 +58,14 @@ metadata; it is not a failure. Every successful frame carries an opaque
 the vector storage and clears the aggregate. Callers read but never free `rgba`
 directly. A failed frame call leaves the caller's aggregate untouched.
 
+The maintained macOS demo keeps workflow state in the host model: OS and
+language imports are typed roles, the language ROM uses fixed sideways bank 12,
+physical keys are translated into owner-serialized `setKey` calls, and display
+refresh consumes owned completed frames. Run, Pause, Reset and BREAK remain
+separate host actions; reset and BREAK invalidate the presentation epoch before
+later output is shown. This path is automated and does not claim ROM-backed
+visual acceptance until the named-host observation is recorded.
+
 `beeb_dequeue_frame()` allocates its small release context before it asks the
 owner to consume the oldest frame from the capacity-three FIFO. The returned
 pixel vector moves into that context without a second allocation. Allocation
@@ -69,11 +77,11 @@ demand, exact flow counters, and latest output status. The standalone
 `beeb_calculate_emulation_rate()` helper compares two such values and one host
 interval without touching a machine or storing host time.
 
-After reset, C and Swift consumers cannot receive retained pre-reset media:
-frame dequeue is empty and audio drain produces an empty typed underrun until
-new emulated execution publishes output. Diagnostics keep runtime-lifetime
-identities and include the discarded reset depths in exact frame-drop and
-audio-overrun accounting.
+After reset or a newly asserted BREAK, C and Swift consumers cannot receive
+retained media from the prior output epoch: frame dequeue is empty and audio
+drain produces an empty typed underrun until new emulated execution publishes
+output. Diagnostics keep runtime-lifetime identities and include discarded
+depths in exact frame-drop and audio-overrun accounting.
 
 No C++ exception crosses C. Adapter allocation failures become
 `resource_exhausted`; contained standard or unknown failures become

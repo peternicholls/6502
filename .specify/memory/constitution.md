@@ -1,25 +1,18 @@
 <!--
 Sync Impact Report
-- Version: 1.4.0 -> 1.5.0
-- Added principle: X. Current, Completed, and Archived Are Disjoint
-- Modified principles:
-  - I. Product and Core Are Separate Strands (current authority links)
-  - III. Fidelity Claims Require Evidence (explicit evidence storage)
-  - IV. Delivery Is Test-First (observed application acceptance)
-  - IX. One Forward Programme Direction (active-feature and lifecycle rules)
-- Modified sections: Technical and Product Constraints; Specification and
-  Delivery Workflow; Governance
-- Updated templates:
-  - ✅ .specify/templates/plan-template.md
-  - ✅ .specify/templates/spec-template.md
-  - ✅ .specify/templates/tasks-template.md
-  - ✅ .specify/templates/checklist-template.md
-- Updated guidance: AGENTS.md, CONTRIBUTING.md, docs/README.md, specs/README.md
+- Version: 1.5.0 -> 1.6.0
+- Added principles: none
+- Modified principles: none
+- Modified section: Technical and Product Constraints
+- Updated templates: none required; host technology is selected by the delivery
+  plan and architecture sections already required by existing templates
+- Updated guidance: docs/ARCHITECTURE.md,
+  docs/IMPLEMENTATION_CONSTRAINTS.md, docs/product/DESKTOP_EXPERIENCE.md
 - Migration:
-  - live direction remains docs/product/MACHINE_DELIVERY_PLAN.md
-  - technical context moves to docs/IMPLEMENTATION_CONSTRAINTS.md
-  - completed evidence moves to docs/completed/ and specs/completed/
-  - superseded material moves intact to docs/Archive/
+  - the current SwiftUI root remains transitional
+  - new macOS application structure is AppKit-first
+  - terminal and later mobile hosts share the production runtime contracts
+  - C++ remains independent of all Apple and terminal presentation frameworks
 - Deferred items: none
 -->
 
@@ -136,16 +129,21 @@ visible from the path and prevents old prose from contaminating current work.
 
 ## Technical and Product Constraints
 
-- The supported foundation is a dependency-light C++20 core, stable C ABI,
-  Swift `BeebKit` wrapper and native SwiftUI host. Metal, AVAudio and other
-  platform services stay on the host side.
+- The supported foundation is a dependency-light C++20 core, stable C ABI and
+  Swift `BeebKit` wrapper with host-specific frontends. The primary macOS
+  application is AppKit-first; terminal and later iPhone/iPad hosts use the
+  same production machine contracts. SwiftUI may be embedded selectively but
+  is not the required macOS application architecture. Foundation, AppKit,
+  UIKit, SwiftUI, Metal, AVAudio, TTY and ANSI services stay on the host side.
 - The portable Make build and test path MUST remain maintained. A new
   third-party dependency requires explicit specification and plan rationale,
   including the rejected existing or platform alternative.
 - `docs/product/MACHINE_DELIVERY_PLAN.md` owns direction;
   `docs/product/VISION.md` owns durable intent; `docs/ARCHITECTURE.md` owns
   current boundaries; `docs/IMPLEMENTATION_CONSTRAINTS.md` owns technical
-  constraints for unfinished slices; and `docs/STATUS.md` owns verified state.
+  constraints for unfinished slices;
+  `docs/product/DESKTOP_EXPERIENCE.md` owns desktop interaction direction; and
+  `docs/STATUS.md` owns verified state.
 - `docs/code/` contains maintained conceptual contracts. Generated output is a
   disposable build artifact and MUST NOT enter the runtime dependency graph.
 - `docs/completed/`, `specs/completed/` and `docs/Archive/` are non-forward
@@ -214,4 +212,4 @@ rewritten merely to match a new constitution; they are moved intact and
 labelled. Necessary corrections require a new adjacent note or an explicit
 superseding artifact.
 
-**Version**: 1.5.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-19
+**Version**: 1.6.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-08-01

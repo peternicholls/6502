@@ -1,7 +1,7 @@
 # Implementation status
 
 **Status:** Sole authority for verified implementation claims
-**Updated:** 2026-07-24
+**Updated:** 2026-08-01
 
 This file states what exists now. It does not choose future work. Direction and
 gate definitions live only in the
@@ -15,11 +15,14 @@ gate definitions live only in the
 | C1 runtime ownership | **DONE** | Supported hosts use one recoverable runtime owner across C++, C and Swift. |
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
 | Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
-| Active feature | **NONE** | `.specify/feature.json` is empty after target-profile archival. |
-| Next feature | **NEXT** | `machine-model-b-workflow` is the first unfinished M1 slice. |
-| M1 running Model B application | **TODO** | No complete user-facing boot/type/run/video/audio workflow exists. |
-| M2 continuity | **TODO** | Snapshot and application lifecycle contracts do not exist. |
-| M3 Model B+ 64K preview | **TODO** | B+ machine behavior and the post-C6 product demonstrations do not exist. |
+| Active feature | — | No active Spec Kit feature. |
+| Model B workflow acceptance | **TODO** | Implementation and automated evidence pass; direct boot, frame, control, profile and accessibility observations pass, while the typed-program result and recoverable import failure remain open. |
+| Next feature | **NEXT** | Complete the reopened Model B workflow direct acceptance before the audio-inclusive M1 slice. |
+| M1 running Model B desktop | **TODO** | ROM-backed firmware import, BASIC readiness and bounded keyboard/frame/control host paths are implemented; workflow direct acceptance and audio presentation remain unverified. |
+| M2 native desktop experience | **TODO** | The current root is transitional SwiftUI; the AppKit machine window, agreed CRT/footer/drawer experience, program-text flow and production terminal host do not exist. |
+| M3 durable desktop machine | **TODO** | Snapshot, application recovery and safe native media-workflow contracts do not exist. |
+| M4 desktop developer preview | **TODO** | B+ behavior, stable inspection bridge and AppKit developer workspace do not exist. |
+| M5 iPhone and iPad adaptation | **TODO** | An iOS Simulator build surface exists, but the committed device-specific product experience and lifecycle evidence do not. |
 
 `DONE` means implemented with passed evidence. `NEXT` and `TODO` never imply
 partial delivery.
@@ -44,6 +47,18 @@ partial delivery.
 - Model B+ 64K has a permanent distinct identity and an accessible host request,
   but construction reports recognised-unavailable. It does not emulate B+
   hardware, fall back to Model B or mutate the active Model B session.
+- The maintained demo host has a bounded Model B workflow path for typed OS and
+  language-ROM roles, fixed language bank 12, physical-key focus, owned frame
+  dequeue, presentation epochs, and independent Run/Pause/Reset/BREAK controls.
+  Automated evidence passes. Direct ROM-backed boot, frame, control, profile and
+  accessibility observations pass; the typed-program result and recoverable
+  import failure still require direct observation.
+- The maintained macOS UI is currently a SwiftUI demonstration root. AppKit is
+  the selected future macOS application architecture, but its window, Settings,
+  CRT treatment, footer, keyboard drawer and developer workspace are not
+  implemented.
+- The repository has headless C++ evidence runners, but not the planned bare
+  interactive terminal connection or its production-runtime scripted harness.
 
 ## Known fidelity limits
 
@@ -59,6 +74,8 @@ partial delivery.
 | Cassette | Not implemented | 6850, Serial ULA, UEF/WAV decoding and motor timing |
 | Profiles | Extensible identity transport; Model B construction/query; distinct recognised-unavailable B+ 64K request | Model B+ 64K machine behavior; persistence; later profile and expansion assignments |
 | Persistence | None | Versioned snapshots and lifecycle restoration |
+| Desktop UX | Transitional SwiftUI workflow host | AppKit-first window, mode-correct CRT scaling, Settings/interlocks, footer, keyboard drawer and continuous UI/UX evidence |
+| Terminal | Headless C++ runners for bounded evidence | Bare interactive machine connection and deterministic production-runtime terminal integration harness |
 
 ## Evidence
 

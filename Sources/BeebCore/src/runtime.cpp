@@ -433,6 +433,7 @@ class MachineRuntime::Impl final {
     std::uint64_t nextOutputFrameNumber_ = 1;
     std::uint64_t audioCycleRemainder_ = 0;
     OutputStatusCode lastOutputStatus_ = OutputStatusCode::ok;
+    bool breakPressed_ = false;
 
     bool ledgerEnabled_ = false;
     mutable std::mutex ledgerMutex_;
@@ -687,12 +688,22 @@ class MachineRuntime::Impl final {
             machine_->setKey(payload.column, payload.row, payload.pressed);
             return ok();
         }
-        case RuntimeCommandKind::setBreak:
+        case RuntimeCommandKind::setBreak: {
             if (runtimeState_ == RuntimeState::faulted) {
                 return invalidState("cannot change input while runtime is faulted");
             }
-            machine_->setBreak(std::get<bool>(request.payload));
+            const auto pressed = std::get<bool>(request.payload);
+            const auto beginsOutputEpoch = pressed && !breakPressed_;
+            machine_->setBreak(pressed);
+            breakPressed_ = pressed;
+            if (beginsOutputEpoch) {
+                frameOutput_.discardRetained();
+                audioOutput_.discardRetained();
+                audioCycleRemainder_ = 0;
+                lastOutputStatus_ = OutputStatusCode::ok;
+            }
             return ok();
+        }
         case RuntimeCommandKind::runtimeState:
             return ok(runtimeState_);
         case RuntimeCommandKind::profile:

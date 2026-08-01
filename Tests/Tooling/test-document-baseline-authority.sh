@@ -20,8 +20,12 @@ require_text docs/STATUS.md \
   'Sole authority for verified implementation claims'
 require_text docs/IMPLEMENTATION_CONSTRAINTS.md \
   'It is not a roadmap,'
+require_text docs/product/DESKTOP_EXPERIENCE.md \
+  'no delivery authority'
 require_text .specify/memory/constitution.md \
-  '**Version**: 1.5.0'
+  '**Version**: 1.6.0'
+require_text .specify/memory/constitution.md \
+  'application is AppKit-first; terminal'
 require_text .specify/memory/constitution.md \
   'unit tests alone are insufficient'
 require_text .specify/templates/plan-template.md \
@@ -45,6 +49,7 @@ live_files=(
   docs/README.md
   docs/STATUS.md
   docs/product/MACHINE_DELIVERY_PLAN.md
+  docs/product/DESKTOP_EXPERIENCE.md
   docs/product/VISION.md
   specs/README.md
 )

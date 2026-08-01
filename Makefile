@@ -9,6 +9,7 @@ C1_TEST_SCRIPTS ?= $(filter-out Tests/C1/testlib.sh,$(wildcard Tests/C1/test-*.s
 C2_TEST_SCRIPTS ?= $(filter-out Tests/C2/testlib.sh,$(wildcard Tests/C2/test-*.sh))
 C2_PORTABLE_TEST_SCRIPTS ?= $(filter-out Tests/C2/test-xcode-project.sh,$(C2_TEST_SCRIPTS))
 TARGET_PROFILE_TEST_SCRIPTS ?= $(filter-out Tests/TargetProfile/testlib.sh,$(wildcard Tests/TargetProfile/test-*.sh))
+MODEL_B_WORKFLOW_TEST_SCRIPTS ?= $(filter-out Tests/ModelBWorkflow/testlib.sh,$(wildcard Tests/ModelBWorkflow/test-*.sh))
 TOOLING_TEST_SCRIPTS ?= $(wildcard Tests/Tooling/test-*.sh)
 BUILD_DIR = .build/cpp
 C0_PROFILE ?=
@@ -23,6 +24,7 @@ endif
 .PHONY: all test sanitize thread-sanitize test-c1 test-c2 test-c2-portable \
 		test-c2-xcode verify-c2 measure-c2 \
 		test-machine-target-profile \
+		test-model-b-workflow \
 	format-check check-version demo-rom test-c0 verify-c0 \
 	test-tooling \
 	verify-c0-references update-c0-reference measure-c0 \
@@ -116,6 +118,19 @@ test-machine-target-profile:
 		else \
 			code=$$?; status=1; \
 			echo "Target profile group FAIL ($$code): $$test_script" >&2; \
+		fi; \
+	done; \
+	exit $$status
+
+test-model-b-workflow:
+	@status=0; \
+	for test_script in $(MODEL_B_WORKFLOW_TEST_SCRIPTS); do \
+		echo "Model B workflow group: $$test_script"; \
+		if "$$test_script"; then \
+			echo "Model B workflow group PASS: $$test_script"; \
+		else \
+			code=$$?; status=1; \
+			echo "Model B workflow group FAIL ($$code): $$test_script" >&2; \
 		fi; \
 	done; \
 	exit $$status

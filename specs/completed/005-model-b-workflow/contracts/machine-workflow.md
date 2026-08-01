@@ -1,0 +1,45 @@
+# Model B Workflow Contract
+
+## Input and controls
+
+The macOS machine view accepts the documented physical-keyboard sequence when
+it owns input focus. Each press/release uses the established owner-serialized
+matrix command. Run, pause, reset and BREAK are independent keyboard-operable
+controls; BREAK remains a BREAK request rather than a host shortcut for an
+unrelated lifecycle mutation.
+
+The acceptance program is entered exactly as `10 PRINT "BEEB6502"`, Return,
+`RUN`, Return. The expected visible result includes `BEEB6502`. The implementation
+records the physical key press/release mapping used for that sequence alongside
+the macOS observation; it does not add text injection or another input path.
+
+The selected language ROM is installed in sideways bank 12 for this slice; no
+bank-selection control is exposed.
+
+The documented key matrix is bounded to the acceptance sequence: `1`=(0,3),
+`0`=(7,2), `B`=(4,6), `E`=(2,2), `I`=(5,2), `N`=(5,5), `P`=(7,3),
+`R`=(3,3), `T`=(3,2), `U`=(5,3), space=(2,6), Return=(9,4), and Shift+`2`
+for the quote.
+
+## Presentation
+
+The host requests bounded runtime progression and displays only owned completed
+frames. Display refresh and timer scheduling consume output; they do not derive
+emulated time. The host discards stale output after reset/BREAK according to the
+runtime output epoch and presents an actionable diagnostic if it cannot consume
+a frame. Each presented frame advances `lastPresentedFrame` within
+`presentationEpoch`; reset clears the displayed frame and increments the epoch
+before later output.
+
+## Recovery
+
+A firmware, input, control or presentation failure reports its typed status and
+leaves the active supported profile visible. It never creates a second runtime,
+borrows live core state or silently falls back to Model B+.
+
+## Acceptance observation
+
+The maintained macOS application is built and launched on a named host. The
+record includes firmware-role selection, Model B identity, keyboard sequence,
+visible BASIC result, two frame observations, each control result, one
+recoverable failure and keyboard/assistive observations.

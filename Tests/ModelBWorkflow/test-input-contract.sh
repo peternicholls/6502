@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/testlib.sh"
+
+source_path="${repo_root}/Sources/BeebDemo/main.swift"
+
+require_source() {
+    local description="$1"
+    local pattern="$2"
+    if rg -q "${pattern}" "${source_path}"; then return 0; fi
+    printf 'Missing Model B input contract: %s\n' "${description}" >&2
+    return 1
+}
+
+require_source "physical keyboard capture" 'MachineKeyboardCapture'
+require_source "machine input focus state" 'inputFocus'
+require_source "owner-serialized key submission" 'setKey\(column:'
+require_source "documented program marker" '10 PRINT'
+require_source "program digit 5 mapping" 'case "5": return BBCKeyPosition'
+require_source "program digit 6 mapping" 'case "6": return BBCKeyPosition'
+require_source "shifted quote mapping" 'case "2": return BBCKeyPosition\(column: 1, row: 3, requiresShift: shift\)'
+require_source "keyboard-operable focus" 'becomeFirstResponder'
+require_source "deferred responder installation" 'DispatchQueue\.main\.async'
+require_source "deferred focus publication" 'private func publishFocus\(_ focused: Bool\)'
+require_source "explicit keyboard focus control" 'Focus keyboard'
+require_source "focus request propagation" 'focusRequest'
+
+view_move_block="$(sed -n '/override func viewDidMoveToWindow()/,/override func becomeFirstResponder()/p' "${source_path}")"
+if rg -q 'onFocus\?\(true\)' <<<"${view_move_block}"; then
+    printf 'viewDidMoveToWindow publishes focus during a SwiftUI view update\n' >&2
+    exit 1
+fi
+
+responder_block="$(sed -n '/override func becomeFirstResponder()/,/private func publishFocus/p' "${source_path}")"
+if rg -q 'onFocus\?\(' <<<"${responder_block}"; then
+    printf 'responder callbacks publish focus synchronously during view updates\n' >&2
+    exit 1
+fi
+
+echo 'Model B input contract tests passed'

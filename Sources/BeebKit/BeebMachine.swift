@@ -341,6 +341,14 @@ public struct BeebRuntimeFault: Sendable, Equatable {
     public let safePoint: BeebSafePoint
 }
 
+/// The two user-owned firmware roles required by the first Model B workflow.
+public enum BeebFirmwareRole: Sendable, Equatable {
+    /// The fixed 16 KiB operating-system region.
+    case operatingSystem
+    /// The language ROM installed by the M1 host workflow.
+    case language
+}
+
 /// Errors produced by validating input or crossing the C runtime boundary.
 public enum BeebError: LocalizedError {
     /// The operating-system ROM was not exactly 16 KiB.
@@ -408,6 +416,9 @@ public enum BeebError: LocalizedError {
 /// Callers may retain the instance across concurrency domains. Deinitialization
 /// performs blocking shutdown after the final strong reference is released.
 public final class BeebMachine: @unchecked Sendable {
+    /// Fixed sideways-ROM bank used by the first Model B language workflow.
+    public static let languageROMBank: UInt8 = 12
+
     /// Opaque C token whose registry admission keeps concurrent calls alive through return.
     private let handle: OpaquePointer
 
@@ -473,6 +484,25 @@ public final class BeebMachine: @unchecked Sendable {
             var state = BEEB_RUNTIME_STATE_PAUSED
             try Self.check(beeb_get_runtime_state(handle, &state))
             return Self.runtimeState(state)
+        }
+    }
+
+    /// Validates and installs user-owned firmware for one typed Model B role.
+    ///
+    /// The language role deliberately uses the fixed M1 bank so the first host
+    /// workflow does not add bank-selection UI. The runtime copies bytes before
+    /// accepting each owner-serialized command; rejected data leaves the prior
+    /// firmware installation unchanged.
+    /// - Parameters:
+    ///   - data: User-owned ROM bytes copied into the runtime.
+    ///   - role: Operating-system or language-ROM assignment.
+    /// - Throws: A role-specific validation error or typed core status.
+    public func loadFirmware(_ data: Data, role: BeebFirmwareRole) throws {
+        switch role {
+        case .operatingSystem:
+            try loadOSROM(data)
+        case .language:
+            try loadSidewaysROM(data, bank: Self.languageROMBank)
         }
     }
 

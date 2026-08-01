@@ -2466,6 +2466,43 @@ void testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting() {
     CHECK(resumedAudio.chunk.samples == freshAudio.chunk.samples);
 }
 
+void testC2BreakDiscardsRetainedOutputWithoutBreakingAccounting() {
+    beeb::MachineRuntime runtime;
+    checkRuntimeOK(runtime.loadOSROM(makeOutputOSROM()));
+    checkRuntimeOK(runtime.reset());
+    CHECK(runtimeValue(runtime.runUntilFrame(200'000)));
+    CHECK(runtimeValue(runtime.runFor(2'000'000)) >= 2'000'000);
+
+    const auto before = runtimeValue(runtime.outputDiagnostics());
+    CHECK(before.frameDepth > 0);
+    CHECK(before.audioDepth > 0);
+    checkRuntimeOK(runtime.setBreak(true));
+    checkRuntimeOK(runtime.setBreak(false));
+
+    const auto after = runtimeValue(runtime.outputDiagnostics());
+    CHECK_EQ(after.frameDepth, 0U);
+    CHECK_EQ(after.audioDepth, 0U);
+    CHECK_EQ(after.audioDemand, beeb::audioTargetDepth);
+    CHECK_EQ(after.latestFrameNumber, before.latestFrameNumber);
+    CHECK_EQ(after.counters.framesProduced, before.counters.framesProduced);
+    CHECK_EQ(after.counters.framesConsumed, before.counters.framesConsumed);
+    CHECK_EQ(after.counters.framesDropped, before.counters.framesDropped + before.frameDepth);
+    CHECK_EQ(after.counters.audioSamplesProduced, before.counters.audioSamplesProduced);
+    CHECK_EQ(after.counters.audioSamplesConsumed, before.counters.audioSamplesConsumed);
+    CHECK_EQ(after.counters.audioSamplesOverrun,
+             before.counters.audioSamplesOverrun + before.audioDepth);
+    CHECK(after.lastStatus == beeb::OutputStatusCode::ok);
+    CHECK(runtime.dequeueFrame().status.code == beeb::OutputStatusCode::empty);
+    const auto audio = runtime.drainAudio(1);
+    CHECK(audio.status.code == beeb::OutputStatusCode::underrun);
+    CHECK(audio.chunk.samples.empty());
+
+    CHECK(runtimeValue(runtime.runUntilFrame(200'000)));
+    const auto resumed = runtimeValue(runtime.outputDiagnostics());
+    CHECK(resumed.frameDepth > 0);
+    CHECK(resumed.latestFrameNumber > after.latestFrameNumber);
+}
+
 void testTargetProfileModelBCoreRetentionAndQuery() {
     const auto canonical = beeb::MachineTargetProfile::modelB();
     const auto validation = beeb::validateMachineTargetProfile(canonical);
@@ -2895,6 +2932,8 @@ int main(int argc, char** argv) {
          testC2DiagnosticsAreConsistentAndObservational},
         {"C2 reset: retained output is discarded with exact accounting",
          testC2ResetDiscardsRetainedOutputWithoutBreakingAccounting},
+        {"C2 BREAK: retained output is discarded with exact accounting",
+         testC2BreakDiscardsRetainedOutputWithoutBreakingAccounting},
         {"Target profile: Model B core retention and query",
          testTargetProfileModelBCoreRetentionAndQuery},
         {"Target profile: Model B C creation and owned query",
