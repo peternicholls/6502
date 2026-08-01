@@ -15,8 +15,8 @@ gate definitions live only in the
 | C1 runtime ownership | **DONE** | Supported hosts use one recoverable runtime owner across C++, C and Swift. |
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
 | Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
-| Active feature | — | No active Spec Kit feature. |
-| Model B workflow acceptance | **TODO** | Implementation and automated evidence pass; direct boot, frame, control, profile and accessibility observations pass, while the typed-program result and recoverable import failure remain open. |
+| Active feature | **007** | Automated Model B acceptance closure is complete on the feature branch; human gates remain open. |
+| Model B workflow acceptance | **TODO** | Production runtime input/frame/audio, deterministic replay, failure-atomic invalid firmware handling and portable headless evidence pass; the typed-program result and recoverable application import failure remain open. |
 | Next feature | **NEXT** | Complete the reopened Model B workflow direct acceptance before the audio-inclusive M1 slice. |
 | M1 running Model B desktop | **TODO** | ROM-backed firmware import, BASIC readiness and bounded keyboard/frame/control host paths are implemented; workflow direct acceptance and audio presentation remain unverified. |
 | M2 native desktop experience | **TODO** | The current root is transitional SwiftUI; the AppKit machine window, agreed CRT/footer/drawer experience, program-text flow and production terminal host do not exist. |
@@ -52,7 +52,8 @@ partial delivery.
   dequeue, presentation epochs, and independent Run/Pause/Reset/BREAK controls.
   Automated evidence passes. Direct ROM-backed boot, frame, control, profile and
   accessibility observations pass; the typed-program result and recoverable
-  import failure still require direct observation.
+  import failure still require direct observation. The automated production
+  acceptance command is `make test-runtime-acceptance`.
 - The maintained macOS UI is currently a SwiftUI demonstration root. AppKit is
   the selected future macOS application architecture, but its window, Settings,
   CRT treatment, footer, keyboard drawer and developer workspace are not

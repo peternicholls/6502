@@ -97,6 +97,46 @@ final class BeebMachineTests: XCTestCase {
         )
     }
 
+    /// Exercises the production keyboard matrix path before collecting the
+    /// same owned frame/audio evidence used by the host acceptance checks.
+    private func captureProductionInputReplay() throws -> OutputReplay {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(outputOSROM())
+        try machine.reset()
+        let before = try machine.safePoint()
+        let sequence: [(UInt8, UInt8)] = [
+            (3, 1), // 5
+            (4, 3), // 6
+            (0, 3), // 1
+            (7, 2), // 0
+            (4, 6), // B
+            (2, 2), // E
+        ]
+        for (column, row) in sequence {
+            try machine.setKey(column: column, row: row, pressed: true)
+            try machine.setKey(column: column, row: row, pressed: false)
+        }
+        for _ in 0..<6 {
+            XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
+        }
+        _ = try machine.run(cycles: 2_000_000)
+        let after = try machine.safePoint()
+        XCTAssertGreaterThan(after.cpuCycles, before.cpuCycles)
+        let frame = try machine.dequeueVideoFrame()
+        let audio: BeebAudioDrain
+        do {
+            audio = try machine.drainAudio(maximumSamples: 4_096)
+        } catch BeebError.audioPressure(_, let partial) {
+            audio = partial
+        }
+        return OutputReplay(
+            frameNumber: frame.number,
+            rgba: frame.rgba,
+            audio: audio,
+            diagnostics: try machine.outputDiagnostics()
+        )
+    }
+
     func testPublicVersionMatchesReleaseVersion() {
         XCTAssertEqual(BeebVersion.current, "0.4.0")
     }
@@ -486,6 +526,28 @@ final class BeebMachineTests: XCTestCase {
         }
     }
 
+    func testRejectedFirmwareCandidatePreservesValidMachine() throws {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(loopingOSROM())
+        try machine.reset()
+        let profile = try machine.profile
+        let safePoint = try machine.safePoint()
+
+        XCTAssertThrowsError(try machine.loadFirmware(Data(), role: .operatingSystem)) { error in
+            guard case BeebError.invalidOSROM = error else {
+                return XCTFail("Expected invalidOSROM, got \(error)")
+            }
+        }
+        XCTAssertEqual(try machine.profile, profile)
+        let after = try machine.safePoint()
+        XCTAssertEqual(after.cpuCycles, safePoint.cpuCycles)
+        XCTAssertEqual(after.frameNumber, safePoint.frameNumber)
+        XCTAssertEqual(after.state, safePoint.state)
+        XCTAssertGreaterThan(after.ledgerSequence, safePoint.ledgerSequence)
+        XCTAssertNoThrow(try machine.run(cycles: 100))
+        XCTAssertEqual(try machine.state, .paused)
+    }
+
     func testFaultDetailAndResetRecoveryRemainTyped() throws {
         let machine = try BeebMachine()
         var illegal = [UInt8](validOSROM())
@@ -721,6 +783,15 @@ final class BeebMachineTests: XCTestCase {
         let second = try captureOutputReplay()
         XCTAssertGreaterThan(first.frameNumber, 0)
         XCTAssertFalse(first.rgba.isEmpty)
+        XCTAssertEqual(first, second)
+    }
+
+    func testProductionInputSequenceProducesDeterministicOwnedOutput() throws {
+        let first = try captureProductionInputReplay()
+        let second = try captureProductionInputReplay()
+        XCTAssertGreaterThan(first.frameNumber, 0)
+        XCTAssertFalse(first.rgba.isEmpty)
+        XCTAssertFalse(first.audio.samples.isEmpty)
         XCTAssertEqual(first, second)
     }
 
