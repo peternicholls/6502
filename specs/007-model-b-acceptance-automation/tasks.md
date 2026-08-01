@@ -38,7 +38,7 @@ host with a clean-room fixture and rejects empty or missing output.
 
 ## Phase 5: Evidence and completion
 
-- [ ] T008 Update `specs/007-model-b-acceptance-automation/contracts/production-runtime-evidence.md` and add the dated automated-results section to `specs/007-model-b-acceptance-automation/evidence/automated-results.md`, explicitly leaving human keyboard, visual and assistive gates open.
+- [X] T008 Update `specs/007-model-b-acceptance-automation/contracts/production-runtime-evidence.md` and add the dated automated-results section to `specs/007-model-b-acceptance-automation/evidence/automated-results.md`, explicitly leaving human keyboard, visual and assistive gates open.
 - [ ] T009 Run `make test`, `swift test`, `make test-model-b-workflow`, `make test-runtime-acceptance`, `make docs-check`, `make format-check`, and `git diff --check`; commit the phase checkpoint without staging unrelated user files.
 - [ ] T010 If and only if all required automated checks pass, mark completed automation tasks `[X]`, refresh `docs/STATUS.md` only for the verified automation claim, and leave T008/T010 from completed 005 open for the user's direct observations.
 

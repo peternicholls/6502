@@ -20,3 +20,11 @@ Automated evidence may close only category 1. It must never change category 2 or
   valid safe boundary.
 - All artifacts are temporary or ignored unless the evidence note records only
   metadata, hashes and commands.
+
+## Automated command
+
+`make test-runtime-acceptance` is the single local/CI entry point. It runs the
+production `BeebMachine` matrix/frame/audio regression, builds the clean-room
+demo ROM and portable headless host, then compares two independent state and
+PPM captures. A successful command closes only the automated production-path
+claim; it does not infer keyboard, visual, accessibility or local-ROM success.
