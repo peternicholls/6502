@@ -24,7 +24,8 @@ endif
 .PHONY: all test sanitize thread-sanitize test-c1 test-c2 test-c2-portable \
 		test-c2-xcode verify-c2 measure-c2 \
 		test-machine-target-profile \
-		test-model-b-workflow \
+	test-model-b-workflow \
+	test-runtime-acceptance \
 	format-check check-version demo-rom test-c0 verify-c0 \
 	test-tooling \
 	verify-c0-references update-c0-reference measure-c0 \
@@ -134,6 +135,9 @@ test-model-b-workflow:
 		fi; \
 	done; \
 	exit $$status
+
+test-runtime-acceptance:
+	Tests/ModelBWorkflow/test-runtime-acceptance.sh
 
 verify-c2: test-c2
 

@@ -25,16 +25,16 @@ user's dirty `Sources/BeebDemo/main.swift` and untracked `BBC Micro ROMS/`.
 **Independent test**: Reject invalid firmware after a valid load and prove the
 valid profile, safe point and bounded execution remain usable.
 
-- [ ] T004 [US2] Add invalid-candidate preservation coverage to `Tests/BeebKitTests/BeebMachineTests.swift`, checking typed rejection, unchanged profile/safe-point state and successful reset/run afterward.
-- [ ] T005 [US2] Run the focused recovery tests plus `swift test --filter BeebMachineTests`, inspect the failure semantics, and commit the verified recovery task with a Lore message.
+- [X] T004 [US2] Add invalid-candidate preservation coverage to `Tests/BeebKitTests/BeebMachineTests.swift`, checking typed rejection, unchanged profile/safe-point state and successful reset/run afterward.
+- [X] T005 [US2] Run the focused recovery tests plus `swift test --filter BeebMachineTests`, inspect the failure semantics, and commit the verified recovery task with a Lore message.
 
 ## Phase 4: User Story 3 — portable terminal-style evidence (P2)
 
 **Independent test**: One workflow command runs the existing portable headless
 host with a clean-room fixture and rejects empty or missing output.
 
-- [ ] T006 [US3] Add `Tests/ModelBWorkflow/test-runtime-acceptance.sh` to run the production Swift tests and portable headless fixture, checking successful status and non-empty deterministic evidence without proprietary ROM bytes.
-- [ ] T007 [US3] Add a direct `test-runtime-acceptance` Make target in `Makefile`, include the script in the Model B workflow aggregate, update `specs/007-model-b-acceptance-automation/quickstart.md`, and commit the verified automation task.
+- [X] T006 [US3] Add `Tests/ModelBWorkflow/test-runtime-acceptance.sh` to run the production Swift tests and portable headless fixture, checking successful status and non-empty deterministic evidence without proprietary ROM bytes.
+- [X] T007 [US3] Add a direct `test-runtime-acceptance` Make target in `Makefile`, include the script in the Model B workflow aggregate, update `specs/007-model-b-acceptance-automation/quickstart.md`, and commit the verified automation task.
 
 ## Phase 5: Evidence and completion
 
