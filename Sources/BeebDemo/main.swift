@@ -150,19 +150,14 @@ final class EmulatorModel: ObservableObject {
     }
 
     private var bookmarkCreationOptions: URL.BookmarkCreationOptions {
-        #if os(macOS)
-        return [.withSecurityScope, .securityScopeAllowOnlyReadAccess]
-        #else
+        // The development host is unsigned and intentionally outside the App Sandbox.
+        // Plain bookmarks keep remembered ROMs usable without a scoped-bookmark agent.
         return []
-        #endif
     }
 
     private var bookmarkResolutionOptions: URL.BookmarkResolutionOptions {
-        #if os(macOS)
-        return [.withSecurityScope]
-        #else
+        // See bookmarkCreationOptions: this host does not have sandbox entitlements.
         return []
-        #endif
     }
 
     init() {
@@ -306,8 +301,9 @@ final class EmulatorModel: ObservableObject {
                 role: role
             )
         } catch {
-            updateAssignment("recovery needed", role: role)
-            status = "\(role == .operatingSystem ? "OS" : "Language") ROM needs to be selected again."
+            let diagnostic = String(describing: error)
+            updateAssignment("recovery needed — \(diagnostic)", role: role)
+            status = "\(role == .operatingSystem ? "OS" : "Language") ROM needs to be selected again — \(diagnostic)"
         }
     }
 
