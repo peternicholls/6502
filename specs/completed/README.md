@@ -11,3 +11,4 @@ internal paths and historical references are preserved as recorded, so some
 relative links no longer resolve after relocation. Current work starts from the
 [Machine delivery plan](../../docs/product/MACHINE_DELIVERY_PLAN.md) and is
 named explicitly by `.specify/feature.json`.
+
