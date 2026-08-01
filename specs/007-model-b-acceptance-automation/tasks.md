@@ -17,8 +17,8 @@ user's dirty `Sources/BeebDemo/main.swift` and untracked `BBC Micro ROMS/`.
 **Independent test**: Focused Swift tests submit matrix events through
 `BeebMachine`, produce owned frame/audio observations and repeat deterministically.
 
-- [ ] T002 [US1] Add focused production-runtime input/frame/audio regression tests to `Tests/BeebKitTests/BeebMachineTests.swift`, using existing generated ROM helpers and asserting safe-point progress, owned output and deterministic replay.
-- [ ] T003 [US1] Run `swift test --filter BeebMachineTests/testProduction` and `swift test --filter BeebMachineTests/testDeterministic` (or the exact generated test filters), then commit the verified test evidence with a Lore message.
+- [X] T002 [US1] Add focused production-runtime input/frame/audio regression tests to `Tests/BeebKitTests/BeebMachineTests.swift`, using existing generated ROM helpers and asserting safe-point progress, owned output and deterministic replay.
+- [X] T003 [US1] Run `swift test --filter BeebMachineTests/testProduction` and `swift test --filter BeebMachineTests/testDeterministic` (or the exact generated test filters), then commit the verified test evidence with a Lore message.
 
 ## Phase 3: User Story 2 — firmware failure recovery (P1)
 
