@@ -10,6 +10,7 @@ completed evidence and historical material.
 | What happens next | [Machine delivery plan](product/MACHINE_DELIVERY_PLAN.md) | Sole forward programme authority |
 | What works now | [Implementation status](STATUS.md) | Sole verified-state authority |
 | How the system is divided | [Architecture](ARCHITECTURE.md) | Current boundary contract |
+| How the macOS and terminal experiences should work | [Desktop experience direction](product/DESKTOP_EXPERIENCE.md) | Product experience contract; no priority or completion claims |
 | What future core work must preserve | [Implementation constraints](IMPLEMENTATION_CONSTRAINTS.md) | Technical constraints; no priority or schedule |
 | Why the product exists | [Product vision](product/VISION.md) | Durable intent; no delivery commitments |
 
@@ -39,6 +40,7 @@ gate.
 Update one owner only:
 
 - direction or gates: `product/MACHINE_DELIVERY_PLAN.md`;
+- desktop interaction direction: `product/DESKTOP_EXPERIENCE.md`;
 - verified behavior: `STATUS.md`;
 - current boundaries: `ARCHITECTURE.md`;
 - durable product intent: `product/VISION.md`;

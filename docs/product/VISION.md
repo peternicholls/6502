@@ -1,7 +1,7 @@
 # Product vision
 
 **Status:** Durable intent only; no delivery authority
-**Updated:** 2026-07-19
+**Updated:** 2026-08-01
 
 Beeb6502 is a native Apple environment for using, understanding and programming
 BBC Micro-family machines. It combines authentic execution, careful handling
@@ -19,6 +19,7 @@ only source of completion claims.
 | Creators and learners | Write, run, inspect and revise BBC BASIC without losing compatibility with the emulated machine. |
 | Players and collectors | Import owned firmware and media, understand compatibility and avoid damage to source files. |
 | Explorers and educators | Observe the CPU, memory and devices without first becoming emulator experts. |
+| Terminal and automation users | Connect directly to the same machine without GUI chrome and reproduce complete-machine behavior in scripts. |
 
 ## Product experiences
 
@@ -28,8 +29,12 @@ only source of completion claims.
   disc and tape/file content.
 - **Editor and inspection:** stable observations and modern BBC BASIC tools
   layered over authentic machine execution.
-- **Platform:** native macOS, iPhone and iPad interaction with keyboard access,
-  VoiceOver, Dynamic Type, clear onboarding and actionable failures.
+- **Desktop platform:** an AppKit-first macOS machine window, native Settings,
+  safe modern conveniences and separate developer tools, plus a bare terminal
+  connection over the same portable runtime.
+- **Mobile platform:** later iPhone and iPad adaptation with touch, hardware
+  keyboard, VoiceOver, Dynamic Type, lifecycle and media behavior appropriate
+  to each device without forking machine semantics.
 
 ## Principles
 
@@ -43,6 +48,10 @@ only source of completion claims.
 7. Native accessibility is part of each user-facing slice, not a release-only
    retrofit.
 8. Invalid or unsupported input fails safely and explains recovery.
+9. UI and UX quality is evaluated with each user-facing slice, not deferred to
+   final polish.
+10. Desktop hosts may be native or terminal-based, but the C++ machine remains
+    independent of Apple frameworks and host presentation.
 
 ## Product boundary
 
@@ -55,7 +64,9 @@ The product does not bundle proprietary ROMs or commercial software, download
 executable code, depend on a server, silently rewrite imported media or claim
 preservation-grade fidelity before the evidence supports it.
 
-Success begins with a user importing compatible firmware, selecting a profile,
-booting to BASIC and typing/running a program without shell commands. Longer
-term success adds dependable continuity, media preservation, inspection and
-BBC BASIC editing while preserving that authentic execution path.
+Success begins with a Mac user importing compatible firmware, booting to BASIC
+and typing/running a program without shell commands. It then becomes a coherent
+native desktop experience with a direct terminal alternative, dependable
+continuity, media preservation, inspection and BBC BASIC assistance. iPhone and
+iPad follow as committed platform adaptations over those stable portable
+contracts rather than constraining the first desktop design.
