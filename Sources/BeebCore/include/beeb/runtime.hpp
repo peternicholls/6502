@@ -257,6 +257,8 @@ class MachineRuntime final {
     /// @return Validation, lifecycle, or success status.
     [[nodiscard]] RuntimeStatus setKey(std::uint8_t column, std::uint8_t row, bool pressed);
     /// Changes BREAK state without inventing a start or pause transition.
+    /// A new press establishes an output epoch and discards retained pre-BREAK
+    /// frames and audio with exact runtime-lifetime accounting.
     /// @param pressed Whether BREAK is held.
     /// @return Lifecycle or success status.
     [[nodiscard]] RuntimeStatus setBreak(bool pressed);

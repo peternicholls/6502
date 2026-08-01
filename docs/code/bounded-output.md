@@ -112,13 +112,13 @@ has already been discarded; the host can continue with retained newest output
 and use the counter delta to report loss. Faulted and shutting-down lifecycle
 statuses remain distinct from those recoverable output conditions.
 
-Reset establishes a new device-output epoch. It discards every retained frame
-and audio sample, clears the `3 / 125` fractional audio remainder, and restores
-the latest output status to success; dequeue is empty and audio demand is 2,048
-until new emulated progress produces output. Frame and sample identities do not
-rewind. Discarded reset depths increment the existing frame-drop and
-audio-overrun terms, so both runtime-lifetime conservation equations remain
-exact at the resulting zero-depth boundary.
+Reset and a newly asserted BREAK establish a new device-output epoch. Each
+discards every retained frame and audio sample, clears the `3 / 125` fractional
+audio remainder, and restores the latest output status to success; dequeue is
+empty and audio demand is 2,048 until new emulated progress produces output.
+Frame and sample identities do not rewind. Discarded depths increment the
+existing frame-drop and audio-overrun terms, so both runtime-lifetime
+conservation equations remain exact at the resulting zero-depth boundary.
 
 Host-observed speed is deliberately separate from the snapshot command. Given
 two observations and a positive finite host interval, C and Swift calculate:
