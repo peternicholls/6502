@@ -19,10 +19,17 @@ require_source "owner-serialized key submission" 'setKey\(column:'
 require_source "documented program marker" '10 PRINT'
 require_source "keyboard-operable focus" 'becomeFirstResponder'
 require_source "deferred responder installation" 'DispatchQueue\.main\.async'
+require_source "deferred focus publication" 'private func publishFocus\(_ focused: Bool\)'
 
 view_move_block="$(sed -n '/override func viewDidMoveToWindow()/,/override func becomeFirstResponder()/p' "${source_path}")"
 if rg -q 'onFocus\?\(true\)' <<<"${view_move_block}"; then
     printf 'viewDidMoveToWindow publishes focus during a SwiftUI view update\n' >&2
+    exit 1
+fi
+
+responder_block="$(sed -n '/override func becomeFirstResponder()/,/private func publishFocus/p' "${source_path}")"
+if rg -q 'onFocus\?\(' <<<"${responder_block}"; then
+    printf 'responder callbacks publish focus synchronously during view updates\n' >&2
     exit 1
 fi
 

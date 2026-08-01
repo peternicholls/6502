@@ -46,14 +46,21 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
 
         override func becomeFirstResponder() -> Bool {
             let result = super.becomeFirstResponder()
-            if result { onFocus?(true) }
+            if result { publishFocus(true) }
             return result
         }
 
         override func resignFirstResponder() -> Bool {
             let result = super.resignFirstResponder()
-            if result { onFocus?(false) }
+            if result { publishFocus(false) }
             return result
+        }
+
+        private func publishFocus(_ focused: Bool) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.onFocus?(focused)
+            }
         }
 
         override func keyDown(with event: NSEvent) {
