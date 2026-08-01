@@ -1,7 +1,7 @@
 # Implementation status
 
 **Status:** Sole authority for verified implementation claims
-**Updated:** 2026-07-31
+**Updated:** 2026-08-01
 
 This file states what exists now. It does not choose future work. Direction and
 gate definitions live only in the
@@ -15,9 +15,10 @@ gate definitions live only in the
 | C1 runtime ownership | **DONE** | Supported hosts use one recoverable runtime owner across C++, C and Swift. |
 | C2 bounded output and Xcode delivery | **DONE** | Owned video/audio output, diagnostics and maintained Apple build surfaces are verified. |
 | Machine target profile | **DONE** | Extensible profile identity, Model B construction/query and failure-atomic rejection are verified across C++, C, Swift and the host. |
-| Active feature | **COMPLETE** | `005-model-b-workflow` is archived with ROM-backed development-only macOS acceptance; the later audio-inclusive M1 gate remains open. |
-| Next feature | **NEXT** | Close the remaining audio-inclusive M1 acceptance evidence. |
-| M1 running Model B application | **TODO** | ROM-backed firmware import, BASIC readiness, bounded keyboard/frame/control host paths are accepted; audio presentation remains unverified. |
+| Active feature | — | No active Spec Kit feature. |
+| Model B workflow acceptance | **TODO** | Implementation and automated evidence pass; direct boot, frame, control, profile and accessibility observations pass, while the typed-program result and recoverable import failure remain open. |
+| Next feature | **NEXT** | Complete the reopened Model B workflow direct acceptance before the audio-inclusive M1 slice. |
+| M1 running Model B application | **TODO** | ROM-backed firmware import, BASIC readiness and bounded keyboard/frame/control host paths are implemented; workflow direct acceptance and audio presentation remain unverified. |
 | M2 continuity | **TODO** | Snapshot and application lifecycle contracts do not exist. |
 | M3 Model B+ 64K preview | **TODO** | B+ machine behavior and the post-C6 product demonstrations do not exist. |
 
@@ -47,8 +48,9 @@ partial delivery.
 - The maintained demo host has a bounded Model B workflow path for typed OS and
   language-ROM roles, fixed language bank 12, physical-key focus, owned frame
   dequeue, presentation epochs, and independent Run/Pause/Reset/BREAK controls.
-  This is automated evidence only until lawful ROM-backed macOS observation is
-  recorded.
+  Automated evidence passes. Direct ROM-backed boot, frame, control, profile and
+  accessibility observations pass; the typed-program result and recoverable
+  import failure still require direct observation.
 
 ## Known fidelity limits
 

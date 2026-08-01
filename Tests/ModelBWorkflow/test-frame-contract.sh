@@ -19,6 +19,11 @@ require_source "monotonic presented-frame guard" 'lastPresentedFrame'
 require_source "epoch invalidation on reset" 'presentationEpoch &\+= 1'
 require_source "firmware reset invalidation" 'invalidatePresentation\(\)'
 require_source "presentation-only polling" 'private func pollFrame\(\)'
+require_source "portable cycle-count status format" 'PC %04X   %llu cycles'
+
+if rg -q '%,llu cycles' "${source_path}"; then
+    fail "cycle-count status uses an unsupported grouping flag"
+fi
 
 poll_block="$(sed -n '/private func pollFrame()/,/private func platformImage/p' "${source_path}")"
 if rg -q 'runToNextFrame|run\(cycles:' <<<"${poll_block}"; then

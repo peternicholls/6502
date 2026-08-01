@@ -409,7 +409,7 @@ final class EmulatorModel: ObservableObject {
             lastPresentedFrame = frame.number
             screen = platformImage(frame)
             let cpu = try machine.cpuState()
-            status = String(format: "Frame %llu · epoch %llu · PC %04X   %,llu cycles", frame.number, presentationEpoch, cpu.programCounter, cpu.cycles)
+            status = String(format: "Frame %llu · epoch %llu · PC %04X   %llu cycles", frame.number, presentationEpoch, cpu.programCounter, cpu.cycles)
         } catch BeebError.coreStatus(.empty, _) {
             return
         } catch {

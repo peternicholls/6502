@@ -1,7 +1,9 @@
 # macOS application observation
 
-Status: accepted for the development-only vertical slice; ROM bytes remain outside
-the repository.
+Status: reopened. Direct boot, frame, control, profile and accessibility
+observations passed on 2026-08-01, but the required typed-program result and a
+recoverable import failure have not both been directly observed. ROM bytes remain
+outside the repository.
 
 ## Automated preparation
 
@@ -32,18 +34,38 @@ the repository.
 
 ## Direct acceptance
 
-- The built macOS application resolved both remembered bookmarks, installed MOS
-  as the OS image and BASIC 2.00 in fixed bank 12, reset, and reached the
-  `Firmware ready — BASIC-ready` state in the running host.
-- The observed window retained the Model B identity, separate Run/Pause/Reset/
-  BREAK controls, keyboard-focus state, and the recoverable no-ROM path.
-- Physical-key mapping, completed-frame epochs, control ownership and recovery
-  behavior are covered by the focused aggregate and were rechecked with the
-  accepted ROM-backed launch.
-- Accessibility APIs remain unavailable in this unsigned local session; the
-  visual window and process observation are therefore the direct evidence.
+- A fresh unsigned Xcode build passed and launched from
+  `Build/Products/Debug/BeebDemo.app`. The application resolved both remembered
+  bookmarks, installed `MOS120.rom` as the OS image and `BASIC200.rom` in fixed
+  bank 12, and visibly reached `BBC COMPUTER 32K` and `BASIC`.
+- The accessibility tree exposed the Model B profile picker, requested and active
+  Model B identities, ROM assignments, machine image, and separate identified
+  Run, Pause, Reset and BREAK controls. Keyboard focus reported active.
+- Continuous presentation advanced from frame 274 to frame 428 in epoch 1.
+  Pause remained `Paused` across two observations 700 ms apart; Run resumed at
+  frame 618 in epoch 2. BREAK moved presentation from epoch 1 to epoch 2 and
+  visibly returned to BASIC; Reset subsequently moved it to epoch 3 and returned
+  to BASIC. These are direct window and accessibility observations.
+- The visible status initially rendered the cycle count as `,llu cycles`. The
+  format string was corrected to portable `%llu` and protected by the focused
+  frame contract; a fresh direct observation of the corrected text remains part
+  of the open acceptance rerun.
+
+## Acceptance still required
+
+- Directly type `10 PRINT "BEEB6502"`, Return, `RUN`, Return through the physical
+  key bridge and visibly observe `BEEB6502` plus two successive frame identities.
+- Attempt one invalid or inaccessible OS/language assignment and directly verify
+  that the working assignments and active session remain unchanged while an
+  actionable diagnostic is shown.
+- Recheck the corrected cycle-count status in the rebuilt application.
+
+The 2026-08-01 session ended when the workstation locked before these remaining
+observations could be completed. Automated keyboard ordering, rejected firmware,
+failure atomicity and stale-output coverage passed, but automated evidence does
+not close T008 or T010.
 
 ## Not claimed
 
-No ROM bytes were created or added to the repository. The later audio-inclusive
-M1 gate remains outside this feature.
+No ROM bytes were created or added to the repository. This record does not claim
+feature closure or the later audio-inclusive M1 gate.
