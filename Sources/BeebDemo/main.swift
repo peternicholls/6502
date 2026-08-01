@@ -37,6 +37,8 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
 
         override var acceptsFirstResponder: Bool { true }
 
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard window != nil else { return }
@@ -69,6 +71,11 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
             }
         }
 
+        override func mouseDown(with event: NSEvent) {
+            window?.makeFirstResponder(self)
+            publishFocus(true)
+        }
+
         override func keyDown(with event: NSEvent) {
             guard let position = Self.position(for: event) else { return }
             onKey?(position, true)
@@ -82,7 +89,7 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
         private static func position(for event: NSEvent) -> BBCKeyPosition? {
             if event.keyCode == 36 { return BBCKeyPosition(column: 9, row: 4, requiresShift: false) }
             guard let character = event.charactersIgnoringModifiers?.uppercased() else { return nil }
-            let shift = event.characters == "\""
+            let shift = event.modifierFlags.contains(.shift)
             switch character {
             case "1": return BBCKeyPosition(column: 0, row: 3, requiresShift: false)
             case "2": return BBCKeyPosition(column: 1, row: 3, requiresShift: shift)
@@ -574,6 +581,16 @@ struct ContentView: View {
                 }
             }
             .aspectRatio(4.0 / 3.0, contentMode: .fit)
+            #if os(macOS)
+            .overlay {
+                MachineKeyboardCapture(
+                    onKey: { position, pressed in model.handleKey(position, pressed: pressed) },
+                    onFocus: { focused in model.setInputFocus(focused) },
+                    focusRequest: keyboardFocusRequest
+                )
+                .accessibilityLabel("Machine keyboard input")
+            }
+            #endif
 
             HStack {
                 Button("Open OS ROM…") { model.isImportingOS = true }
@@ -605,15 +622,6 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityLabel("Machine keyboard focus")
                 .accessibilityValue(model.inputFocus ? "Active" : "Not active")
-            #if os(macOS)
-            MachineKeyboardCapture(
-                onKey: { position, pressed in model.handleKey(position, pressed: pressed) },
-                onFocus: { focused in model.setInputFocus(focused) },
-                focusRequest: keyboardFocusRequest
-            )
-            .frame(height: 1)
-            .accessibilityLabel("Machine keyboard input")
-            #endif
         }
         .padding()
         .fileImporter(isPresented: $model.isImportingOS, allowedContentTypes: [.data]) { result in
