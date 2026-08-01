@@ -69,3 +69,20 @@ not close T008 or T010.
 
 No ROM bytes were created or added to the repository. This record does not claim
 feature closure or the later audio-inclusive M1 gate.
+
+## Additional ROM library staging — 2026-08-01
+
+The [TobyLobster BBC Micro ROM Library](https://tobylobster.github.io/rom_library/)
+was added as an external development fixture source. Its metadata archive is
+staged at `.build/model-b-workflow/rom-library/output/metadata.json`, with the
+library's 706 BBC Micro entries marked known-good and 16 KiB represented in
+`.build/model-b-workflow/rom-library/bbc-micro-good-16k.tsv`. The corresponding
+703 hosted images were downloaded under
+`.build/model-b-workflow/rom-library/bbc-micro-good-16k/`, keyed by their
+published SHA-1. Three metadata entries returned HTTP 404 from the library's
+media paths and were not fabricated or substituted.
+
+All 703 downloaded images matched their manifest SHA-1 values. The entire
+`.build/` staging tree is ignored by Git; no ROM binary is part of the
+repository or any commit. These fixtures expand the local acceptance options but
+do not alter the 005 compatibility or provenance claims.
