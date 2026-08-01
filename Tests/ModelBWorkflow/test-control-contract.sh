@@ -19,5 +19,12 @@ require_source "separate reset control" 'Button\("Reset"'
 require_source "separate BREAK control" 'Button\("BREAK"'
 require_source "core BREAK boundary" 'setBreak\(pressed:'
 require_source "host BREAK action" 'breakExecution'
+require_source "owner start lifecycle" 'try machine\.start\(\)'
+require_source "owner pause lifecycle" 'try machine\.pause\(\)'
+
+if rg -q 'runToNextFrame|run\(cycles:' "${source_path}"; then
+    printf 'Model B presentation must not advance emulated execution\n' >&2
+    exit 1
+fi
 
 echo 'Model B control contract tests passed'

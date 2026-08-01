@@ -38,8 +38,10 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard window != nil else { return }
-            window?.makeFirstResponder(self)
-            onFocus?(true)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.window?.makeFirstResponder(self)
+            }
         }
 
         override func becomeFirstResponder() -> Bool {
@@ -167,6 +169,10 @@ final class EmulatorModel: ObservableObject {
 
     /// Builds a candidate before atomically installing its runtime and active identity.
     func installRequestedProfile() {
+        if activeProfile == requestedProfile.profile {
+            profileStatus = "Active profile: \(requestedProfile.displayName)"
+            return
+        }
         do {
             let candidate = try BeebMachine(profile: requestedProfile.profile)
             let candidateProfile = try candidate.profile
@@ -193,8 +199,20 @@ final class EmulatorModel: ObservableObject {
         do {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+            guard resourceValues.isRegularFile == true, let fileSize = resourceValues.fileSize else {
+                throw CocoaError(.fileReadUnsupportedScheme)
+            }
+            switch role {
+            case .operatingSystem where fileSize != 16 * 1024:
+                throw BeebError.invalidOSROM
+            case .language where !(1...16 * 1024).contains(fileSize):
+                throw BeebError.invalidSidewaysROM
+            default:
+                break
+            }
             let data = try Data(contentsOf: url)
-            let bookmark = try? url.bookmarkData(
+            let bookmark = try url.bookmarkData(
                 options: bookmarkCreationOptions,
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
@@ -204,8 +222,8 @@ final class EmulatorModel: ObservableObject {
             updateAssignment(url.lastPathComponent, role: role)
             try resetIfFirmwareReady()
         } catch {
-            updateAssignment("recovery needed — \(error.localizedDescription)", role: role)
-            status = error.localizedDescription
+            let roleName = role == .operatingSystem ? "OS ROM" : "Language ROM"
+            status = "\(roleName) was not changed — \(error.localizedDescription)"
         }
     }
 
@@ -236,10 +254,10 @@ final class EmulatorModel: ObservableObject {
             if position.requiresShift && !pressed {
                 try machine.setKey(column: 0, row: 0, pressed: false)
             }
-            status = inputFocus ? "Keyboard focus active — (documentedProgram), Return, RUN, Return" : status
+            status = inputFocus ? "Keyboard focus active — \(documentedProgram), Return, RUN, Return" : status
         } catch {
             status = error.localizedDescription
-            stop()
+            stopPresentation()
         }
     }
     #endif
@@ -320,30 +338,49 @@ final class EmulatorModel: ObservableObject {
 
     func start() {
         guard timer == nil else { return }
-        isRunning = true
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 50.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.stepFrame() }
+        guard let machine else { return }
+        do {
+            try machine.start()
+            isRunning = true
+            status = "Running"
+            timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 50.0, repeats: true) {
+                [weak self] _ in
+                Task { @MainActor in self?.pollFrame() }
+            }
+        } catch {
+            status = error.localizedDescription
+            stopPresentation()
         }
     }
 
-    func stop() {
+    private func stopPresentation() {
         timer?.invalidate()
         timer = nil
         isRunning = false
     }
 
     func pause() {
-        stop()
-        status = "Paused"
+        guard let machine else { return }
+        do {
+            try machine.pause()
+            stopPresentation()
+            status = "Paused"
+        } catch {
+            status = error.localizedDescription
+        }
     }
 
     func reset() {
         guard let machine else { return }
+        let shouldResume = isRunning
         do {
             try machine.reset()
+            stopPresentation()
             invalidatePresentation()
+            status = "Reset complete — BASIC-ready"
+            if shouldResume { start() }
         }
-        catch { status = error.localizedDescription; stop() }
+        catch { status = error.localizedDescription; stopPresentation() }
     }
 
     func breakExecution() {
@@ -353,10 +390,8 @@ final class EmulatorModel: ObservableObject {
             try machine.setBreak(pressed: false)
             invalidatePresentation()
             status = "BREAK accepted — presentation epoch \(presentationEpoch)"
-            stop()
         } catch {
             status = error.localizedDescription
-            stop()
         }
     }
 
@@ -366,17 +401,21 @@ final class EmulatorModel: ObservableObject {
         screen = nil
     }
 
-    private func stepFrame() {
+    private func pollFrame() {
         guard let machine else { return }
         do {
-            guard try machine.runToNextFrame() else { return }
             let frame = try machine.dequeueVideoFrame()
             guard frame.number > lastPresentedFrame else { return }
             lastPresentedFrame = frame.number
             screen = platformImage(frame)
             let cpu = try machine.cpuState()
             status = String(format: "Frame %llu · epoch %llu · PC %04X   %,llu cycles", frame.number, presentationEpoch, cpu.programCounter, cpu.cycles)
-        } catch { status = error.localizedDescription; stop() }
+        } catch BeebError.coreStatus(.empty, _) {
+            return
+        } catch {
+            status = error.localizedDescription
+            stopPresentation()
+        }
     }
 
     private func platformImage(_ frame: BeebVideoFrame) -> PlatformImage? {

@@ -18,5 +18,12 @@ require_source "machine input focus state" 'inputFocus'
 require_source "owner-serialized key submission" 'setKey\(column:'
 require_source "documented program marker" '10 PRINT'
 require_source "keyboard-operable focus" 'becomeFirstResponder'
+require_source "deferred responder installation" 'DispatchQueue\.main\.async'
+
+view_move_block="$(sed -n '/override func viewDidMoveToWindow()/,/override func becomeFirstResponder()/p' "${source_path}")"
+if rg -q 'onFocus\?\(true\)' <<<"${view_move_block}"; then
+    printf 'viewDidMoveToWindow publishes focus during a SwiftUI view update\n' >&2
+    exit 1
+fi
 
 echo 'Model B input contract tests passed'

@@ -18,5 +18,12 @@ require_source "owned completed-frame dequeue" 'dequeueVideoFrame\(\)'
 require_source "monotonic presented-frame guard" 'lastPresentedFrame'
 require_source "epoch invalidation on reset" 'presentationEpoch &\+= 1'
 require_source "firmware reset invalidation" 'invalidatePresentation\(\)'
+require_source "presentation-only polling" 'private func pollFrame\(\)'
+
+poll_block="$(sed -n '/private func pollFrame()/,/private func platformImage/p' "${source_path}")"
+if rg -q 'runToNextFrame|run\(cycles:' <<<"${poll_block}"; then
+    printf 'Presentation polling advances emulated execution\n' >&2
+    exit 1
+fi
 
 echo 'Model B frame contract tests passed'
