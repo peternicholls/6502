@@ -760,6 +760,33 @@ final class BeebMachineTests: XCTestCase {
         }
     }
 
+    func testC2BreakDoesNotExposePreBreakOutput() throws {
+        let machine = try BeebMachine()
+        try machine.loadOSROM(outputOSROM())
+        try machine.reset()
+        XCTAssertTrue(try machine.runToNextFrame(maximumCycles: 200_000))
+        _ = try machine.run(cycles: 2_000_000)
+
+        let before = try machine.outputDiagnostics()
+        XCTAssertGreaterThan(before.frameDepth, 0)
+        XCTAssertGreaterThan(before.audioDepth, 0)
+        try machine.setBreak(pressed: true)
+        try machine.setBreak(pressed: false)
+
+        let after = try machine.outputDiagnostics()
+        XCTAssertEqual(after.frameDepth, 0)
+        XCTAssertEqual(after.audioDepth, 0)
+        XCTAssertEqual(
+            after.counters.framesDropped,
+            before.counters.framesDropped + UInt64(before.frameDepth)
+        )
+        XCTAssertEqual(
+            after.counters.audioSamplesOverrun,
+            before.counters.audioSamplesOverrun + UInt64(before.audioDepth)
+        )
+        assertCoreStatus(.empty) { _ = try machine.dequeueVideoFrame() }
+    }
+
     func testC2ConcurrentSwiftOutputProductionAndConsumption() async throws {
         let machine = try BeebMachine()
         try machine.loadOSROM(outputOSROM())
