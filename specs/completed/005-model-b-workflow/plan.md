@@ -24,7 +24,12 @@ mobile, Model B+ or timing scope. See [research.md](research.md).
 
 **Primary Dependencies**: Existing C++20 core, C ABI, BeebKit, SwiftUI/Foundation, Xcode project and standard macOS file selection; no new runtime dependency
 
-**Storage**: Private copied ROM bytes in the machine; app-scoped read-only security-scoped bookmark data and non-sensitive display metadata for remembered user selections. M1 assigns the language ROM to fixed sideways bank 12; no bank-selection UI is added.
+**Storage**: Private copied ROM bytes in the machine; bookmark data appropriate
+to the deployment boundary and non-sensitive display metadata for remembered
+user selections. A sandboxed signed distribution uses app-scoped read-only
+security-scoped bookmarks; the unsigned, unsandboxed development host uses plain
+bookmarks and records that limitation. M1 assigns the language ROM to fixed
+sideways bank 12; no bank-selection UI is added.
 
 **Testing**: Focused host and boundary regressions, a focused Model B workflow aggregate, `make test-machine-target-profile`, `make test-c1`, `make test-c2-xcode`, `swift test`, `swift build`, the maintained macOS Xcode build, documentation checks, and direct macOS observation. Add C++/C cases only when this slice changes that boundary. The complete M1 audio-inclusive journey remains later.
 

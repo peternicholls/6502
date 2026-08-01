@@ -34,17 +34,20 @@ the destination.
 
 **Sources**: [Acorn BBC Microcomputer Service Manual](https://acorn.huininga.nl/pub/docs/manuals/Acorn/BBC%20B/BBC%20Microcomputer%20Service%20Manual.pdf); [current BeebKit contract](../../Sources/BeebKit/BeebMachine.swift).
 
-## Decision 2: Store read-only security-scoped bookmarks, not paths or ROM bytes
+## Decision 2: Store deployment-appropriate bookmarks, not paths or ROM bytes
 
-**Decision**: The macOS host stores a read-only security-scoped bookmark and
-display metadata for each accepted user-selected source. On use, it resolves the
-bookmark, refreshes it if stale, balances access acquisition/release, reads the
-source into a private machine copy and asks the user to reselect it if access
-fails.
+**Decision**: The macOS host stores bookmark data and display metadata for each
+accepted user-selected source. A sandboxed signed distribution uses a read-only
+security-scoped bookmark; the unsigned, unsandboxed development host uses a plain
+bookmark. On use, the host resolves and refreshes the bookmark, balances any
+successful scoped-access acquisition/release, reads the source into a private
+machine copy and asks the user to reselect it if access fails.
 
 **Rationale**: This remembers assignments after relaunch without relying on an
-unauthorised path, retaining access indefinitely or making the source mutable.
-The core receives bytes only and remains host-agnostic.
+unauthorised path, retaining scoped access indefinitely or making the source
+mutable. Plain bookmarks do not grant sandbox access and are therefore limited to
+the explicitly unsandboxed development host. The core receives bytes only and
+remains host-agnostic.
 
 **Alternatives considered**:
 

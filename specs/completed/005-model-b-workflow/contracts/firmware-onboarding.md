@@ -14,10 +14,12 @@ changes the source file and never substitutes another ROM after failure.
 | OS | Exactly 16 KiB Model B MOS bytes | Copy bytes into the runtime OS ROM and retain a host bookmark for later authorised source access. | Preserve prior assignment and report the role/recovery action. |
 | Language | One through 16 KiB sideways-ROM bytes for fixed Model B bank 12 | Copy bytes into bank 12 and retain a host bookmark for later authorised source access. | Preserve prior assignment and report the role, bank or source-access problem. |
 
-The host creates a read-only security-scoped bookmark only after successful user
-selection. Every resolved access balances start and stop. A stale bookmark is
-refreshed; failed resolution or access changes only host availability and asks
-the user to reselect the source.
+The host creates bookmark data only after successful user selection. A sandboxed
+signed distribution uses a read-only security-scoped bookmark and balances every
+successful access acquisition with a release. The unsigned, unsandboxed
+development host uses a plain bookmark because it has no scoped-bookmark
+entitlement or agent. A stale bookmark is refreshed; failed resolution or access
+changes only host availability and asks the user to reselect the source.
 
 Shape validation does not infer ROM identity, provenance or Model B+
 compatibility. For an accepted external OS/language pair, compatibility is
