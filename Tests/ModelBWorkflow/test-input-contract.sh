@@ -17,9 +17,14 @@ require_source "physical keyboard capture" 'MachineKeyboardCapture'
 require_source "machine input focus state" 'inputFocus'
 require_source "owner-serialized key submission" 'setKey\(column:'
 require_source "documented program marker" '10 PRINT'
+require_source "program digit 5 mapping" 'case "5": return BBCKeyPosition'
+require_source "program digit 6 mapping" 'case "6": return BBCKeyPosition'
+require_source "shifted quote mapping" 'case "2": return BBCKeyPosition\(column: 1, row: 3, requiresShift: shift\)'
 require_source "keyboard-operable focus" 'becomeFirstResponder'
 require_source "deferred responder installation" 'DispatchQueue\.main\.async'
 require_source "deferred focus publication" 'private func publishFocus\(_ focused: Bool\)'
+require_source "explicit keyboard focus control" 'Focus keyboard'
+require_source "focus request propagation" 'focusRequest'
 
 view_move_block="$(sed -n '/override func viewDidMoveToWindow()/,/override func becomeFirstResponder()/p' "${source_path}")"
 if rg -q 'onFocus\?\(true\)' <<<"${view_move_block}"; then

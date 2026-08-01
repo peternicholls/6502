@@ -28,20 +28,19 @@ fileprivate struct BBCKeyPosition {
 fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
     let onKey: (BBCKeyPosition, Bool) -> Void
     let onFocus: (Bool) -> Void
+    let focusRequest: Int
 
     final class KeyView: NSView {
         var onKey: ((BBCKeyPosition, Bool) -> Void)?
         var onFocus: ((Bool) -> Void)?
+        var focusRequest = 0
 
         override var acceptsFirstResponder: Bool { true }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard window != nil else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.window != nil else { return }
-                self.window?.makeFirstResponder(self)
-            }
+            requestFocus()
         }
 
         override func becomeFirstResponder() -> Bool {
@@ -63,6 +62,13 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
             }
         }
 
+        func requestFocus() {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.window?.makeFirstResponder(self)
+            }
+        }
+
         override func keyDown(with event: NSEvent) {
             guard let position = Self.position(for: event) else { return }
             onKey?(position, true)
@@ -80,6 +86,8 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
             switch character {
             case "1": return BBCKeyPosition(column: 0, row: 3, requiresShift: false)
             case "2": return BBCKeyPosition(column: 1, row: 3, requiresShift: shift)
+            case "5": return BBCKeyPosition(column: 3, row: 1, requiresShift: shift)
+            case "6": return BBCKeyPosition(column: 4, row: 3, requiresShift: shift)
             case "0": return BBCKeyPosition(column: 7, row: 2, requiresShift: false)
             case "B": return BBCKeyPosition(column: 4, row: 6, requiresShift: false)
             case "E": return BBCKeyPosition(column: 2, row: 2, requiresShift: false)
@@ -99,12 +107,17 @@ fileprivate struct MachineKeyboardCapture: NSViewRepresentable {
         let view = KeyView()
         view.onKey = onKey
         view.onFocus = onFocus
+        view.focusRequest = focusRequest
         return view
     }
 
     func updateNSView(_ nsView: KeyView, context: Context) {
         nsView.onKey = onKey
         nsView.onFocus = onFocus
+        if nsView.focusRequest != focusRequest {
+            nsView.focusRequest = focusRequest
+            nsView.requestFocus()
+        }
     }
 }
 #endif
@@ -446,6 +459,9 @@ final class EmulatorModel: ObservableObject {
 /// the latest owned frame plus import controls.
 struct ContentView: View {
     @StateObject private var model = EmulatorModel()
+    #if os(macOS)
+    @State private var keyboardFocusRequest = 0
+    #endif
 
     var body: some View {
         VStack(spacing: 12) {
@@ -503,6 +519,10 @@ struct ContentView: View {
                 Button("BREAK") { model.breakExecution() }
                     .accessibilityIdentifier("break-control")
             }
+            #if os(macOS)
+            Button("Focus keyboard") { keyboardFocusRequest &+= 1 }
+                .accessibilityIdentifier("focus-keyboard-control")
+            #endif
             Text(model.status).font(.caption.monospaced()).frame(maxWidth: .infinity, alignment: .leading)
             Text(model.osAssignment).frame(maxWidth: .infinity, alignment: .leading)
             Text(model.languageAssignment).frame(maxWidth: .infinity, alignment: .leading)
@@ -513,7 +533,8 @@ struct ContentView: View {
             #if os(macOS)
             MachineKeyboardCapture(
                 onKey: { position, pressed in model.handleKey(position, pressed: pressed) },
-                onFocus: { focused in model.setInputFocus(focused) }
+                onFocus: { focused in model.setInputFocus(focused) },
+                focusRequest: keyboardFocusRequest
             )
             .frame(height: 1)
             .accessibilityLabel("Machine keyboard input")
